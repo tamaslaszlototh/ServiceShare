@@ -16,6 +16,10 @@ _Avoid_: highlight, marked portion
 A single user-invoked transformation applied to a selection (trim, cut/delete region, fade in/out, gain/normalize, concatenate).
 _Avoid_: effect, transform, tool
 
+**Edit List**:
+The ordered sequence of edit operations applied to a clip; the source of truth for undo/redo and for rendering the final audio.
+_Avoid_: history, timeline, project
+
 **Export**:
 Rendering the edited audio to a file on disk (WAV, MP3, or AAC). Distinct from publishing.
 _Avoid_: save, output
@@ -27,5 +31,5 @@ Turning the edited audio into a video (cover image + audio track) and uploading 
 _Avoid_: upload, share, export-to-YouTube
 
 **Cover Image**:
-The static image combined with the audio to form the video that gets published.
+The static image combined with the audio to form the video that gets published. Composed by scaling/cropping a chosen image (or a bundled default base) to 1280×720 and compositing the video title and the app logo onto it.
 _Avoid_: thumbnail, artwork
