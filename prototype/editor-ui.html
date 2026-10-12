@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ServiceShare editor UI — prototype</title>
+<!--
+  PROTOTYPE (throwaway). Three variants of the ServiceShare editor UI,
+  switchable via ?variant=A|B|C, standalone HTML (no app exists yet).
+  Question: "How should the editor look and behave?" (wayfinder ticket #6)
+-->
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d2129; --line:#2a2f3a;
+    --text:#e6e9ef; --muted:#8a93a5; --accent:#2dd4a7; --accent2:#4aa8ff;
+    --warn:#ffb454; --err:#ff5d5d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body.variant{overflow:hidden}
+  .variant{display:none;height:100%}
+  .variant.on{display:flex;flex-direction:column}
+
+  /* ---------- shared atoms ---------- */
+  .btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);
+    border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer}
+  .btn:hover{border-color:#3c4351}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#06251d;font-weight:600}
+  .btn.ghost{background:transparent}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .kbd{font-size:11px;color:var(--muted);border:1px solid var(--line);
+    border-radius:4px;padding:0 4px}
+  .title{font-weight:600;font-size:13px;letter-spacing:.2px}
+  .muted{color:var(--muted)}
+
+  .waveform{display:flex;align-items:center;gap:1px;height:100%;width:100%}
+  .waveform i{flex:1 1 0;background:linear-gradient(180deg,var(--accent2) 0%,#2b6aa0 100%);
+    border-radius:1px;opacity:.85}
+  .waveform i.mid{opacity:.45}
+
+  .empty-layer,.error-layer{display:none}
+  body[data-state=empty] .empty-layer{display:flex}
+  body[data-state=error] .error-layer{display:flex}
+  .empty-layer,.error-layer{position:absolute;inset:0;align-items:center;justify-content:center;
+    background:rgba(10,11,14,.6);backdrop-filter:blur(2px);z-index:40}
+  .empty-card,.error-card{background:var(--panel);border:1px dashed var(--line);
+    border-radius:12px;padding:34px 44px;text-align:center;max-width:380px}
+  .error-card{border-color:var(--err)}
+  .empty-card h3,.error-card h3{margin:0 0 6px}
+  .error-card .code{background:#000;color:var(--err);font-family:ui-monospace,Menlo,monospace;
+    padding:2px 6px;border-radius:4px;font-size:12px}
+  .empty-card .big{margin:10px 0 14px}
+
+  /* ---------- prototype toolbar ---------- */
+  #ptool{position:fixed;left:50%;bottom:14px;z-index:99;transform:translateX(-50%);
+    display:flex;align-items:center;gap:10px;background:#000c;border:1px solid var(--line);
+    color:#fff;padding:8px 12px;border-radius:999px;box-shadow:0 6px 24px #0009;
+    font-size:13px;white-space:nowrap}
+  #ptool button{border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;padding:2px 6px}
+  #ptool .seg{display:flex;border:1px solid #333;border-radius:999px;overflow:hidden}
+  #ptool .seg button{font-size:12px;padding:4px 10px;color:#bbb}
+  #ptool .seg button.on{background:#333;color:#fff}
+  #pstate{display:flex;align-items:center;gap:8px}
+  #pstate .readout{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#9fd}
+}
+</style>
+</head>
+<body data-state="normal">
+
+<!-- ================= VARIANT A — Classic DAW ================= -->
+<section class="variant" id="va">
+  <header style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)">
+    <span class="title">ServiceShare</span>
+    <span class="muted" id="va-file">lecture-01.wav</span>
+    <span style="border-left:1px solid var(--line);height:22px"></span>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="btn ghost" title="Play">▶</button>
+      <button class="btn ghost" title="Pause">⏸</button>
+      <button class="btn ghost" title="Stop">⏹</button>
+      <span class="muted" style="font-family:ui-monospace,Menlo,monospace;font-size:12px;margin-left:6px">00:12.3 / 04:12.7</span>
+    </div>
+    <span style="flex:1"></span>
+    <button class="btn">Open</button>
+    <button class="btn ghost">Export</button>
+    <button class="btn primary">Publish to YouTube</button>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line)">
+    <button class="btn" title="Undo">↶</button>
+    <button class="btn" title="Redo">↷</button>
+    <span style="border-left:1px solid var(--line);height:20px"></span>
+    <div style="display:flex;gap:6px">
+      <button class="btn chip">Trim</button>
+      <button class="btn chip">Cut region</button>
+      <button class="btn chip">Fade in/out</button>
+      <button class="btn chip">Gain / Normalize</button>
+      <button class="btn chip" disabled>Concatenate…</button>
+    </div>
+    <span style="flex:1"></span>
+    <button class="btn ghost">−</button><button class="btn ghost">+</button>
+  </div>
+
+  <div style="position:relative;flex:1;padding:0 14px;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:6px 2px">
+      <span>00:00</span><span>00:30</span><span>01:00</span><span>01:30</span><span>02:00</span><span>02:30</span><span>03:00</span><span>03:30</span><span>04:12.7</span>
+    </div>
+    <div style="position:relative;flex:1;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel2)">
+      <div class="waveform">
+        <i style="height:30%"></i><i style="height:44%"></i><i style="height:38%"></i><i class="mid" style="height:18%"></i>
+        <i style="height:55%"></i><i style="height:48%"></i><i style="height:70%"></i><i class="mid" style="height:12%"></i>
+        <i style="height:62%"></i><i style="height:80%"></i><i style="height:74%"></i><i style="height:34%"></i>
+        <i class="mid" style="height:6%"></i><i class="mid" style="height:10%"></i><i style="height:58%"></i><i style="height:66%"></i>
+        <i style="height:90%"></i><i style="height:72%"></i><i style="height:40%"></i><i style="height:28%"></i>
+        <i style="height:64%"></i><i style="height:84%"></i><i style="height:76%"></i><i style="height:52%"></i>
+        <i style="height:22%"></i><i class="mid" style="height:8%"></i><i style="height:48%"></i><i style="height:66%"></i>
+        <i style="height:70%"></i><i style="height:58%"></i><i style="height:36%"></i><i style="height:20%"></i>
+      </div>
+      <div style="position:absolute;top:0;bottom:0;left:22%;width:26%;
+        background:repeating-linear-gradient(90deg,#2dd4a733 0 2px,transparent 2px 18px);
+        border-left:2px solid var(--accent);border-right:2px solid var(--accent);pointer-events:none">
+        <div style="position:absolute;top:4px;left:50%;transform:translateX(-50%);background:var(--accent);color:#06251d;
+          font-size:11px;padding:1px 8px;border-radius:999px;font-family:ui-monospace,Menlo,monospace">00:12.0 – 00:48.3</div>
+      </div>
+      <div style="position:absolute;left:0;right:0;top:0;height:2px;background:#fff3"></div>
+    </div>
+    <div style="display:flex;gap:18px;padding:8px 2px;color:var(--muted);font-size:12px">
+      <span>44.1 kHz / 16-bit</span><span>mono</span><span>peak −1.2 dB</span>
+      <span style="flex:1"></span><span>selection: 00:12.0 – 00:48.3 (36.3s)</span>
+    </div>
+  </div>
+
+  <div class="empty-layer">
+    <div class="empty-card">
+      <div class="big">♪</div>
+      <h3>No file opened</h3>
+      <p class="muted">Open a WAV file to start editing.</p>
+      <button class="btn primary">Open WAV…</button>
+    </div>
+  </div>
+  <div class="error-layer">
+    <div class="error-card">
+      <h3>Sound engine unavailable</h3>
+      <p class="muted">FFmpeg binary could not be found.</p>
+      <p><span class="code">ENOENT: ffmpeg</span></p>
+      <button class="btn">Rescan</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VARIANT B — Left rail + edit cards ================= -->
+<section class="variant" id="vb">
+  <div style="position:relative;flex:1;display:flex">
+    <nav style="width:58px;background:var(--panel);border-right:1px solid var(--line);
+      display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0">
+      <span style="font-size:16px" title="Home">⌂</span>
+      <span style="font-size:16px" title="Editor">☰</span>
+      <span style="font-size:16px;color:var(--accent)" title="Edits">✎</span>
+      <span style="flex:1"></span>
+      <span style="font-size:16px" title="Publish">▲</span>
+    </nav>
+
+    <main style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px;max-width:720px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="title">My edits</span>
+        <span style="flex:1"></span>
+        <button class="btn ghost">New…</button>
+      </div>
+
+      <div style="border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span class="title">lecture-01.wav</span>
+          <span class="muted">4:12.7 · 44.1 kHz/16-bit · mono</span>
+        </div>
+        <div style="height:56px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);overflow:hidden">
+          <div class="waveform">
+            <i style="height:30%"></i><i style="height:52%"></i><i class="mid" style="height:10%"></i>
+            <i style="height:70%"></i><i style="height:84%"></i><i style="height:60%"></i><i class="mid" style="height:8%"></i>
+            <i style="height:48%"></i><i style="height:66%"></i><i style="height:90%"></i><i style="height:40%"></i>
+            <i style="height:22%"></i><i style="height:58%"></i><i style="height:74%"></i><i style="height:64%"></i>
+            <i class="mid" style="height:12%"></i><i style="height:36%"></i><i style="height:50%"></i>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:10px 12px;
+        display:flex;align-items:center;gap:10px">
+        <span>✎</span>
+        <span><b>Fade in</b> <span class="muted">· 1.5s @ start</span></span>
+        <span style="flex:1"></span><button class="btn ghost">✕</button>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:10px 12px;
+        display:flex;align-items:center;gap:10px">
+        <span>✎</span>
+        <span><b>Cut region</b> <span class="muted">· 00:20.0 – 00:32.5</span></span>
+        <span style="flex:1"></span><button class="btn ghost">✕</button>
+      </div>
+      <div style="border:1px solid #2dd4a744;border-radius:10px;background:#2dd4a708;padding:10px 12px;
+        display:flex;align-items:center;gap:10px">
+        <span>✎</span>
+        <span><b>Normalize</b> <span class="muted">· peak −1.0 dB · ready</span></span>
+        <span style="flex:1"></span><button class="btn ghost">✕</button>
+      </div>
+
+      <button class="btn" style="border-style:dashed;padding:14px">＋ Add an operation (Trim · Cut · Fade · Gain · Join)</button>
+
+      <p class="muted" style="font-size:12px">Undo history: <span style="color:var(--text)">♺ 3 steps</span></p>
+    </main>
+
+    <button class="btn primary" style="position:fixed;right:22px;bottom:74px;border-radius:999px;padding:12px 18px;box-shadow:0 6px 18px #0008" id="publish-fab">Publish to YouTube ▲</button>
+  </div>
+
+  <div class="empty-layer">
+    <div class="empty-card">
+      <div class="big">☰</div>
+      <h3>Start a new edit</h3>
+      <p class="muted">Your edits appear here as cards.</p>
+      <button class="btn primary">Open WAV…</button>
+    </div>
+  </div>
+  <div class="error-layer">
+    <div class="error-card">
+      <h3>Something went wrong</h3>
+      <p class="muted">Could not read <span style="font-family:ui-monospace,Menlo,monospace">lecture-01.wav</span> — unsupported or corrupt.</p>
+      <button class="btn">Choose another file</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VARIANT C — Wizard / guided steps ================= -->
+<section class="variant" id="vc">
+  <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;padding:18px;overflow:auto">
+    <header style="width:100%;max-width:480px;display:flex;align-items:center;gap:8px;margin-bottom:18px">
+      <span class="title">ServiceShare</span>
+      <span style="flex:1"></span>
+      <span class="muted" style="font-size:12px">lecture-01.wav</span>
+    </header>
+
+    <div style="width:100%;max-width:480px;display:flex;align-items:center;gap:6px;margin-bottom:18px;font-size:12px">
+      <div style="flex:1;text-align:center;padding:8px;border:1px solid var(--accent);border-radius:8px;color:var(--accent);background:#2dd4a714"><b>1 · Edit</b></div>
+      <div style="flex:1;text-align:center;padding:8px;border:1px solid var(--line);border-radius:8px;color:var(--muted)">2 · Preview</div>
+      <div style="flex:1;text-align:center;padding:8px;border:1px solid var(--line);border-radius:8px;color:var(--muted)">3 · Publish</div>
+    </div>
+
+    <div style="width:100%;max-width:480px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px">
+      <div style="height:64px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);overflow:hidden;margin-bottom:14px">
+        <div class="waveform">
+          <i style="height:28%"></i><i style="height:56%"></i><i class="mid" style="height:9%"></i>
+          <i style="height:72%"></i><i style="height:80%"></i><i style="height:48%"></i><i style="height:26%"></i>
+          <i style="height:60%"></i><i style="height:88%"></i><i style="height:70%"></i><i class="mid" style="height:11%"></i>
+          <i style="height:40%"></i><i style="height:64%"></i><i style="height:54%"></i><i style="height:30%"></i>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+        <button class="btn" style="padding:12px 6px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <span style="font-size:18px">✂</span><span>Trim</span></button>
+        <button class="btn" style="padding:12px 6px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <span style="font-size:18px">⛌</span><span>Cut</span></button>
+        <button class="btn" style="padding:12px 6px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <span style="font-size:18px">➳</span><span>Fade</span></button>
+        <button class="btn" style="padding:12px 6px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <span style="font-size:18px">🔊</span><span>Gain</span></button>
+        <button class="btn" style="padding:12px 6px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <span style="font-size:18px">⇥</span><span>Join</span></button>
+        <button class="btn" disabled style="padding:12px 6px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <span style="font-size:18px">🎚</span><span>Export</span></button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:14px">
+        <span class="muted">Selection</span>
+        <span style="font-family:ui-monospace,Menlo,monospace">00:12.0 – 00:48.3</span>
+        <span style="flex:1"></span>
+        <span class="kbd">⌘S</span>
+      </div>
+
+      <div style="display:flex;justify-content:space-between">
+        <button class="btn ghost" disabled>← Back</button>
+        <button class="btn primary">Preview sound →</button>
+      </div>
+    </div>
+
+    <p class="muted" style="margin-top:14px;font-size:12px;max-width:480px">
+      Publish step (3/3): cover image ▢ · title/description · privacy · <button class="btn primary" style="padding:4px 10px;font-size:12px">Upload</button>
+    </p>
+  </div>
+
+  <div class="empty-layer">
+    <div class="empty-card">
+      <div class="big">✦</div>
+      <h3>Let's make something</h3>
+      <p class="muted">Pick a WAV to begin step 1.</p>
+      <button class="btn primary">Open WAV…</button>
+    </div>
+  </div>
+  <div class="error-layer">
+    <div class="error-card">
+      <h3>Export failed</h3>
+      <p class="muted">Could not write the output file.</p>
+      <p><span class="code">EACCES: permission denied</span></p>
+      <button class="btn">Retry</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= prototype switcher ================= -->
+<div id="ptool">
+  <button id="prev" title="previous variant">‹</button>
+  <span id="plabel" style="min-width:150px;text-align:center;color:#fff">A · Classic DAW</span>
+  <button id="next" title="next variant">›</button>
+  <span style="width:1px;height:18px;background:#333"></span>
+  <div class="seg" id="pstate">
+    <button data-state="normal" class="on">Normal</button>
+    <button data-state="empty">Empty</button>
+    <button data-state="error">Error</button>
+  </div>
+  <span style="width:1px;height:18px;background:#333"></span>
+  <span class="readout" id="preadout">doc · 4:12.7 · 3 edits · selection 00:12.0–00:48.3</span>
+</div>
+
+<script>
+  const VARIANTS = {
+    A: { id: 'va', label: 'A · Classic DAW' },
+    B: { id: 'vb', label: 'B · Edit cards + rail' },
+    C: { id: 'vc', label: 'C · Guided wizard' },
+  };
+  const KEYS = Object.keys(VARIANTS);
+
+  function read() {
+    const p = new URLSearchParams(location.search);
+    const v = (p.get('variant') || 'A').toUpperCase();
+    const s = p.get('state') || 'normal';
+    return { v: KEYS.includes(v) ? v : 'A', s: ['normal','empty','error'].includes(s) ? s : 'normal' };
+  }
+  function apply() {
+    const { v, s } = read();
+    document.body.dataset.state = s;
+    KEYS.forEach(k => document.getElementById(VARIANTS[k].id).classList.toggle('on', k === v));
+    document.getElementById('plabel').textContent = VARIANTS[v].label;
+    document.querySelectorAll('#pstate button').forEach(b =>
+      b.classList.toggle('on', b.dataset.state === s));
+  }
+  function set(patch) {
+    const p = new URLSearchParams(location.search);
+    Object.entries(patch).forEach(([k, val]) => p.set(k, val));
+    history.replaceState(null, '', location.pathname + '?' + p.toString());
+    apply();
+  }
+  document.getElementById('prev').onclick = () => {
+    const { v } = read();
+    set({ variant: KEYS[(KEYS.indexOf(v) + KEYS.length - 1) % KEYS.length] });
+  };
+  document.getElementById('next').onclick = () => {
+    const { v } = read();
+    set({ variant: KEYS[(KEYS.indexOf(v) + 1) % KEYS.length] });
+  };
+  document.querySelectorAll('#pstate button').forEach(b =>
+    b.onclick = () => set({ state: b.dataset.state }));
+
+  document.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') document.getElementById('prev').onclick();
+    if (e.key === 'ArrowRight') document.getElementById('next').onclick();
+  });
+
+  apply();
+</script>
+</body>
+</html>
