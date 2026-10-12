@@ -6,6 +6,7 @@ const api: IpcApi = {
   getDocument: () => ipcRenderer.invoke('getDocument'),
   undo: () => ipcRenderer.invoke('undo'),
   redo: () => ipcRenderer.invoke('redo'),
+  checkEngine: () => ipcRenderer.invoke('checkEngine'),
   exportAudio: (opts: ExportOptions) => ipcRenderer.send('exportAudio', opts),
   publish: (req: PublishRequest) => ipcRenderer.send('publish', req),
   signIn: () => ipcRenderer.invoke('signIn'),

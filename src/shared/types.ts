@@ -70,6 +70,7 @@ export type IpcApi = {
   getDocument: () => Promise<Document>;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
+  checkEngine: () => Promise<void>;
   exportAudio: (opts: ExportOptions) => void;
   publish: (req: PublishRequest) => void;
   signIn: () => Promise<void>;

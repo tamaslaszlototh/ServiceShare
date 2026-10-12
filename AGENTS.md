@@ -6,12 +6,18 @@
 
 ## Current state
 
-- Fresh scaffold: the only tracked source file is `README.md` (contents: `# ServiceShare`).
-- No source code, package manifest, build/test/lint config, or CI exists yet.
+- Electrofoundation: Electron + React + TS with typed IPC (main/preload/renderer/shared).
+- Runtime FFmpeg resolution in the main process (`src/main/ffmpeg.ts`): extraResources → ffmpeg-static/ffprobe-static dev fallback → PATH, with `-version` probing and caching.
 
-## Once tooling is added
+## Build / test / typecheck
 
-- Record the exact build/test/lint commands and any required setup here; nothing exists to document today.
+- Build: `npm run build` (vite renderer + `tsc` main/preload).
+- Test: `npm test` (vitest, layer-1 unit tests only; no FFmpeg needed).
+- Typecheck: `npx tsc --project tsconfig.main.json --noEmit` (and the same for `tsconfig.preload.json` / `tsconfig.renderer.json` / `tsconfig.test.json`; the base is `tsconfig.json`). No linter configured.
+
+## FFmpeg runtime resolution (ticket 02)
+
+- deps: `ffmpeg-static`, `ffprobe-static` (runtime). electron-builder `extraResources` staging is ticket 18.
 
 ## Agent skills
 

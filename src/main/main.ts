@@ -1,11 +1,12 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import { DocumentManager } from './document';
-import { ClipInfo, ExportOptions, PublishRequest } from '@shared/types';
+import { ffmpegResolver, EngineError } from './ffmpeg';
+import { ClipInfo, ExportOptions, ProgressEvent, PublishRequest } from '@shared/types';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-function createWindow() {
+function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -21,12 +22,32 @@ function createWindow() {
   } else {
     win.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  return win;
+}
+
+function engineErrorEvent(error: unknown): ProgressEvent {
+  const engineError = error as Partial<EngineError>;
+  return {
+    kind: 'error',
+    error: {
+      code: 'EngineError',
+      message: engineError.message ?? 'FFmpeg not found',
+      details: engineError.details,
+    },
+  };
 }
 
 const docManager = new DocumentManager();
 
 app.whenReady().then(() => {
-  createWindow();
+  const win = createWindow();
+
+  win.webContents.once('did-finish-load', () => {
+    ffmpegResolver
+      .resolve()
+      .catch((e) => win.webContents.send('progress', engineErrorEvent(e)));
+  });
 
   ipcMain.handle('openFile', async (): Promise<ClipInfo> => {
     const result = await dialog.showOpenDialog({
@@ -62,6 +83,10 @@ app.whenReady().then(() => {
 
   ipcMain.handle('redo', async () => {
     docManager.redo();
+  });
+
+  ipcMain.handle('checkEngine', async () => {
+    await ffmpegResolver.recheck();
   });
 
   ipcMain.on('exportAudio', (_e, opts: ExportOptions) => {
