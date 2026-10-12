@@ -63,7 +63,6 @@ export interface PublishRequest {
   description?: string;
   tags?: string[];
   privacyStatus: 'unlisted' | 'private' | 'public';
-  thumbnailPath?: string;
 }
 
 export type IpcApi = {
