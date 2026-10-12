@@ -1,0 +1,44 @@
+{
+  "name": "serviceshare",
+  "version": "0.1.0",
+  "description": "Desktop WAV editor with YouTube publishing",
+  "main": "dist/main/main.js",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "concurrently \"cross-env NODE_ENV=development vite --config vite.renderer.config.ts\" \"cross-env NODE_ENV=development wait-on tcp:5173 && electron .\"",
+    "build": "node scripts/build.mjs",
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tamaslaszlototh/ServiceShare.git"
+  },
+  "keywords": [],
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/tamaslaszlototh/ServiceShare/issues"
+  },
+  "homepage": "https://github.com/tamaslaszlototh/ServiceShare#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.7.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.1",
+    "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/ui": "^5.0.4",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^38.2.2",
+    "electron-builder": "^26.0.12",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4",
+    "wait-on": "^9.0.1"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}
