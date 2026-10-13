@@ -57,9 +57,16 @@ export function Waveform({ peaks }: { peaks: PeakData }) {
     };
 
     render();
-    const observer = new ResizeObserver(render);
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(render);
+    });
     observer.observe(canvas);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [peaks]);
 
   return (

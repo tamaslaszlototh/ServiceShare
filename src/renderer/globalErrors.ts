@@ -37,13 +37,31 @@ interface ErrorEventLike {
   message?: unknown;
 }
 
+const IGNORED_ERROR_MESSAGES = [
+  'ResizeObserver loop completed with undelivered notifications',
+  'ResizeObserver loop limit exceeded',
+];
+
+function isIgnoredError(error: unknown, message: unknown): boolean {
+  const text = typeof message === 'string' ? message : error instanceof Error ? error.message : error;
+  return (
+    typeof text === 'string' && IGNORED_ERROR_MESSAGES.some((ignored) => text.includes(ignored))
+  );
+}
+
 export function installGlobalErrorHandlers(target: GlobalErrorTarget, bus: ErrorBus): void {
+  const report = (error: unknown, message?: unknown) => {
+    if (isIgnoredError(error, message)) {
+      return;
+    }
+    bus.report(error ?? message ?? 'An unexpected error occurred');
+  };
   target.addEventListener('error', (event) => {
     const { error, message } = (event ?? {}) as ErrorEventLike;
-    bus.report(error ?? message ?? 'An unexpected error occurred');
+    report(error, message);
   });
   target.addEventListener('unhandledrejection', (event) => {
-    const { reason } = (event ?? {}) as ErrorEventLike;
-    bus.report(reason ?? 'An unexpected error occurred');
+    const { reason, message } = (event ?? {}) as ErrorEventLike;
+    report(reason, message);
   });
 }

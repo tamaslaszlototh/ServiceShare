@@ -53,4 +53,18 @@ describe('installGlobalErrorHandlers', () => {
     expect(error).toHaveBeenCalledWith({ code: 'EngineError', message: 'kaboom' });
     expect(error).toHaveBeenCalledWith({ code: 'EngineError', message: 'nope' });
   });
+
+  it('ignores the benign ResizeObserver loop warning', () => {
+    const bus = createErrorBus();
+    const error = vi.fn();
+    bus.subscribe(error);
+    const { target, fire } = fakeTarget();
+
+    installGlobalErrorHandlers(target, bus);
+    fire('error', { message: 'ResizeObserver loop completed with undelivered notifications.' });
+    fire('error', { message: 'ResizeObserver loop limit exceeded' });
+    fire('error', { error: new Error('ResizeObserver loop completed with undelivered notifications.') });
+
+    expect(error).not.toHaveBeenCalled();
+  });
 });
