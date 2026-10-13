@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppError, ClipInfo, Document, PeakData, Selection } from '@shared/types';
 import { Timeline } from './Timeline';
 import { formatSelectionRange, selectionLength } from './selection';
@@ -15,11 +15,93 @@ export function App() {
   const [selection, setSelection] = useState<Selection | null>(null);
   const [document, setDocument] = useState<Document>({ sourceFile: null, editList: [], historyIndex: 0 });
   const [error, setError] = useState<AppError | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [rendering, setRendering] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const playStartRef = useRef(0);
 
-  const applyHistory = useCallback(async (action: HistoryAction) => {
-    const next = action === 'undo' ? await window.api.undo() : await window.api.redo();
-    setDocument(next);
+  const resetPlayback = useCallback((duration = 0) => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }
+    setPlaying(false);
+    setPosition(0);
+    setDuration(duration);
+    setLoadedUrl(null);
   }, []);
+
+  const applyHistory = useCallback(
+    async (action: HistoryAction) => {
+      const next = action === 'undo' ? await window.api.undo() : await window.api.redo();
+      setDocument(next);
+      resetPlayback();
+    },
+    [resetPlayback],
+  );
+
+  const handlePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+      return;
+    }
+    setRendering(true);
+    try {
+      const preview = await window.api.getPreview();
+      if (preview.status === 'error') {
+        setError(preview.error);
+        return;
+      }
+      if (preview.status === 'none') {
+        return;
+      }
+      if (loadedUrl !== preview.url) {
+        audio.src = preview.url;
+        audio.load();
+        setLoadedUrl(preview.url);
+      }
+      playStartRef.current = audio.currentTime;
+      await audio.play();
+      setPlaying(true);
+    } catch (e) {
+      setError({ code: 'RenderError', message: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setRendering(false);
+    }
+  };
+
+  const handlePause = () => {
+    audioRef.current?.pause();
+    setPlaying(false);
+  };
+
+  const handleStop = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = playStartRef.current;
+    setPosition(playStartRef.current);
+    setPlaying(false);
+  };
+
+  const handleSeek = (time: number) => {
+    const audio = audioRef.current;
+    if (!audio || !loadedUrl) return;
+    const clamped = Math.max(0, Math.min(time, audio.duration || time));
+    audio.currentTime = clamped;
+    playStartRef.current = clamped;
+    setPosition(clamped);
+  };
+
+  const statusLabel = rendering ? 'RENDERING' : playing ? 'PLAYING' : 'READY';
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -50,6 +132,7 @@ export function App() {
       setClip(result.clip);
       setPeaks(null);
       setSelection(null);
+      resetPlayback(result.clip.duration);
       setDocument(await window.api.getDocument());
       setError(null);
 
@@ -133,14 +216,30 @@ export function App() {
         <button disabled>Gain/Normalize</button>
         <button disabled>Concatenate</button>
         <span style={{ marginLeft: 'auto' }}>
-          <button disabled>Play</button>
-          <button disabled>Pause</button>
-          <button disabled>Stop</button>
-          <span style={{ marginLeft: '8px' }}>0:00.000 / {clip ? formatTime(clip.duration) : '0:00.000'}</span>
+          <button onClick={handlePlay} disabled={!clip || rendering || playing}>
+            Play
+          </button>
+          <button onClick={handlePause} disabled={!playing}>
+            Pause
+          </button>
+          <button onClick={handleStop} disabled={!clip}>
+            Stop
+          </button>
+          {rendering && <span style={{ marginLeft: '8px', color: '#666' }}>Rendering…</span>}
+          <span style={{ marginLeft: '8px' }}>
+            {formatTime(position)} / {formatTime(duration)}
+          </span>
         </span>
         <button disabled>Zoom -</button>
         <button disabled>+ Zoom</button>
       </div>
+
+      <audio
+        ref={audioRef}
+        onTimeUpdate={(e) => setPosition(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onEnded={() => setPlaying(false)}
+      />
 
       <main style={{ flex: 1, padding: '16px', background: '#fafafa', display: 'flex', flexDirection: 'column' }}>
         {clip ? (
@@ -149,7 +248,9 @@ export function App() {
             sampleRate={clip.sampleRate}
             peaks={peaks}
             selection={selection}
+            position={position}
             onSelectionChange={setSelection}
+            onSeek={handleSeek}
           />
         ) : (
           <div style={{ color: '#666' }}>Open a WAV to begin</div>
@@ -165,7 +266,7 @@ export function App() {
                 {' · '}selection: {formatSelectionRange(selection)} ({selectionLength(selection).toFixed(3)}s)
               </span>
             )}
-            {' · '}undo: {undoCount(document)} · redo: {redoCount(document)} · READY
+            {' · '}undo: {undoCount(document)} · redo: {redoCount(document)} · {statusLabel}
           </>
         ) : (
           <>No clip loaded · READY</>

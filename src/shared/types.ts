@@ -85,9 +85,15 @@ export type PeaksResult =
   | { status: 'none' }
   | { status: 'error'; error: AppError };
 
+export type PreviewResult =
+  | { status: 'ok'; url: string }
+  | { status: 'none' }
+  | { status: 'error'; error: AppError };
+
 export type IpcApi = {
   openFile: (filePath?: string) => Promise<OpenResult>;
   getPeaks: () => Promise<PeaksResult>;
+  getPreview: () => Promise<PreviewResult>;
   getPathForFile: (file: File) => string;
   getDocument: () => Promise<Document>;
   undo: () => Promise<Document>;

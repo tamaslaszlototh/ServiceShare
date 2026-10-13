@@ -1,19 +1,14 @@
-import { spawn, ChildProcess } from 'child_process';
 import { ClipInfo, PeakBucket, PeakData } from '@shared/types';
 import { ffmpegResolver } from './ffmpeg';
 import { EngineError } from './errors';
 import { sanitizeText } from './sanitize';
+import { killActiveProcesses, runFfmpeg } from './runner';
 
 export const TARGET_PEAK_BUCKETS = 4096;
 export const DECODE_TIMEOUT_MS = 120000;
 
-const activeDecodes = new Set<ChildProcess>();
-
 export function killActiveDecodes(): void {
-  for (const child of activeDecodes) {
-    child.kill('SIGKILL');
-  }
-  activeDecodes.clear();
+  killActiveProcesses();
 }
 
 export interface PeakDeps {
@@ -121,32 +116,7 @@ function runDecode(
   args: string[],
   onChunk: (chunk: Buffer) => void,
 ): Promise<{ exitCode: number; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-    activeDecodes.add(child);
-
-    let stderr = '';
-    let settled = false;
-    const finish = (settle: () => void) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      activeDecodes.delete(child);
-      settle();
-    };
-
-    const timer = setTimeout(() => {
-      child.kill('SIGKILL');
-      finish(() => reject(new EngineError('FFmpeg decode timed out', `after ${DECODE_TIMEOUT_MS} ms`)));
-    }, DECODE_TIMEOUT_MS);
-
-    child.stdout.on('data', (chunk: Buffer) => onChunk(chunk));
-    child.stderr.on('data', (chunk: Buffer) => {
-      if (stderr.length < 10000) stderr += chunk.toString();
-    });
-    child.on('error', (e) => finish(() => reject(new EngineError('Failed to start FFmpeg', String(e)))));
-    child.on('close', (code) => finish(() => resolve({ exitCode: code ?? 1, stderr })));
-  });
+  return runFfmpeg(ffmpegPath, args, { onStdout: onChunk, timeoutMs: DECODE_TIMEOUT_MS });
 }
 
 export const defaultPeakDeps: PeakDeps = {

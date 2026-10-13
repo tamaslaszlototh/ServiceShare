@@ -24,7 +24,9 @@ interface TimelineProps {
   sampleRate: number;
   peaks: PeakData | null;
   selection: Selection | null;
+  position?: number;
   onSelectionChange: (selection: Selection) => void;
+  onSeek?: (time: number) => void;
 }
 
 export function Timeline({
@@ -32,7 +34,9 @@ export function Timeline({
   sampleRate,
   peaks,
   selection,
+  position = 0,
   onSelectionChange,
+  onSeek,
 }: TimelineProps) {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag | null>(null);
@@ -61,6 +65,7 @@ export function Timeline({
     const time = timeAt(event.clientX);
     dragRef.current = { mode: 'new', anchor: time };
     onSelectionChange(cursorAt(time, duration, sampleRate));
+    onSeek?.(time);
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -103,6 +108,7 @@ export function Timeline({
 
   const startFraction = selection ? timeToFraction(selection.start, duration) : 0;
   const endFraction = selection ? timeToFraction(selection.end, duration) : 0;
+  const playheadFraction = position > 0 ? timeToFraction(position, duration) : null;
   const overlayBase = { position: 'absolute', top: 0, bottom: 0 } as const;
 
   return (
@@ -163,6 +169,18 @@ export function Timeline({
               />
             ))}
         </div>
+        {playheadFraction !== null && (
+          <div
+            aria-hidden="true"
+            style={{
+              ...overlayBase,
+              left: `${playheadFraction * 100}%`,
+              width: '2px',
+              background: '#d33',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
       </div>
     </div>
   );
