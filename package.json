@@ -10,7 +10,8 @@
     "dev": "concurrently \"cross-env NODE_ENV=development vite --config vite.renderer.config.ts\" \"cross-env NODE_ENV=development wait-on tcp:5173 && electron .\"",
     "build": "node scripts/build.mjs",
     "test": "vitest run",
-    "test:audio": "vitest run --config vitest.audio.config.ts"
+    "test:audio": "vitest run --config vitest.audio.config.ts",
+    "gen:assets": "node scripts/gen-assets.mjs"
   },
   "repository": {
     "type": "git",

@@ -67,7 +67,25 @@ export interface AudioProbe {
   formatName: string | null;
 }
 
-export function ffprobeAudio(filePath: string): Promise<AudioProbe> {
+export interface ImageProbe {
+  width: number | null;
+  height: number | null;
+  pixFmt: string | null;
+  formatName: string | null;
+}
+
+export interface RgbFrame {
+  width: number;
+  height: number;
+  data: Buffer;
+}
+
+interface FfprobeJson {
+  streams: Array<Record<string, unknown>>;
+  format: Record<string, unknown>;
+}
+
+function ffprobeJson(filePath: string): Promise<FfprobeJson> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       FFPROBE_PATH,
@@ -87,22 +105,57 @@ export function ffprobeAudio(filePath: string): Promise<AudioProbe> {
         return;
       }
       const parsed = JSON.parse(Buffer.concat(stdout).toString());
-      const streams: Array<Record<string, unknown>> = parsed.streams ?? [];
-      const stream = streams.find((s) => s.codec_type === 'audio') ?? {};
-      const format: Record<string, unknown> = parsed.format ?? {};
-      const num = (value: unknown): number | null =>
-        value === undefined || value === null || value === '' ? null : Number(value);
-      const str = (value: unknown): string | null => (typeof value === 'string' ? value : null);
-      resolve({
-        codecName: str(stream.codec_name),
-        sampleRate: num(stream.sample_rate),
-        channels: num(stream.channels),
-        bitRate: num(stream.bit_rate) ?? num(format.bit_rate),
-        duration: num(format.duration),
-        formatName: str(format.format_name),
-      });
+      resolve({ streams: parsed.streams ?? [], format: parsed.format ?? {} });
     });
   });
+}
+
+const num = (value: unknown): number | null =>
+  value === undefined || value === null || value === '' ? null : Number(value);
+const str = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
+export async function ffprobeAudio(filePath: string): Promise<AudioProbe> {
+  const { streams, format } = await ffprobeJson(filePath);
+  const stream = streams.find((s) => s.codec_type === 'audio') ?? {};
+  return {
+    codecName: str(stream.codec_name),
+    sampleRate: num(stream.sample_rate),
+    channels: num(stream.channels),
+    bitRate: num(stream.bit_rate) ?? num(format.bit_rate),
+    duration: num(format.duration),
+    formatName: str(format.format_name),
+  };
+}
+
+export async function ffprobeImage(filePath: string): Promise<ImageProbe> {
+  const { streams, format } = await ffprobeJson(filePath);
+  const stream =
+    streams.find((s) => s.codec_type === 'video' || s.codec_type === 'image') ?? streams[0] ?? {};
+  return {
+    width: num(stream.width),
+    height: num(stream.height),
+    pixFmt: str(stream.pix_fmt),
+    formatName: str(format.format_name),
+  };
+}
+
+export async function decodeRgb(filePath: string): Promise<RgbFrame> {
+  const info = await ffprobeImage(filePath);
+  if (!info.width || !info.height) {
+    throw new Error(`Could not determine image dimensions for ${filePath}`);
+  }
+  const { stdout } = await runOrThrow([
+    '-v',
+    'error',
+    '-i',
+    filePath,
+    '-f',
+    'rawvideo',
+    '-pix_fmt',
+    'rgb24',
+    '-',
+  ]);
+  return { width: info.width, height: info.height, data: stdout };
 }
 
 export async function decodePcm(

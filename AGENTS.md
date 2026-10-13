@@ -9,10 +9,12 @@
 - Electrofoundation: Electron + React + TS with typed IPC (main/preload/renderer/shared).
 - Runtime FFmpeg resolution in the main process (`src/main/ffmpeg.ts`): extraResources → ffmpeg-static/ffprobe-static dev fallback → PATH, with `-version` probing and caching.
 - WAV open/probe (`src/main/probe.ts`): `ffprobe` JSON → validate `pcm_s16le`/`pcm_s24le`; typed errors live in `src/main/errors.ts`; `openFile` returns a typed `OpenResult` (ok/cancelled/error).
+- Cover compositing (`src/main/cover.ts`): pure `compileCover`/`escapeDrawtext` seam → `CoverService`; bundled assets (default base, logo, OFL font) under `assets/`, resolved by `src/main/assets.ts` (resources → dev fallback).
 
 ## Build / test / typecheck
 
 - Build: `npm run build` (vite renderer + `tsc` main/preload).
+- Assets: `npm run gen:assets` regenerates `assets/images/{default-base,logo}.png` from the bundled FFmpeg (committed outputs).
 - Test: `npm test` (vitest, layer-1 unit tests only; no FFmpeg needed). Layer-2 audio goldens (real FFmpeg, `test/audio/**`) run via `npm run test:audio` and are excluded from `npm test`; they execute in CI on mac + win (`.github/workflows/audio-goldens.yml`).
 - Typecheck: `npx tsc --project tsconfig.main.json --noEmit` (and the same for `tsconfig.preload.json` / `tsconfig.renderer.json` / `tsconfig.test.json`; the base is `tsconfig.json`). No linter configured.
 
