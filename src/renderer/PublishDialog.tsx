@@ -1,8 +1,9 @@
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { AccountInfo, AppError, EditOperation, PublishEvent, PublishResult } from '@shared/types';
 import { errorLabel } from './errors';
 import { normalizeError } from '@shared/apperror';
 import { ErrorBanner } from './ErrorBanner';
+import { useT } from './LocaleContext';
 import {
   PRIVACY_OPTIONS,
   PUBLISH_DESCRIPTION_MAX,
@@ -24,8 +25,6 @@ import {
 } from './publish';
 
 const UNVERIFIED_NOTE_KEY = 'serviceshare.unverifiedNoteDismissed';
-const UNVERIFIED_NOTE =
-  'This Google project may still be unverified. YouTube can lock those uploads to private until the project is verified.';
 const COVER_DEBOUNCE_MS = 200;
 const IMAGE_ACCEPT = 'image/png,image/jpeg,.png,.jpg,.jpeg';
 
@@ -50,6 +49,7 @@ function readDismissed(): boolean {
 }
 
 export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }: PublishDialogProps) {
+  const t = useT();
   const cardRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
@@ -158,7 +158,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         setPhase('done');
         setCancelling(false);
       } else if (event.stage === 'cancelled') {
-        setNotice('Publish cancelled');
+        setNotice(t('publish.cancelled'));
         setPhase('edit');
         setCancelling(false);
       }
@@ -184,7 +184,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         })
         .catch(() => {
           if (!cancelled) {
-            setCoverError({ code: 'RenderError', message: 'Could not compose the cover preview' });
+            setCoverError({ code: 'RenderError', message: t('publish.coverError') });
           }
         });
     }, COVER_DEBOUNCE_MS);
@@ -248,7 +248,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         return;
       }
       if (published.status === 'cancelled') {
-        setNotice('Publish cancelled');
+        setNotice(t('publish.cancelled'));
         setPhase('edit');
         setCancelling(false);
         return;
@@ -300,17 +300,17 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         className="modal-card wide"
         role="dialog"
         aria-modal="true"
-        aria-label="Publish to YouTube"
+        aria-label={t('publish.ariaLabel')}
         aria-busy={publishing}
         tabIndex={-1}
       >
-        <h3 className="modal-title">Publish to YouTube</h3>
+        <h3 className="modal-title">{t('publish.title')}</h3>
 
         {phase === 'done' && result ? (
           <div className="publish-done">
-            <p>Your video is on YouTube.</p>
+            <p>{t('publish.doneHeading')}</p>
             <a className="done-link" href={result.url} target="_blank" rel="noreferrer">
-              View on YouTube
+              {t('publish.openVideo')}
             </a>
             <div className="done-link-row">
               <input
@@ -321,18 +321,18 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 onFocus={(event) => event.currentTarget.select()}
               />
               <button className="btn ghost" type="button" onClick={() => void copyLink(result.url)}>
-                {copied ? 'Copied' : 'Copy link'}
+                {copied ? t('publish.copied') : t('publish.copyLink')}
               </button>
             </div>
             {result.warning && (
               <div className="warning">
-                <span>The video published, but the thumbnail could not be set: {errorLabel(result.warning)}</span>
+                <span>{t('publish.doneSub')}</span>
               </div>
             )}
             <div className="modal-actions">
               <span className="spacer" />
               <button className="btn primary" type="button" onClick={onClose}>
-                Close
+                {t('publish.back')}
               </button>
             </div>
           </div>
@@ -345,27 +345,27 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 <>
                   <span className="account-chip">{accountLabel(account)}</span>
                   <button className="btn ghost" type="button" onClick={() => void signOut()} disabled={publishing}>
-                    Sign out
+                    {t('publish.signOut')}
                   </button>
                 </>
               ) : (
                 <button className="btn primary" type="button" onClick={() => void signIn()} disabled={signingIn || publishing}>
-                  {signingIn ? 'Waiting for Google…' : 'Sign in with Google'}
+                  {signingIn ? 'Waiting for Google…' : t('publish.signIn')}
                 </button>
               )}
             </div>
 
             <div className="cover-preview">
-              {coverUrl ? <img src={coverUrl} alt="Cover preview" /> : <span className="muted">Updating preview…</span>}
+              {coverUrl ? <img src={coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">Updating preview…</span>}
             </div>
             <div className="cover-actions">
               <button className="btn ghost" type="button" disabled={publishing} onClick={() => coverInputRef.current?.click()}>
-                Choose image…
+                {t('publish.coverChoose')}
               </button>
               <button className="btn ghost" type="button" disabled={publishing || !coverImagePath} onClick={() => setCoverImagePath(null)}>
-                Remove
+                {t('publish.coverClear')}
               </button>
-              <span className="muted">{coverImagePath ? fileName(coverImagePath) : 'Default cover'}</span>
+              <span className="muted">{coverImagePath ? fileName(coverImagePath) : t('publish.cover')}</span>
               <input
                 ref={coverInputRef}
                 type="file"
@@ -378,9 +378,9 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
 
             <div className="publish-fields">
               <label>
-                Title
+                {t('publish.titleLabel')}
                 <input
-                  aria-label="Video title"
+                  aria-label={t('publish.titleLabel')}
                   value={title}
                   maxLength={PUBLISH_TITLE_MAX}
                   required
@@ -452,9 +452,9 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
             {warning && <div className="warning">{warning.message}</div>}
             {showUnverified && (
               <div className="warning">
-                <span>{UNVERIFIED_NOTE}</span>
+                <span>{t('publish.unverifiedNote')}</span>
                 <button className="btn ghost" type="button" onClick={dismissUnverified}>
-                  Dismiss
+                  {t('publish.dismiss')}
                 </button>
               </div>
             )}
@@ -468,11 +468,13 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={percent ?? 0}
-                  aria-label={stage ? stageLabel(stage) : 'Starting publish'}
+                  aria-label={stage ? stageLabel(stage) : t('publish.startingPublish')}
                 >
                   <div className="progress-fill" style={{ width: `${percent ?? 8}%` }} />
                 </div>
-                <p className="muted">{cancelling ? 'Cancelling…' : stage ? stageLabel(stage) : 'Starting…'}</p>
+                <p className="muted">
+                  {cancelling ? t('publish.cancelling') : stage ? stageLabel(stage) : t('publish.starting')}
+                </p>
               </>
             )}
 
