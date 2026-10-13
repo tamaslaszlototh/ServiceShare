@@ -71,3 +71,7 @@ export function activeFadeSeconds(
   }
   return null;
 }
+
+export function activeNormalize(editList: EditOperation[], historyIndex: number): boolean {
+  return editList.slice(0, Math.min(historyIndex, editList.length)).some((op) => op.kind === 'normalize');
+}

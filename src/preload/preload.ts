@@ -18,6 +18,7 @@ const api: IpcApi = {
   getDocument: () => ipcRenderer.invoke('getDocument'),
   applyEdit: (op: EditOperation) => ipcRenderer.invoke('applyEdit', op),
   toggleFade: (kind, seconds) => ipcRenderer.invoke('toggleFade', kind, seconds),
+  toggleNormalize: () => ipcRenderer.invoke('toggleNormalize'),
   concatenate: () => ipcRenderer.invoke('concatenate'),
   undo: () => ipcRenderer.invoke('undo'),
   redo: () => ipcRenderer.invoke('redo'),

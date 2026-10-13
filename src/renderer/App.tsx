@@ -15,13 +15,13 @@ import {
   GAIN_MAX_DB,
   GAIN_MIN_DB,
   activeFadeSeconds,
+  activeNormalize,
   clampFadeSeconds,
   clampGainDb,
   cutOp,
   gainOp,
   hasSelection,
   isStructural,
-  normalizeOp,
   trimOp,
 } from './editops';
 
@@ -148,6 +148,10 @@ export function App() {
     applyEditResult(await window.api.toggleFade(kind, clampFadeSeconds(fadeSeconds)), false);
   };
 
+  const applyNormalize = async () => {
+    applyEditResult(await window.api.toggleNormalize(), false);
+  };
+
   const handleConcatenate = async () => {
     applyEditResult(await window.api.concatenate(), true);
   };
@@ -155,6 +159,7 @@ export function App() {
   const statusLabel = rendering ? 'RENDERING' : playing ? 'PLAYING' : 'READY';
   const fadeInSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeIn');
   const fadeOutSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeOut');
+  const normalizeActive = activeNormalize(document.editList, document.historyIndex);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -367,7 +372,14 @@ export function App() {
           <button className="btn chip" aria-label="Apply gain" disabled={!clip} onClick={() => void applyEdit(gainOp(gainDb))}>
             Apply
           </button>
-          <button className="btn chip" aria-label="Normalize loudness" disabled={!clip} onClick={() => void applyEdit(normalizeOp())}>
+          <button
+            className={`btn chip${normalizeActive ? ' active' : ''}`}
+            aria-label="Normalize loudness"
+            aria-pressed={normalizeActive}
+            title={normalizeActive ? 'Turn loudness normalization off' : 'Normalize loudness to −16 LUFS'}
+            disabled={!clip}
+            onClick={() => void applyNormalize()}
+          >
             Normalize
           </button>
         </div>

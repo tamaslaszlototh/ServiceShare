@@ -274,6 +274,18 @@ app.whenReady().then(async () => {
     },
   );
 
+  ipcMain.handle('toggleNormalize', async (): Promise<EditResult> => {
+    try {
+      const removed = docManager.removeActiveEdit((op) => op.kind === 'normalize');
+      if (!removed) {
+        docManager.appendEdit({ kind: 'normalize' });
+      }
+      return { status: 'ok', document: docManager.getDocument() };
+    } catch (e) {
+      return errorResult(e, 'EngineError');
+    }
+  });
+
   ipcMain.handle('concatenate', async (): Promise<EditResult> => {
     const target = await pickClipPath();
     if (!target) {

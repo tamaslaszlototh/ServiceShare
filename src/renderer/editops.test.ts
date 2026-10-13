@@ -6,6 +6,7 @@ import {
   GAIN_MAX_DB,
   GAIN_MIN_DB,
   activeFadeSeconds,
+  activeNormalize,
   clampFadeSeconds,
   clampGainDb,
   cutOp,
@@ -101,5 +102,20 @@ describe('activeFadeSeconds', () => {
   it('returns null when no active fade of that kind exists', () => {
     expect(activeFadeSeconds([gainOp(3)], 1, 'fadeIn')).toBeNull();
     expect(activeFadeSeconds([], 0, 'fadeOut')).toBeNull();
+  });
+});
+
+describe('activeNormalize', () => {
+  it('is true when a normalize op is inside the history cursor', () => {
+    expect(activeNormalize([gainOp(3), normalizeOp()], 2)).toBe(true);
+  });
+
+  it('ignores normalize ops beyond the history cursor', () => {
+    expect(activeNormalize([gainOp(3), normalizeOp()], 1)).toBe(false);
+  });
+
+  it('is false when no normalize op is present', () => {
+    expect(activeNormalize([gainOp(3)], 1)).toBe(false);
+    expect(activeNormalize([], 0)).toBe(false);
   });
 });
