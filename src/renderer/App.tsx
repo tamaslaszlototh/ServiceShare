@@ -5,7 +5,7 @@ import { ExportDialog } from './ExportDialog';
 import { PublishDialog } from './PublishDialog';
 import { ErrorBanner } from './ErrorBanner';
 import { normalizeError } from '@shared/apperror';
-import { keptSourceRanges, removedSourceRanges } from './timelineRanges';
+import { keptSourceRanges, removedSourceRanges, editedToSource, sourceToEdited } from './timelineRanges';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
 import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
@@ -31,6 +31,7 @@ export function App() {
   const [peaks, setPeaks] = useState<PeakData | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [document, setDocument] = useState<Document>({ sourceFile: null, editList: [], historyIndex: 0 });
+  const effectiveEditList = document.editList.slice(0, document.historyIndex);
   const [error, setError] = useState<AppError | null>(null);
   const [playing, setPlaying] = useState(false);
   const [rendering, setRendering] = useState(false);
@@ -116,8 +117,10 @@ export function App() {
 
   const handleSeek = (time: number) => {
     const audio = audioRef.current;
-    if (!audio || !loadedUrl) return;
-    const clamped = Math.max(0, Math.min(time, audio.duration || time));
+    if (!audio || !loadedUrl || !clip) return;
+    const edited = sourceToEdited(time, clip.duration, effectiveEditList);
+    if (edited === null) return;
+    const clamped = Math.max(0, Math.min(edited, audio.duration || edited));
     audio.currentTime = clamped;
     playStartRef.current = clamped;
     setPosition(clamped);
@@ -158,12 +161,12 @@ export function App() {
   };
 
   const statusLabel = rendering ? 'RENDERING' : playing ? 'PLAYING' : 'READY';
-  const effectiveEditList = document.editList.slice(0, document.historyIndex);
   const fadeInSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeIn');
   const fadeOutSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeOut');
   const normalizeActive = activeNormalize(document.editList, document.historyIndex);
   const keptRanges = clip ? keptSourceRanges(clip.duration, effectiveEditList) : [];
   const removedRanges = clip ? removedSourceRanges(clip.duration, effectiveEditList) : [];
+  const playheadSource = clip ? editedToSource(position, clip.duration, effectiveEditList) : null;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -443,7 +446,7 @@ export function App() {
               sampleRate={clip.sampleRate}
               peaks={peaks}
               selection={selection}
-              position={position}
+              position={playheadSource ?? 0}
               fadeIn={fadeInSeconds}
               fadeOut={fadeOutSeconds}
               keptRanges={keptRanges}
