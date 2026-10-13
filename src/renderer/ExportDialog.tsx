@@ -1,12 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppError, ExportFormat } from '@shared/types';
 import { ErrorBanner } from './ErrorBanner';
 import { normalizeError } from '@shared/apperror';
-
-const FORMATS: { value: ExportFormat; label: string; hint: string }[] = [
-  { value: 'wav', label: 'WAV', hint: 'Preserves source sample rate, bit depth and channels' },
-  { value: 'mp3', label: 'MP3', hint: '192 kbps · smaller file, stereo down-mix if needed' },
-];
+import { useT } from './LocaleContext';
 
 interface ExportDialogProps {
   onClose: () => void;
@@ -14,10 +10,19 @@ interface ExportDialogProps {
 }
 
 export function ExportDialog({ onClose, onExported }: ExportDialogProps) {
+  const t = useT();
   const [format, setFormat] = useState<ExportFormat>('wav');
   const [exporting, setExporting] = useState(false);
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<AppError | null>(null);
+
+  const formats = useMemo(
+    () => [
+      { value: 'wav' as ExportFormat, label: t('dialog.export.wav'), hint: t('dialog.export.wavHint') },
+      { value: 'mp3' as ExportFormat, label: t('dialog.export.mp3'), hint: t('dialog.export.mp3Hint') },
+    ],
+    [t],
+  );
 
   useEffect(() => {
     return window.api.onExportProgress((event) => setPercent(event.percent));
@@ -45,11 +50,11 @@ export function ExportDialog({ onClose, onExported }: ExportDialogProps) {
 
   return (
     <div className="modal-backdrop" role="presentation">
-      <div className="modal-card" role="dialog" aria-modal="true" aria-label="Export edited audio">
-        <h3 className="modal-title">Export edited audio</h3>
+      <div className="modal-card" role="dialog" aria-modal="true" aria-label={t('dialog.export.ariaLabel')}>
+        <h3 className="modal-title">{t('dialog.export.title')}</h3>
 
         <div className="format-list">
-          {FORMATS.map((option) => (
+          {formats.map((option) => (
             <label
               key={option.value}
               className={`format-option${format === option.value ? ' on' : ''}`}
@@ -84,13 +89,15 @@ export function ExportDialog({ onClose, onExported }: ExportDialogProps) {
         )}
 
         <div className="modal-actions">
-          <span className="muted">{exporting ? `Exporting… ${Math.round(percent)}%` : 'Choose a format, then a destination.'}</span>
+          <span className="muted">
+            {exporting ? t('dialog.export.progress', { percent: Math.round(percent) }) : t('dialog.export.choose')}
+          </span>
           <span className="spacer" />
           <button className="btn ghost" onClick={onClose} disabled={exporting}>
-            Cancel
+            {t('dialog.export.cancel')}
           </button>
           <button className="btn primary" onClick={() => void run()} disabled={exporting}>
-            Export…
+            {t('dialog.export.export')}
           </button>
         </div>
       </div>
