@@ -1,4 +1,4 @@
-import { AuthTokens, AccountInfo } from '@shared/types';
+import { AccountState, AuthTokens, AccountInfo } from '@shared/types';
 import { loadTokens, storeTokens, deleteTokens } from './tokenStorage';
 import {
   OAuthConfig,
@@ -25,9 +25,28 @@ export interface YouTubeAuthState {
   account?: AccountInfo | null;
 }
 
+export function parseChannel(body: string): AccountInfo | null {
+  try {
+    const json = JSON.parse(body) as {
+      items?: { id?: string; snippet?: { title?: string } }[];
+    };
+    const item = json.items?.[0];
+    if (!item?.id && !item?.snippet?.title) {
+      return null;
+    }
+    return {
+      channelId: item?.id,
+      channelTitle: item?.snippet?.title,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export class YouTubeService {
   private tokens: AuthTokens | null = null;
   private account: AccountInfo | null = null;
+  private accountFetched = false;
 
   async initialize(): Promise<void> {
     try {
@@ -50,6 +69,7 @@ export class YouTubeService {
       this.tokens = this.tokenResponseToTokens(tokenResponse);
       await storeTokens(this.tokens);
       this.account = await this.fetchAccountInfo(this.tokens);
+      this.accountFetched = true;
       return this.account;
     } catch (e) {
       throw e;
@@ -59,6 +79,7 @@ export class YouTubeService {
   async signOut(): Promise<void> {
     this.tokens = null;
     this.account = null;
+    this.accountFetched = false;
     await deleteTokens();
   }
 
@@ -98,6 +119,18 @@ export class YouTubeService {
     return this.account;
   }
 
+  async accountState(): Promise<AccountState> {
+    if (this.isSignedIn() && !this.accountFetched && this.tokens) {
+      this.accountFetched = true;
+      try {
+        this.account = await this.fetchAccountInfo(this.tokens);
+      } catch {
+        this.account = null;
+      }
+    }
+    return { signedIn: this.isSignedIn(), account: this.account };
+  }
+
   isSignedIn(): boolean {
     return this.tokens !== null && !!this.tokens.accessToken;
   }
@@ -124,9 +157,17 @@ export class YouTubeService {
     };
   }
 
-  private async fetchAccountInfo(_tokens: AuthTokens): Promise<AccountInfo | null> {
-    // Minimal implementation - would normally call YouTube API
-    // For now return null or basic info
-    return null;
+  private async fetchAccountInfo(tokens: AuthTokens): Promise<AccountInfo | null> {
+    const response = await fetch(
+      'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
+      {
+        headers: { Authorization: `Bearer ${tokens.accessToken}` },
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    if (!response.ok) {
+      return null;
+    }
+    return parseChannel(await response.text());
   }
 }

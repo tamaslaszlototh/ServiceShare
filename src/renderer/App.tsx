@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppError, ClipInfo, Document, EditOperation, EditResult, PeakData, Selection } from '@shared/types';
 import { Timeline } from './Timeline';
 import { ExportDialog } from './ExportDialog';
+import { PublishDialog } from './PublishDialog';
 import { errorLabel } from './errors';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
@@ -37,6 +38,7 @@ export function App() {
   const [fadeSeconds, setFadeSeconds] = useState(FADE_DEFAULT_SECONDS);
   const [gainDb, setGainDb] = useState(0);
   const [exportOpen, setExportOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const playStartRef = useRef(0);
@@ -155,6 +157,9 @@ export function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (exportOpen || publishOpen) {
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName))) {
         return;
@@ -167,7 +172,7 @@ export function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [applyHistory]);
+  }, [applyHistory, exportOpen, publishOpen]);
 
   const loadClip = async (filePath?: string) => {
     try {
@@ -235,8 +240,8 @@ export function App() {
         >
           Export
         </button>
-        <button className="btn primary" disabled>
-          Publish to YouTube
+        <button className="btn primary" disabled={!clip} onClick={() => setPublishOpen(true)}>
+          Publish to YouTube…
         </button>
       </header>
 
@@ -247,6 +252,15 @@ export function App() {
             setExportOpen(false);
             setNotice(`Exported to ${outputPath}`);
           }}
+        />
+      )}
+
+      {publishOpen && clip && (
+        <PublishDialog
+          sourceFile={clip.filePath}
+          sourceDuration={clip.duration}
+          editList={document.editList.slice(0, document.historyIndex)}
+          onClose={() => setPublishOpen(false)}
         />
       )}
 

@@ -78,24 +78,36 @@ export type ExportResult =
   | { status: 'cancelled' }
   | { status: 'error'; error: AppError };
 
+export type PrivacyStatus = 'unlisted' | 'private' | 'public';
+
 export interface PublishRequest {
   coverImagePath?: string;
   title: string;
   description?: string;
   tags?: string[];
-  privacyStatus: 'unlisted' | 'private' | 'public';
+  privacyStatus: PrivacyStatus;
+  thumbnailPath?: string;
 }
+
+export interface CoverPreviewRequest {
+  title: string;
+  coverImagePath?: string;
+}
+
+export type CoverPreviewResult =
+  | { status: 'ok'; url: string }
+  | { status: 'error'; error: AppError };
 
 export type PublishEvent =
   | { stage: 'cover' }
   | { stage: 'render' }
   | { stage: 'upload'; percent: number }
-  | { stage: 'done'; videoId: string; url: string }
+  | { stage: 'done'; videoId: string; url: string; warning?: AppError }
   | { stage: 'cancelled' }
   | { kind: 'error'; error: AppError };
 
 export type PublishResult =
-  | { status: 'ok'; videoId: string; url: string }
+  | { status: 'ok'; videoId: string; url: string; warning?: AppError }
   | { status: 'cancelled' }
   | { status: 'error'; error: AppError };
 
@@ -125,6 +137,15 @@ export interface AccountInfo {
   email?: string;
 }
 
+export interface AccountState {
+  signedIn: boolean;
+  account?: AccountInfo | null;
+}
+
+export type AuthResult =
+  | { status: 'ok'; account: AccountInfo | null }
+  | { status: 'error'; error: AppError };
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken?: string;
@@ -150,7 +171,9 @@ export type IpcApi = {
   publish: (req: PublishRequest) => Promise<PublishResult>;
   cancelPublish: () => void;
   onPublishProgress: (cb: (e: PublishEvent) => void) => () => void;
-  signIn: () => Promise<AccountInfo | null>;
+  composeCoverPreview: (req: CoverPreviewRequest) => Promise<CoverPreviewResult>;
+  getAccount: () => Promise<AccountState>;
+  signIn: () => Promise<AuthResult>;
   signOut: () => Promise<void>;
   checkForUpdates: () => Promise<void>;
   onProgress: (cb: (e: ProgressEvent) => void) => () => void;

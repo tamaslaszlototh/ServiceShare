@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import {
+  CoverPreviewRequest,
   EditOperation,
   ExportFormat,
   ExportProgress,
@@ -38,6 +39,8 @@ const api: IpcApi = {
       ipcRenderer.removeListener('publishProgress', listener);
     };
   },
+  composeCoverPreview: (req: CoverPreviewRequest) => ipcRenderer.invoke('composeCoverPreview', req),
+  getAccount: () => ipcRenderer.invoke('getAccount'),
   signIn: () => ipcRenderer.invoke('signIn'),
   signOut: () => ipcRenderer.invoke('signOut'),
   checkForUpdates: () => ipcRenderer.invoke('checkForUpdates'),

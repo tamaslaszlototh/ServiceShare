@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, shell } from 'electron';
 import { createReadStream } from 'fs';
 import { mkdir, mkdtemp, rm, stat } from 'fs/promises';
 import { Readable } from 'stream';
@@ -10,13 +10,19 @@ import { generatePeaks, defaultPeakDeps, killActiveDecodes } from './peaks';
 import { PreviewService, previewDepsIn } from './preview';
 import { ExportService, exportDepsIn } from './export';
 import { PublishService, publishDepsIn } from './publish';
+import { CoverService, coverDepsIn } from './cover';
+import { CoverPreviewService } from './coverPreview';
 import { YouTubeService } from './youtube';
 import { assetResolver } from './assets';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
 import {
+  AccountState,
   AppError,
+  AuthResult,
   ClipInfo,
+  CoverPreviewRequest,
+  CoverPreviewResult,
   EditOperation,
   EditResult,
   ExportFormat,
@@ -33,6 +39,7 @@ const isDev = process.env.NODE_ENV === 'development';
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'preview', privileges: { standard: true, stream: true, supportFetchAPI: true } },
+  { scheme: 'cover', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled: true } },
 ]);
 
 function createWindow(): BrowserWindow {
@@ -44,6 +51,13 @@ function createWindow(): BrowserWindow {
       nodeIntegration: false,
       contextIsolation: true,
     },
+  });
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      void shell.openExternal(url);
+    }
+    return { action: 'deny' };
   });
 
   if (isDev) {
@@ -68,6 +82,7 @@ function errorResult(error: unknown): { status: 'error'; error: AppError } {
 
 const docManager = new DocumentManager();
 let previewService: PreviewService | null = null;
+let coverPreviewService: CoverPreviewService | null = null;
 let publishService: PublishService | null = null;
 let activePublish: AbortController | null = null;
 let currentClip: ClipInfo | null = null;
@@ -125,6 +140,25 @@ async function previewResponse(request: Request): Promise<Response> {
   });
 }
 
+async function coverResponse(request: Request): Promise<Response> {
+  const key = new URL(request.url).pathname.replace(/^\//, '');
+  const filePath = key ? coverPreviewService?.pathFor(key) : null;
+  if (!filePath) {
+    return new Response('Not found', { status: 404 });
+  }
+  let size: number;
+  try {
+    size = (await stat(filePath)).size;
+  } catch {
+    return new Response('Not found', { status: 404 });
+  }
+  const body = Readable.toWeb(createReadStream(filePath)) as unknown as ReadableStream;
+  return new Response(body, {
+    status: 200,
+    headers: { 'Content-Type': 'image/png', 'Content-Length': String(size) },
+  });
+}
+
 async function pickClipPath(): Promise<string | null> {
   const result = await dialog.showOpenDialog({
     filters: [{ name: 'WAV Files', extensions: ['wav', 'wave'] }],
@@ -136,9 +170,19 @@ async function pickClipPath(): Promise<string | null> {
   return result.filePaths[0];
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   const tempRoot = path.join(app.getPath('userData'), 'temp');
   previewService = new PreviewService(previewDepsIn(tempRoot));
+  const coverService = new CoverService(coverDepsIn(() => assetResolver.resolve()));
+  coverPreviewService = new CoverPreviewService({
+    compose: (request) => coverService.compose(request),
+    makeTempDir: async () => {
+      await mkdir(tempRoot, { recursive: true });
+      return mkdtemp(path.join(tempRoot, 'cover-preview-'));
+    },
+    removeDir: (dir) => rm(dir, { recursive: true, force: true }),
+    removeFile: (filePath) => rm(filePath, { force: true }),
+  });
   publishService = new PublishService(
     publishDepsIn({
       resolveAssets: () => assetResolver.resolve(),
@@ -150,7 +194,7 @@ app.whenReady().then(() => {
       removeDir: (dir) => rm(dir, { recursive: true, force: true }),
     }),
   );
-  youtubeService.initialize().catch((e) => console.error('Failed to initialize YouTube service', e));
+  await youtubeService.initialize().catch((e) => console.error('Failed to initialize YouTube service', e));
   const win = createWindow();
 
   win.webContents.once('did-finish-load', () => {
@@ -188,6 +232,7 @@ app.whenReady().then(() => {
   });
 
   protocol.handle('preview', previewResponse);
+  protocol.handle('cover', coverResponse);
 
   ipcMain.handle('getPreview', async (): Promise<PreviewResult> => {
     if (!currentClip || !previewService) {
@@ -308,9 +353,32 @@ app.whenReady().then(() => {
     activePublish?.abort();
   });
 
-  ipcMain.handle('signIn', async () => {
+  ipcMain.handle(
+    'composeCoverPreview',
+    async (_e, req: CoverPreviewRequest): Promise<CoverPreviewResult> => {
+      if (!coverPreviewService) {
+        return {
+          status: 'error',
+          error: { code: 'EngineError', message: 'Cover preview is not available' },
+        };
+      }
+      try {
+        const preview = await coverPreviewService.ensure(req.title, req.coverImagePath);
+        return { status: 'ok', url: preview.url };
+      } catch (e) {
+        return errorResult(e);
+      }
+    },
+  );
+
+  ipcMain.handle('getAccount', async (): Promise<AccountState> => {
+    return youtubeService.accountState();
+  });
+
+  ipcMain.handle('signIn', async (): Promise<AuthResult> => {
     try {
-      return await youtubeService.signIn();
+      const account = await youtubeService.signIn();
+      return { status: 'ok', account };
     } catch (e) {
       return errorResult(e);
     }
@@ -341,4 +409,5 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   void previewService?.dispose();
+  void coverPreviewService?.dispose();
 });

@@ -16,6 +16,7 @@ import {
   resumableUpload,
   uploadDepsIn,
 } from './upload';
+import { ThumbnailOptions, setThumbnail, thumbnailContentType, thumbnailDepsIn } from './thumbnail';
 
 export const PUBLISH_SAMPLE_RATE = 48000;
 export const PUBLISH_CHANNELS = 2;
@@ -169,6 +170,7 @@ export interface PublishServiceDeps {
   statSize: (filePath: string) => Promise<number>;
   renderVideo: (input: PublishRenderInput) => Promise<PublishRenderResult>;
   upload: (options: UploadOptions) => Promise<UploadResult>;
+  setThumbnail: (options: ThumbnailOptions) => Promise<void>;
 }
 
 export class PublishService {
@@ -216,8 +218,27 @@ export class PublishService {
         onProgress: (percent) => emit({ stage: 'upload', percent }),
       });
 
-      emit({ stage: 'done', videoId: uploaded.videoId, url: uploaded.url });
-      return { status: 'ok', videoId: uploaded.videoId, url: uploaded.url };
+      let warning: AppError | undefined;
+      if (request.thumbnailPath) {
+        try {
+          const thumbnailSize = await this.deps.statSize(request.thumbnailPath);
+          await this.deps.setThumbnail({
+            accessToken,
+            videoId: uploaded.videoId,
+            source: {
+              path: request.thumbnailPath,
+              size: thumbnailSize,
+              contentType: thumbnailContentType(request.thumbnailPath),
+            },
+            signal: hooks.signal,
+          });
+        } catch (e) {
+          warning = toAppError(e, 'EngineError');
+        }
+      }
+
+      emit({ stage: 'done', videoId: uploaded.videoId, url: uploaded.url, warning });
+      return { status: 'ok', videoId: uploaded.videoId, url: uploaded.url, warning };
     } catch (e) {
       if (e instanceof UploadCancelled) {
         emit({ stage: 'cancelled' });
@@ -260,5 +281,6 @@ export function publishDepsIn(options: PublishDepsInOptions): PublishServiceDeps
     statSize: async (filePath) => (await stat(filePath)).size,
     renderVideo: (input) => renderer.render(input),
     upload: (uploadOptions) => resumableUpload(uploadOptions, uploadDeps),
+    setThumbnail: (thumbnailOptions) => setThumbnail(thumbnailOptions, thumbnailDepsIn()),
   };
 }

@@ -132,6 +132,7 @@ function serviceDeps(over: Partial<PublishServiceDeps> = {}): PublishServiceDeps
     statSize: async () => 2048,
     renderVideo: vi.fn(async () => ({ mp4Path: '/tmp/publish-xyz/out.mp4', coverPath: '/tmp/publish-xyz/cover.png' })),
     upload: vi.fn(async () => ({ videoId: 'vid1', url: 'https://youtu.be/vid1' })),
+    setThumbnail: vi.fn(async () => {}),
     ...over,
   };
 }
@@ -186,6 +187,51 @@ describe('PublishService', () => {
 
     expect(result).toEqual({ status: 'error', error: { code: 'QuotaExceeded', message: expect.any(String), details: 'quota' } });
     expect(deps.removeDir).toHaveBeenCalled();
+  });
+
+  it('sets the thumbnail after upload when one is provided', async () => {
+    const deps = serviceDeps();
+
+    const result = await new PublishService(deps).publish(
+      { ...request, thumbnailPath: '/tmp/thumb.jpg' },
+      { clip, editList: [] },
+    );
+
+    expect(result.status).toBe('ok');
+    expect(deps.setThumbnail).toHaveBeenCalledWith({
+      accessToken: 'token',
+      videoId: 'vid1',
+      source: { path: '/tmp/thumb.jpg', size: 2048, contentType: 'image/jpeg' },
+      signal: undefined,
+    });
+  });
+
+  it('skips thumbnails.set when no thumbnail is provided', async () => {
+    const deps = serviceDeps();
+
+    await new PublishService(deps).publish(request, { clip, editList: [] });
+
+    expect(deps.setThumbnail).not.toHaveBeenCalled();
+  });
+
+  it('still reports success when the thumbnail fails after a live upload', async () => {
+    const deps = serviceDeps({
+      setThumbnail: vi.fn(async () => {
+        throw new QuotaExceededError('thumbnail quota');
+      }),
+    });
+
+    const result = await new PublishService(deps).publish(
+      { ...request, thumbnailPath: '/tmp/thumb.png' },
+      { clip, editList: [] },
+    );
+
+    expect(result).toMatchObject({
+      status: 'ok',
+      videoId: 'vid1',
+      url: 'https://youtu.be/vid1',
+      warning: { code: 'QuotaExceeded' },
+    });
   });
 
   it('rejects a publish with no title before touching the engine', async () => {
