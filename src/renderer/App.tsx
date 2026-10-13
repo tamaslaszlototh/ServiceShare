@@ -5,6 +5,8 @@ import { ExportDialog } from './ExportDialog';
 import { PublishDialog } from './PublishDialog';
 import { ErrorBanner } from './ErrorBanner';
 import { normalizeError } from '@shared/apperror';
+import { resolveLocale } from '@shared/i18n';
+import { useLocale } from './LocaleContext';
 import { editedDuration, removedSourceRanges } from './timelineRanges';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
@@ -27,6 +29,7 @@ import {
 } from './editops';
 
 export function App() {
+  const { locale, setLocale, t } = useLocale();
   const [clip, setClip] = useState<ClipInfo | null>(null);
   const [peaks, setPeaks] = useState<PeakData | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -242,10 +245,21 @@ export function App() {
     <div className="app" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
       <header className="app-header">
         <span className="title">ServiceShare</span>
-        <span className="file">{clip ? baseName(clip.filePath) : 'No file'}</span>
+        <span className="file" title={clip ? t('header.currentFile', { name: baseName(clip.filePath) }) : undefined}>
+          {clip ? baseName(clip.filePath) : t('header.noFile')}
+        </span>
         <span className="spacer" />
+        <select
+          className="language"
+          aria-label={t('language.label')}
+          value={locale}
+          onChange={(event) => setLocale(resolveLocale(event.target.value))}
+        >
+          <option value="hu">{t('language.hu')}</option>
+          <option value="en">{t('language.en')}</option>
+        </select>
         <button className="btn" onClick={handleOpen}>
-          Open
+          {t('header.open')}
         </button>
         <button
           className="btn ghost"
@@ -255,10 +269,10 @@ export function App() {
             setExportOpen(true);
           }}
         >
-          Export
+          {t('header.export')}
         </button>
         <button className="btn primary" disabled={!clip} onClick={() => setPublishOpen(true)}>
-          Publish to YouTube…
+          {t('header.publish')}
         </button>
       </header>
 

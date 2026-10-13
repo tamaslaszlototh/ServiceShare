@@ -5,6 +5,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ErrorPreview } from './ErrorPreview';
 import { GlobalErrorBanner } from './GlobalErrorBanner';
 import { createErrorBus, installGlobalErrorHandlers } from './globalErrors';
+import { LocaleProvider } from './LocaleContext';
 import './styles.css';
 
 const root = document.getElementById('root');
@@ -13,11 +14,13 @@ if (root) {
   installGlobalErrorHandlers(window, bus);
   createRoot(root).render(
     <React.StrictMode>
-      <GlobalErrorBanner bus={bus} />
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-      <ErrorPreview />
+      <LocaleProvider>
+        <GlobalErrorBanner bus={bus} />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+        <ErrorPreview />
+      </LocaleProvider>
     </React.StrictMode>,
   );
 }

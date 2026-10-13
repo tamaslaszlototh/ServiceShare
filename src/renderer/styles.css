@@ -167,6 +167,21 @@ a:focus-visible {
   color: var(--muted);
 }
 
+.app-header select.language {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.app-header select.language:focus {
+  outline: none;
+  border-color: var(--accent2);
+}
+
 .toolbar {
   display: flex;
   align-items: center;
