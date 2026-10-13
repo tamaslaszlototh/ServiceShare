@@ -8,6 +8,7 @@
 
 - Electrofoundation: Electron + React + TS with typed IPC (main/preload/renderer/shared).
 - Runtime FFmpeg resolution in the main process (`src/main/ffmpeg.ts`): extraResources → ffmpeg-static/ffprobe-static dev fallback → PATH, with `-version` probing and caching.
+- WAV open/probe (`src/main/probe.ts`): `ffprobe` JSON → validate `pcm_s16le`/`pcm_s24le`; typed errors live in `src/main/errors.ts`; `openFile` returns a typed `OpenResult` (ok/cancelled/error).
 
 ## Build / test / typecheck
 

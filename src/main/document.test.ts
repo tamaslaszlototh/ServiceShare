@@ -19,6 +19,19 @@ describe('DocumentManager', () => {
     expect(dm.getDocument().editList).toEqual([]);
   });
 
+  it('clears edits when replacing the clip with a new file', () => {
+    const dm = new DocumentManager();
+    dm.setSourceFile('/tmp/first.wav');
+    dm.appendEdit({ kind: 'gain', db: 3 });
+    expect(dm.getDocument().editList.length).toBe(1);
+
+    dm.setSourceFile('/tmp/second.wav');
+
+    expect(dm.getDocument().sourceFile).toBe('/tmp/second.wav');
+    expect(dm.getDocument().editList).toEqual([]);
+    expect(dm.getDocument().historyIndex).toBe(0);
+  });
+
   it('appends edit and updates history', () => {
     const dm = new DocumentManager();
     const op: EditOperation = { kind: 'gain', db: 6 };

@@ -13,9 +13,7 @@ export class DocumentManager {
 
   setSourceFile(path: string | null): void {
     this.doc.sourceFile = path;
-    if (path === null) {
-      this.clearEdits();
-    }
+    this.clearEdits();
   }
 
   clearEdits(): void {

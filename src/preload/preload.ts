@@ -1,8 +1,9 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { ExportOptions, IpcApi, ProgressEvent, PublishRequest } from '@shared/types';
 
 const api: IpcApi = {
-  openFile: () => ipcRenderer.invoke('openFile'),
+  openFile: (filePath?: string) => ipcRenderer.invoke('openFile', filePath),
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   getDocument: () => ipcRenderer.invoke('getDocument'),
   undo: () => ipcRenderer.invoke('undo'),
   redo: () => ipcRenderer.invoke('redo'),

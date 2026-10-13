@@ -1,8 +1,10 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import { DocumentManager } from './document';
-import { ffmpegResolver, EngineError } from './ffmpeg';
-import { ClipInfo, ExportOptions, ProgressEvent, PublishRequest } from '@shared/types';
+import { ffmpegResolver } from './ffmpeg';
+import { probeClip, defaultWavProbeDeps } from './probe';
+import { IpcError, toAppError } from './errors';
+import { ExportOptions, OpenResult, ProgressEvent, PublishRequest } from '@shared/types';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -27,18 +29,21 @@ function createWindow(): BrowserWindow {
 }
 
 function engineErrorEvent(error: unknown): ProgressEvent {
-  const engineError = error as Partial<EngineError>;
-  return {
-    kind: 'error',
-    error: {
-      code: 'EngineError',
-      message: engineError.message ?? 'FFmpeg not found',
-      details: engineError.details,
-    },
-  };
+  return { kind: 'error', error: toAppError(error, 'EngineError') };
 }
 
 const docManager = new DocumentManager();
+
+async function pickClipPath(): Promise<string | null> {
+  const result = await dialog.showOpenDialog({
+    filters: [{ name: 'WAV Files', extensions: ['wav', 'wave'] }],
+    properties: ['openFile'],
+  });
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0];
+}
 
 app.whenReady().then(() => {
   const win = createWindow();
@@ -49,28 +54,22 @@ app.whenReady().then(() => {
       .catch((e) => win.webContents.send('progress', engineErrorEvent(e)));
   });
 
-  ipcMain.handle('openFile', async (): Promise<ClipInfo> => {
-    const result = await dialog.showOpenDialog({
-      filters: [
-        { name: 'WAV Files', extensions: ['wav', 'wave'] },
-      ],
-      properties: ['openFile'],
-    });
-
-    if (result.canceled || result.filePaths.length === 0) {
-      throw new Error('Cancelled');
+  ipcMain.handle('openFile', async (_e, filePath?: string): Promise<OpenResult> => {
+    const target = filePath ?? (await pickClipPath());
+    if (!target) {
+      return { status: 'cancelled' };
     }
 
-    const filePath = result.filePaths[0];
-    docManager.setSourceFile(filePath);
-
-    return {
-      duration: 0,
-      sampleRate: 44100,
-      bitDepth: 16,
-      channels: 1,
-      filePath,
-    };
+    try {
+      const clip = await probeClip(target, defaultWavProbeDeps);
+      docManager.setSourceFile(clip.filePath);
+      return { status: 'ok', clip };
+    } catch (e) {
+      if (e instanceof IpcError) {
+        return { status: 'error', error: e.toAppError() };
+      }
+      throw e;
+    }
   });
 
   ipcMain.handle('getDocument', async () => {

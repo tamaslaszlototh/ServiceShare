@@ -1,6 +1,7 @@
 import { execFile } from 'child_process';
 import { existsSync } from 'fs';
 import { createRequire } from 'module';
+import { EngineError } from './errors';
 
 export const FFMPEG_NOT_FOUND = 'FFmpeg not found';
 
@@ -18,17 +19,6 @@ export interface FFmpegResolverDeps {
   fileExists: (p: string) => boolean;
   probeVersion: (p: string) => Promise<boolean>;
   devPackagePath: (name: FfmpegToolName) => string | null;
-}
-
-export class EngineError extends Error {
-  readonly code = 'EngineError';
-  readonly details: string | undefined;
-
-  constructor(message: string, details?: string) {
-    super(message);
-    this.name = 'EngineError';
-    this.details = details;
-  }
 }
 
 function probeVersion(binPath: string): Promise<boolean> {
@@ -124,14 +114,18 @@ export class FFmpegResolver {
     );
   }
 
+  async resolveFfprobe(): Promise<string> {
+    if (!this.cache.ffprobe) {
+      this.cache.ffprobe = await this.resolveTool('ffprobe');
+    }
+    return this.cache.ffprobe;
+  }
+
   async resolve(): Promise<ResolvedBinaries> {
     if (!this.cache.ffmpeg) {
       this.cache.ffmpeg = await this.resolveTool('ffmpeg');
     }
-    if (!this.cache.ffprobe) {
-      this.cache.ffprobe = await this.resolveTool('ffprobe');
-    }
-    return { ffmpeg: this.cache.ffmpeg, ffprobe: this.cache.ffprobe };
+    return { ffmpeg: this.cache.ffmpeg, ffprobe: await this.resolveFfprobe() };
   }
 
   recheck(): Promise<ResolvedBinaries> {

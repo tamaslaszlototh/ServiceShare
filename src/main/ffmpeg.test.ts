@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { FFmpegResolver, EngineError, FFmpegResolverDeps } from './ffmpeg';
+import { FFmpegResolver, FFmpegResolverDeps } from './ffmpeg';
+import { EngineError } from './errors';
 
 function makeDeps(overrides: Partial<FFmpegResolverDeps> = {}) {
   const existing = new Set<string>();
@@ -161,6 +162,16 @@ describe('FFmpegResolver', () => {
     expect(err.message).toContain('FFmpeg not found');
     expect(err.details).toContain('/app/Resources/ffmpeg');
     expect(err.details).toContain('/usr/bin/ffmpeg');
+  });
+
+  it('resolveFfprobe resolves only ffprobe without requiring ffmpeg', async () => {
+    const [deps, state] = makeDeps();
+    state.addExisting('/app/Resources/ffprobe');
+
+    const path = await new FFmpegResolver(deps).resolveFfprobe();
+
+    expect(path).toBe('/app/Resources/ffprobe');
+    expect(state.probed).toEqual(['/app/Resources/ffprobe']);
   });
 
   it('recheck clears the cache and re-runs the probe', async () => {

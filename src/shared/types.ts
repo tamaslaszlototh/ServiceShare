@@ -65,8 +65,14 @@ export interface PublishRequest {
   privacyStatus: 'unlisted' | 'private' | 'public';
 }
 
+export type OpenResult =
+  | { status: 'ok'; clip: ClipInfo }
+  | { status: 'cancelled' }
+  | { status: 'error'; error: AppError };
+
 export type IpcApi = {
-  openFile: () => Promise<ClipInfo>;
+  openFile: (filePath?: string) => Promise<OpenResult>;
+  getPathForFile: (file: File) => string;
   getDocument: () => Promise<Document>;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
