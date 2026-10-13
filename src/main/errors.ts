@@ -54,6 +54,18 @@ export class PermissionError extends IpcError {
   }
 }
 
+export class AuthRevokedError extends IpcError {
+  constructor(details?: string) {
+    super('AuthRevoked', 'Authentication was revoked or is invalid', details);
+  }
+}
+
+export class TokenStorageError extends IpcError {
+  constructor(details?: string) {
+    super('TokenStorageError', 'Failed to access secure token storage', details);
+  }
+}
+
 export function toAppError(error: unknown, fallbackCode: ErrorCode = 'CorruptFile'): AppError {
   if (error instanceof IpcError) {
     return error.toAppError();

@@ -106,6 +106,20 @@ export type EditResult =
   | { status: 'cancelled' }
   | { status: 'error'; error: AppError };
 
+export interface AccountInfo {
+  channelId?: string;
+  channelTitle?: string;
+  email?: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken?: string;
+  expiryDate?: number;
+  scope?: string;
+  tokenType?: string;
+}
+
 export type IpcApi = {
   openFile: (filePath?: string) => Promise<OpenResult>;
   getPeaks: () => Promise<PeaksResult>;
@@ -121,7 +135,7 @@ export type IpcApi = {
   exportAudio: (format: ExportFormat) => Promise<ExportResult>;
   onExportProgress: (cb: (e: ExportProgress) => void) => () => void;
   publish: (req: PublishRequest) => void;
-  signIn: () => Promise<void>;
+  signIn: () => Promise<AccountInfo | null>;
   signOut: () => Promise<void>;
   checkForUpdates: () => Promise<void>;
   onProgress: (cb: (e: ProgressEvent) => void) => () => void;

@@ -9,6 +9,7 @@ import { probeClip, defaultWavProbeDeps } from './probe';
 import { generatePeaks, defaultPeakDeps, killActiveDecodes } from './peaks';
 import { PreviewService, previewDepsIn } from './preview';
 import { ExportService, exportDepsIn } from './export';
+import { YouTubeService } from './youtube';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
 import {
@@ -66,6 +67,7 @@ const docManager = new DocumentManager();
 let previewService: PreviewService | null = null;
 let currentClip: ClipInfo | null = null;
 const exportService = new ExportService(exportDepsIn());
+const youtubeService = new YouTubeService();
 
 const EXPORT_DIALOGS: Record<ExportFormat, { name: string; extension: string }> = {
   wav: { name: 'WAV audio', extension: 'wav' },
@@ -131,6 +133,7 @@ async function pickClipPath(): Promise<string | null> {
 
 app.whenReady().then(() => {
   previewService = new PreviewService(previewDepsIn(path.join(app.getPath('userData'), 'temp')));
+  youtubeService.initialize().catch((e) => console.error('Failed to initialize YouTube service', e));
   const win = createWindow();
 
   win.webContents.once('did-finish-load', () => {
@@ -263,11 +266,19 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('signIn', async () => {
-    console.log('Sign in requested');
+    try {
+      return await youtubeService.signIn();
+    } catch (e) {
+      return errorResult(e);
+    }
   });
 
   ipcMain.handle('signOut', async () => {
-    console.log('Sign out requested');
+    try {
+      await youtubeService.signOut();
+    } catch (e) {
+      return errorResult(e);
+    }
   });
 
   ipcMain.handle('checkForUpdates', async () => {
