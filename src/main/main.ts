@@ -7,6 +7,7 @@ import { DocumentManager } from './document';
 import { ffmpegResolver } from './ffmpeg';
 import { probeClip, defaultWavProbeDeps } from './probe';
 import { generatePeaks, defaultPeakDeps, killActiveDecodes } from './peaks';
+import { renderedDuration } from './engine';
 import { PreviewService, previewDepsIn } from './preview';
 import { ExportService, exportDepsIn } from './export';
 import { PublishService, publishDepsIn } from './publish';
@@ -224,7 +225,17 @@ app.whenReady().then(async () => {
       return { status: 'none' };
     }
     try {
-      const peaks = await generatePeaks(currentClip, defaultPeakDeps);
+      const editList = docManager.getEffectiveEditList();
+      let peakClip = currentClip;
+      if (editList.length > 0 && previewService) {
+        const render = await previewService.ensure(currentClip, editList);
+        peakClip = {
+          ...currentClip,
+          filePath: render.path,
+          duration: renderedDuration(currentClip, editList),
+        };
+      }
+      const peaks = await generatePeaks(peakClip, defaultPeakDeps);
       return { status: 'ok', peaks };
     } catch (e) {
       return errorResult(e, 'RenderError');

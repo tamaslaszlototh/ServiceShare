@@ -5,13 +5,7 @@ import { ExportDialog } from './ExportDialog';
 import { PublishDialog } from './PublishDialog';
 import { ErrorBanner } from './ErrorBanner';
 import { normalizeError } from '@shared/apperror';
-import {
-  editedToSource,
-  keptSourceRanges,
-  removedSourceRanges,
-  sourceSelectionToEdited,
-  sourceToEdited,
-} from './timelineRanges';
+import { editedDuration, removedSourceRanges } from './timelineRanges';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
 import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
@@ -65,13 +59,23 @@ export function App() {
     setLoadedUrl(null);
   }, []);
 
+  const refreshPeaks = useCallback(async () => {
+    const result = await window.api.getPeaks();
+    if (result.status === 'ok') {
+      setPeaks(result.peaks);
+    } else if (result.status === 'error') {
+      setError(result.error);
+    }
+  }, []);
+
   const applyHistory = useCallback(
     async (action: HistoryAction) => {
       const next = action === 'undo' ? await window.api.undo() : await window.api.redo();
       setDocument(next);
       resetPlayback(clip?.duration ?? 0);
+      await refreshPeaks();
     },
-    [clip, resetPlayback],
+    [clip, resetPlayback, refreshPeaks],
   );
 
   const handlePlay = async () => {
@@ -123,10 +127,8 @@ export function App() {
 
   const handleSeek = (time: number) => {
     const audio = audioRef.current;
-    if (!audio || !loadedUrl || !clip) return;
-    const edited = sourceToEdited(time, clip.duration, effectiveEditList);
-    if (edited === null) return;
-    const clamped = Math.max(0, Math.min(edited, audio.duration || edited));
+    if (!audio || !loadedUrl) return;
+    const clamped = Math.max(0, Math.min(time, audio.duration || time));
     audio.currentTime = clamped;
     playStartRef.current = clamped;
     setPosition(clamped);
@@ -146,8 +148,9 @@ export function App() {
       if (structural) {
         setSelection(null);
       }
+      void refreshPeaks();
     },
-    [clip, resetPlayback],
+    [clip, resetPlayback, refreshPeaks],
   );
 
   const applyEdit = async (op: EditOperation) => {
@@ -162,13 +165,6 @@ export function App() {
     applyEditResult(await window.api.toggleNormalize(), false);
   };
 
-  const editedSelection = (): Selection | null => {
-    if (!selection || !clip) {
-      return null;
-    }
-    return sourceSelectionToEdited(selection, clip.duration, effectiveEditList);
-  };
-
   const handleConcatenate = async () => {
     applyEditResult(await window.api.concatenate(), true);
   };
@@ -177,9 +173,10 @@ export function App() {
   const fadeInSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeIn');
   const fadeOutSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeOut');
   const normalizeActive = activeNormalize(document.editList, document.historyIndex);
-  const keptRanges = clip ? keptSourceRanges(clip.duration, effectiveEditList) : [];
-  const removedRanges = clip ? removedSourceRanges(clip.duration, effectiveEditList) : [];
-  const playheadSource = clip ? editedToSource(position, clip.duration, effectiveEditList) : null;
+  const timelineDuration = clip ? editedDuration(clip.duration, effectiveEditList) : 0;
+  const removedSeconds = clip
+    ? removedSourceRanges(clip.duration, effectiveEditList).reduce((sum, range) => sum + (range.end - range.start), 0)
+    : 0;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -216,13 +213,7 @@ export function App() {
       resetPlayback(result.clip.duration);
       setDocument(await window.api.getDocument());
       setError(null);
-
-      const peaksResult = await window.api.getPeaks();
-      if (peaksResult.status === 'ok') {
-        setPeaks(peaksResult.peaks);
-      } else if (peaksResult.status === 'error') {
-        setError(peaksResult.error);
-      }
+      await refreshPeaks();
     } catch (e) {
       setError(normalizeError(e, 'CorruptFile'));
     }
@@ -318,7 +309,7 @@ export function App() {
             aria-label="Trim to selection"
             disabled={!clip || !hasSelection(selection)}
             onClick={() => {
-              const op = trimOp(editedSelection());
+              const op = trimOp(selection);
               if (op) void applyEdit(op);
             }}
           >
@@ -329,7 +320,7 @@ export function App() {
             aria-label="Cut region"
             disabled={!clip || !hasSelection(selection)}
             onClick={() => {
-              const op = cutOp(editedSelection());
+              const op = cutOp(selection);
               if (op) void applyEdit(op);
             }}
           >
@@ -455,15 +446,13 @@ export function App() {
         {clip ? (
           <>
             <Timeline
-              duration={clip.duration}
+              duration={timelineDuration}
               sampleRate={clip.sampleRate}
               peaks={peaks}
               selection={selection}
-              position={playheadSource ?? 0}
+              position={position}
               fadeIn={fadeInSeconds}
               fadeOut={fadeOutSeconds}
-              keptRanges={keptRanges}
-              removedRanges={removedRanges}
               onSelectionChange={setSelection}
               onSeek={handleSeek}
             />
@@ -472,7 +461,8 @@ export function App() {
                 {clip.sampleRate} Hz / {clip.bitDepth}-bit
               </span>
               <span>{channelLabel(clip.channels)}</span>
-              <span>{formatTime(clip.duration)}</span>
+              <span>{formatTime(timelineDuration)}</span>
+              {removedSeconds > 0 && <span className="muted">removed {formatTime(removedSeconds)}</span>}
               <span className="spacer" />
               {selection && (
                 <span aria-live="polite">

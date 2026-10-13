@@ -2,7 +2,6 @@ import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import { PeakData, Selection } from '@shared/types';
 import { Ruler } from './Ruler';
 import { Waveform } from './Waveform';
-import { Range } from './timelineRanges';
 import {
   KEYBOARD_STEP_SECONDS,
   cursorAt,
@@ -28,8 +27,6 @@ interface TimelineProps {
   position?: number;
   fadeIn?: number | null;
   fadeOut?: number | null;
-  keptRanges?: Range[];
-  removedRanges?: Range[];
   onSelectionChange: (selection: Selection) => void;
   onSeek?: (time: number) => void;
 }
@@ -42,8 +39,6 @@ export function Timeline({
   position = 0,
   fadeIn = null,
   fadeOut = null,
-  keptRanges = [],
-  removedRanges = [],
   onSelectionChange,
   onSeek,
 }: TimelineProps) {
@@ -145,35 +140,6 @@ export function Timeline({
         <Ruler duration={duration} />
         <div className="wave-lane">
           {peaks ? <Waveform peaks={peaks} /> : <div className="wave-loading">Loading waveform…</div>}
-          {removedRanges.map((range, index) => {
-            const from = timeToFraction(range.start, duration);
-            const to = timeToFraction(range.end, duration);
-            return (
-              <div
-                key={`removed-${index}`}
-                className="removed"
-                data-testid="removed-region"
-                style={{ ...overlayBase, left: `${from * 100}%`, width: `${(to - from) * 100}%` }}
-              />
-            );
-          })}
-          {keptRanges.length === 1 && removedRanges.length > 0 && (
-            <div
-              className="kept"
-              data-testid="kept-region"
-              style={{
-                ...overlayBase,
-                left: `${timeToFraction(keptRanges[0].start, duration) * 100}%`,
-                width: `${
-                  (timeToFraction(keptRanges[0].end, duration) -
-                    timeToFraction(keptRanges[0].start, duration)) *
-                  100
-                }%`,
-              }}
-            >
-              <span className="kept-label">kept {formatSpan(keptRanges[0].end - keptRanges[0].start)}</span>
-            </div>
-          )}
           {fadeInFraction !== null && (
             <div
               className="fade in"
@@ -260,10 +226,4 @@ export function Timeline({
 
 function formatFade(seconds: number | null): string {
   return `${(seconds ?? 0).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}s`;
-}
-
-function formatSpan(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const rest = seconds - minutes * 60;
-  return `${minutes}:${rest.toFixed(1).padStart(4, '0')}`;
 }

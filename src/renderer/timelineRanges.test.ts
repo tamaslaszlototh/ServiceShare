@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EditOperation } from '@shared/types';
-import {
-  editedToSource,
-  keptSourceRanges,
-  removedSourceRanges,
-  sourceSelectionToEdited,
-  sourceToEdited,
-} from './timelineRanges';
+import { editedDuration, keptSourceRanges, removedSourceRanges } from './timelineRanges';
 
 const trim = (start: number, end: number): EditOperation => ({ kind: 'trim', start, end });
 const cut = (start: number, end: number): EditOperation => ({ kind: 'cutRegion', start, end });
@@ -76,53 +70,15 @@ describe('removedSourceRanges', () => {
   });
 });
 
-describe('editedToSource', () => {
-  it('offsets edited time by the trimmed-away head', () => {
-    expect(editedToSource(0, 10, [trim(2, 8)])).toBe(2);
-    expect(editedToSource(3, 10, [trim(2, 8)])).toBe(5);
-    expect(editedToSource(6, 10, [trim(2, 8)])).toBe(8);
+describe('editedDuration', () => {
+  it('sums the kept source spans', () => {
+    expect(editedDuration(10, [])).toBe(10);
+    expect(editedDuration(10, [trim(2, 8)])).toBe(6);
+    expect(editedDuration(10, [cut(2, 4)])).toBe(8);
   });
 
-  it('jumps over a cut region', () => {
-    expect(editedToSource(1.9, 10, [cut(2, 4)])).toBeCloseTo(1.9);
-    expect(editedToSource(2, 10, [cut(2, 4)])).toBe(4);
-    expect(editedToSource(7, 10, [cut(2, 4)])).toBe(9);
-  });
-
-  it('clamps to the edited range and ignores foreign segments', () => {
-    expect(editedToSource(100, 10, [trim(2, 8)])).toBe(8);
-    expect(editedToSource(7, 10, [trim(2, 8), concat(5)])).toBeNull();
-  });
-});
-
-describe('sourceToEdited', () => {
-  it('is the inverse of editedToSource on kept ranges', () => {
-    expect(sourceToEdited(2, 10, [trim(2, 8)])).toBe(0);
-    expect(sourceToEdited(5, 10, [trim(2, 8)])).toBe(3);
-    expect(sourceToEdited(8, 10, [trim(2, 8)])).toBe(6);
-  });
-
-  it('returns null for source time inside a removed range', () => {
-    expect(sourceToEdited(0, 10, [trim(2, 8)])).toBeNull();
-    expect(sourceToEdited(3, 10, [cut(2, 4)])).toBeNull();
-  });
-
-  it('maps source after a cut to the collapsed edited time', () => {
-    expect(sourceToEdited(4, 10, [cut(2, 4)])).toBe(2);
-    expect(sourceToEdited(9, 10, [cut(2, 4)])).toBe(7);
-  });
-});
-
-describe('sourceSelectionToEdited', () => {
-  it('is the identity when there are no structural edits', () => {
-    expect(sourceSelectionToEdited({ start: 3, end: 6 }, 10, [])).toEqual({ start: 3, end: 6 });
-  });
-
-  it('shifts a selection made on the source into trimmed-timeline coords', () => {
-    expect(sourceSelectionToEdited({ start: 3, end: 6 }, 10, [trim(2, 8)])).toEqual({ start: 1, end: 4 });
-  });
-
-  it('returns null when an endpoint falls in a removed range', () => {
-    expect(sourceSelectionToEdited({ start: 0, end: 5 }, 10, [trim(2, 8)])).toBeNull();
+  it('adds concatenated segments', () => {
+    expect(editedDuration(10, [concat(5)])).toBe(15);
+    expect(editedDuration(10, [trim(2, 8), concat(5)])).toBe(11);
   });
 });

@@ -1,4 +1,4 @@
-import { EditOperation, Selection } from '@shared/types';
+import { EditOperation } from '@shared/types';
 
 export interface Range {
   start: number;
@@ -118,62 +118,3 @@ export function editedDuration(sourceDuration: number, editList: EditOperation[]
   return toSegments(sourceDuration, editList).reduce((total, segment) => total + segment.length, 0);
 }
 
-export function editedToSource(
-  editedTime: number,
-  sourceDuration: number,
-  editList: EditOperation[],
-): number | null {
-  if (!(sourceDuration > 0)) {
-    return null;
-  }
-  const segments = toSegments(sourceDuration, editList);
-  const total = segments.reduce((sum, segment) => sum + segment.length, 0);
-  if (!(total > 0)) {
-    return null;
-  }
-  const time = Math.max(0, Math.min(editedTime, total));
-  let pos = 0;
-  for (let i = 0; i < segments.length; i++) {
-    const segment = segments[i];
-    const end = pos + segment.length;
-    if (time < end || i === segments.length - 1) {
-      return segment.srcStart === null ? null : segment.srcStart + (time - pos);
-    }
-    pos = end;
-  }
-  return null;
-}
-
-export function sourceToEdited(
-  sourceTime: number,
-  sourceDuration: number,
-  editList: EditOperation[],
-): number | null {
-  if (!(sourceDuration > 0)) {
-    return null;
-  }
-  let pos = 0;
-  for (const segment of toSegments(sourceDuration, editList)) {
-    if (segment.srcStart !== null) {
-      const end = segment.srcStart + segment.length;
-      if (sourceTime >= segment.srcStart && sourceTime <= end) {
-        return pos + (sourceTime - segment.srcStart);
-      }
-    }
-    pos += segment.length;
-  }
-  return null;
-}
-
-export function sourceSelectionToEdited(
-  selection: Selection,
-  sourceDuration: number,
-  editList: EditOperation[],
-): Selection | null {
-  const start = sourceToEdited(selection.start, sourceDuration, editList);
-  const end = sourceToEdited(selection.end, sourceDuration, editList);
-  if (start === null || end === null) {
-    return null;
-  }
-  return { start, end };
-}
