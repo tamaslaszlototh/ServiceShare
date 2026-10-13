@@ -1,4 +1,4 @@
-import { EditOperation } from '@shared/types';
+import { EditOperation, Selection } from '@shared/types';
 
 export interface Range {
   start: number;
@@ -163,4 +163,17 @@ export function sourceToEdited(
     pos += segment.length;
   }
   return null;
+}
+
+export function sourceSelectionToEdited(
+  selection: Selection,
+  sourceDuration: number,
+  editList: EditOperation[],
+): Selection | null {
+  const start = sourceToEdited(selection.start, sourceDuration, editList);
+  const end = sourceToEdited(selection.end, sourceDuration, editList);
+  if (start === null || end === null) {
+    return null;
+  }
+  return { start, end };
 }

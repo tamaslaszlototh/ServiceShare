@@ -5,7 +5,13 @@ import { ExportDialog } from './ExportDialog';
 import { PublishDialog } from './PublishDialog';
 import { ErrorBanner } from './ErrorBanner';
 import { normalizeError } from '@shared/apperror';
-import { keptSourceRanges, removedSourceRanges, editedToSource, sourceToEdited } from './timelineRanges';
+import {
+  editedToSource,
+  keptSourceRanges,
+  removedSourceRanges,
+  sourceSelectionToEdited,
+  sourceToEdited,
+} from './timelineRanges';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
 import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
@@ -154,6 +160,13 @@ export function App() {
 
   const applyNormalize = async () => {
     applyEditResult(await window.api.toggleNormalize(), false);
+  };
+
+  const editedSelection = (): Selection | null => {
+    if (!selection || !clip) {
+      return null;
+    }
+    return sourceSelectionToEdited(selection, clip.duration, effectiveEditList);
   };
 
   const handleConcatenate = async () => {
@@ -305,7 +318,7 @@ export function App() {
             aria-label="Trim to selection"
             disabled={!clip || !hasSelection(selection)}
             onClick={() => {
-              const op = trimOp(selection);
+              const op = trimOp(editedSelection());
               if (op) void applyEdit(op);
             }}
           >
@@ -316,7 +329,7 @@ export function App() {
             aria-label="Cut region"
             disabled={!clip || !hasSelection(selection)}
             onClick={() => {
-              const op = cutOp(selection);
+              const op = cutOp(editedSelection());
               if (op) void applyEdit(op);
             }}
           >

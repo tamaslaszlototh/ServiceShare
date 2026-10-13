@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { EditOperation } from '@shared/types';
-import { editedToSource, keptSourceRanges, removedSourceRanges, sourceToEdited } from './timelineRanges';
+import {
+  editedToSource,
+  keptSourceRanges,
+  removedSourceRanges,
+  sourceSelectionToEdited,
+  sourceToEdited,
+} from './timelineRanges';
 
 const trim = (start: number, end: number): EditOperation => ({ kind: 'trim', start, end });
 const cut = (start: number, end: number): EditOperation => ({ kind: 'cutRegion', start, end });
@@ -104,5 +110,19 @@ describe('sourceToEdited', () => {
   it('maps source after a cut to the collapsed edited time', () => {
     expect(sourceToEdited(4, 10, [cut(2, 4)])).toBe(2);
     expect(sourceToEdited(9, 10, [cut(2, 4)])).toBe(7);
+  });
+});
+
+describe('sourceSelectionToEdited', () => {
+  it('is the identity when there are no structural edits', () => {
+    expect(sourceSelectionToEdited({ start: 3, end: 6 }, 10, [])).toEqual({ start: 3, end: 6 });
+  });
+
+  it('shifts a selection made on the source into trimmed-timeline coords', () => {
+    expect(sourceSelectionToEdited({ start: 3, end: 6 }, 10, [trim(2, 8)])).toEqual({ start: 1, end: 4 });
+  });
+
+  it('returns null when an endpoint falls in a removed range', () => {
+    expect(sourceSelectionToEdited({ start: 0, end: 5 }, 10, [trim(2, 8)])).toBeNull();
   });
 });
