@@ -86,6 +86,19 @@ export interface PublishRequest {
   privacyStatus: 'unlisted' | 'private' | 'public';
 }
 
+export type PublishEvent =
+  | { stage: 'cover' }
+  | { stage: 'render' }
+  | { stage: 'upload'; percent: number }
+  | { stage: 'done'; videoId: string; url: string }
+  | { stage: 'cancelled' }
+  | { kind: 'error'; error: AppError };
+
+export type PublishResult =
+  | { status: 'ok'; videoId: string; url: string }
+  | { status: 'cancelled' }
+  | { status: 'error'; error: AppError };
+
 export type OpenResult =
   | { status: 'ok'; clip: ClipInfo }
   | { status: 'cancelled' }
@@ -134,7 +147,9 @@ export type IpcApi = {
   checkEngine: () => Promise<void>;
   exportAudio: (format: ExportFormat) => Promise<ExportResult>;
   onExportProgress: (cb: (e: ExportProgress) => void) => () => void;
-  publish: (req: PublishRequest) => void;
+  publish: (req: PublishRequest) => Promise<PublishResult>;
+  cancelPublish: () => void;
+  onPublishProgress: (cb: (e: PublishEvent) => void) => () => void;
   signIn: () => Promise<AccountInfo | null>;
   signOut: () => Promise<void>;
   checkForUpdates: () => Promise<void>;

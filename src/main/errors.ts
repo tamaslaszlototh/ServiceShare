@@ -66,6 +66,24 @@ export class TokenStorageError extends IpcError {
   }
 }
 
+export class NetworkError extends IpcError {
+  constructor(message = 'The upload lost its network connection', details?: string) {
+    super('NetworkError', message, details);
+  }
+}
+
+export class QuotaExceededError extends IpcError {
+  constructor(details?: string) {
+    super('QuotaExceeded', 'YouTube upload quota exhausted for today', details);
+  }
+}
+
+export class UploadExpiredError extends IpcError {
+  constructor(message = 'The upload session expired', details?: string) {
+    super('UploadExpired', message, details);
+  }
+}
+
 export function toAppError(error: unknown, fallbackCode: ErrorCode = 'CorruptFile'): AppError {
   if (error instanceof IpcError) {
     return error.toAppError();

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import { createReadStream } from 'fs';
-import { stat } from 'fs/promises';
+import { mkdir, mkdtemp, rm, stat } from 'fs/promises';
 import { Readable } from 'stream';
 import * as path from 'path';
 import { DocumentManager } from './document';
@@ -9,7 +9,9 @@ import { probeClip, defaultWavProbeDeps } from './probe';
 import { generatePeaks, defaultPeakDeps, killActiveDecodes } from './peaks';
 import { PreviewService, previewDepsIn } from './preview';
 import { ExportService, exportDepsIn } from './export';
+import { PublishService, publishDepsIn } from './publish';
 import { YouTubeService } from './youtube';
+import { assetResolver } from './assets';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
 import {
@@ -24,6 +26,7 @@ import {
   PreviewResult,
   ProgressEvent,
   PublishRequest,
+  PublishResult,
 } from '@shared/types';
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -65,6 +68,8 @@ function errorResult(error: unknown): { status: 'error'; error: AppError } {
 
 const docManager = new DocumentManager();
 let previewService: PreviewService | null = null;
+let publishService: PublishService | null = null;
+let activePublish: AbortController | null = null;
 let currentClip: ClipInfo | null = null;
 const exportService = new ExportService(exportDepsIn());
 const youtubeService = new YouTubeService();
@@ -132,7 +137,19 @@ async function pickClipPath(): Promise<string | null> {
 }
 
 app.whenReady().then(() => {
-  previewService = new PreviewService(previewDepsIn(path.join(app.getPath('userData'), 'temp')));
+  const tempRoot = path.join(app.getPath('userData'), 'temp');
+  previewService = new PreviewService(previewDepsIn(tempRoot));
+  publishService = new PublishService(
+    publishDepsIn({
+      resolveAssets: () => assetResolver.resolve(),
+      getAccessToken: () => youtubeService.getAccessToken(),
+      makeTempDir: async () => {
+        await mkdir(tempRoot, { recursive: true });
+        return mkdtemp(path.join(tempRoot, 'publish-'));
+      },
+      removeDir: (dir) => rm(dir, { recursive: true, force: true }),
+    }),
+  );
   youtubeService.initialize().catch((e) => console.error('Failed to initialize YouTube service', e));
   const win = createWindow();
 
@@ -261,8 +278,34 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.on('publish', (_e, req: PublishRequest) => {
-    console.log('Publish requested', req);
+  ipcMain.handle('publish', async (event, req: PublishRequest): Promise<PublishResult> => {
+    if (!currentClip || !publishService) {
+      return { status: 'error', error: { code: 'EngineError', message: 'No clip loaded' } };
+    }
+    if (activePublish) {
+      return {
+        status: 'error',
+        error: { code: 'EngineError', message: 'A publish is already in progress' },
+      };
+    }
+    const controller = new AbortController();
+    activePublish = controller;
+    try {
+      return await publishService.publish(
+        req,
+        { clip: currentClip, editList: docManager.getEffectiveEditList() },
+        {
+          signal: controller.signal,
+          onEvent: (e) => event.sender.send('publishProgress', e),
+        },
+      );
+    } finally {
+      activePublish = null;
+    }
+  });
+
+  ipcMain.on('cancelPublish', () => {
+    activePublish?.abort();
   });
 
   ipcMain.handle('signIn', async () => {

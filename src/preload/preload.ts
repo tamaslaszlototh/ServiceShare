@@ -5,6 +5,7 @@ import {
   ExportProgress,
   IpcApi,
   ProgressEvent,
+  PublishEvent,
   PublishRequest,
 } from '@shared/types';
 
@@ -28,7 +29,15 @@ const api: IpcApi = {
       ipcRenderer.removeListener('exportProgress', listener);
     };
   },
-  publish: (req: PublishRequest) => ipcRenderer.send('publish', req),
+  publish: (req: PublishRequest) => ipcRenderer.invoke('publish', req),
+  cancelPublish: () => ipcRenderer.send('cancelPublish'),
+  onPublishProgress: (cb: (e: PublishEvent) => void) => {
+    const listener = (_e: unknown, event: PublishEvent) => cb(event);
+    ipcRenderer.on('publishProgress', listener);
+    return () => {
+      ipcRenderer.removeListener('publishProgress', listener);
+    };
+  },
   signIn: () => ipcRenderer.invoke('signIn'),
   signOut: () => ipcRenderer.invoke('signOut'),
   checkForUpdates: () => ipcRenderer.invoke('checkForUpdates'),
