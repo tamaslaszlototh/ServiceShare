@@ -1,7 +1,10 @@
 import { ClipInfo, EditOperation } from '@shared/types';
 import { EngineError } from './errors';
 
-export const LOUDNESS_TARGET = 'I=-16:TP=-1.5:LRA=11';
+export const LOUDNESS_TARGET_I = -16;
+export const LOUDNESS_TARGET_TP = -1.5;
+export const LOUDNESS_TARGET_LRA = 11;
+export const LOUDNESS_TARGET = `I=${LOUDNESS_TARGET_I}:TP=${LOUDNESS_TARGET_TP}:LRA=${LOUDNESS_TARGET_LRA}`;
 
 const isNormalize = (op: EditOperation): boolean => op.kind === 'normalize';
 

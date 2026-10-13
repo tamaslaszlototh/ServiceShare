@@ -13,7 +13,7 @@
 ## Build / test / typecheck
 
 - Build: `npm run build` (vite renderer + `tsc` main/preload).
-- Test: `npm test` (vitest, layer-1 unit tests only; no FFmpeg needed).
+- Test: `npm test` (vitest, layer-1 unit tests only; no FFmpeg needed). Layer-2 audio goldens (real FFmpeg, `test/audio/**`) run via `npm run test:audio` and are excluded from `npm test`; they execute in CI on mac + win (`.github/workflows/audio-goldens.yml`).
 - Typecheck: `npx tsc --project tsconfig.main.json --noEmit` (and the same for `tsconfig.preload.json` / `tsconfig.renderer.json` / `tsconfig.test.json`; the base is `tsconfig.json`). No linter configured.
 
 ## FFmpeg runtime resolution (ticket 02)
