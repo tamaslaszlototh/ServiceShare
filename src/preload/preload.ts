@@ -43,6 +43,7 @@ const api: IpcApi = {
   getAccount: () => ipcRenderer.invoke('getAccount'),
   signIn: () => ipcRenderer.invoke('signIn'),
   signOut: () => ipcRenderer.invoke('signOut'),
+  copyText: (text: string) => ipcRenderer.invoke('copyText', text),
   checkForUpdates: () => ipcRenderer.invoke('checkForUpdates'),
   onProgress: (cb: (e: ProgressEvent) => void) => {
     const listener = (_e: any, event: ProgressEvent) => cb(event);

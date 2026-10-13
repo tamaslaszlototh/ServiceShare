@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, protocol, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, shell, clipboard } from 'electron';
 import { createReadStream } from 'fs';
 import { mkdir, mkdtemp, rm, stat } from 'fs/promises';
 import { Readable } from 'stream';
@@ -390,6 +390,13 @@ app.whenReady().then(async () => {
     } catch (e) {
       return errorResult(e);
     }
+  });
+
+  ipcMain.handle('copyText', async (_e, text: unknown) => {
+    if (typeof text !== 'string') {
+      throw new IpcError('EngineError', 'copyText expects a string');
+    }
+    clipboard.writeText(text);
   });
 
   ipcMain.handle('checkForUpdates', async () => {

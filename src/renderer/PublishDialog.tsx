@@ -71,6 +71,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
   const [result, setResult] = useState<Extract<PublishResult, { status: 'ok' }> | null>(null);
   const [error, setError] = useState<AppError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showUnverified, setShowUnverified] = useState(() => !readDismissed());
 
@@ -258,6 +259,16 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
     }
   };
 
+  const copyLink = async (url: string) => {
+    try {
+      await window.api.copyText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   const dismissUnverified = () => {
     setShowUnverified(false);
     try {
@@ -302,6 +313,18 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
             <a className="done-link" href={result.url} target="_blank" rel="noreferrer">
               View on YouTube
             </a>
+            <div className="done-link-row">
+              <input
+                className="done-url"
+                aria-label="Video URL"
+                readOnly
+                value={result.url}
+                onFocus={(event) => event.currentTarget.select()}
+              />
+              <button className="btn ghost" type="button" onClick={() => void copyLink(result.url)}>
+                {copied ? 'Copied' : 'Copy link'}
+              </button>
+            </div>
             {result.warning && (
               <div className="warning">
                 <span>The video published, but the thumbnail could not be set: {errorLabel(result.warning)}</span>

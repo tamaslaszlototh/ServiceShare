@@ -175,6 +175,7 @@ export type IpcApi = {
   getAccount: () => Promise<AccountState>;
   signIn: () => Promise<AuthResult>;
   signOut: () => Promise<void>;
+  copyText: (text: string) => Promise<void>;
   checkForUpdates: () => Promise<void>;
   onProgress: (cb: (e: ProgressEvent) => void) => () => void;
 };

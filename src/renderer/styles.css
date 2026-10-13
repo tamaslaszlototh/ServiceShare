@@ -519,6 +519,24 @@ a:focus-visible {
   color: var(--accent2);
 }
 
+.done-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.done-url {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+}
+
 /* ---------- empty state ---------- */
 
 .empty {
