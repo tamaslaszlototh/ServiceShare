@@ -61,10 +61,6 @@ describe('exportCodecArgs', () => {
       '2',
     ]);
   });
-
-  it('uses aac at 192 kbps', () => {
-    expect(exportCodecArgs('aac', base)).toEqual(['-c:a', 'aac', '-b:a', '192k']);
-  });
 });
 
 describe('parseProgressSeconds', () => {

@@ -21,7 +21,7 @@ The ordered sequence of edit operations applied to a clip; the source of truth f
 _Avoid_: history, timeline, project
 
 **Export**:
-Rendering the edited audio to a file on disk (WAV, MP3, or AAC). Distinct from publishing.
+Rendering the edited audio to a file on disk (WAV or MP3). Distinct from publishing.
 _Avoid_: save, output
 
 ## Publishing

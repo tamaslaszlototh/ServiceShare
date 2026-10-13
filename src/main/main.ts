@@ -93,7 +93,6 @@ const youtubeService = new YouTubeService();
 const EXPORT_DIALOGS: Record<ExportFormat, { name: string; extension: string }> = {
   wav: { name: 'WAV audio', extension: 'wav' },
   mp3: { name: 'MP3 audio', extension: 'mp3' },
-  aac: { name: 'AAC audio (M4A)', extension: 'm4a' },
 };
 
 async function pickExportPath(format: ExportFormat, sourceFile: string): Promise<string | null> {

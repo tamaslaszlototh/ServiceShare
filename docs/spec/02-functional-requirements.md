@@ -120,7 +120,6 @@ Every operation appends to the edit list and creates one undo step.
 **FR-14 — Export formats.**
 - **WAV:** keeps the session's source sample rate, bit depth (s16/s24), and channel layout.
 - **MP3:** `libmp3lame`, 192 kbps, stereo down-mix if needed, 44.1/48 kHz kept (source kept).
-- **AAC:** `aac`, 192 kbps, ADTS/M4A container, source rate kept.
 - Export runs in the main process, non-blocking, with progress.
 
 ### AC

@@ -67,7 +67,7 @@ export interface ExportOptions {
   outputPath: string;
 }
 
-export type ExportFormat = 'wav' | 'mp3' | 'aac';
+export type ExportFormat = 'wav' | 'mp3';
 
 export interface ExportProgress {
   percent: number;

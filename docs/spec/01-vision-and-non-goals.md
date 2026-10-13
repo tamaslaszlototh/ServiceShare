@@ -9,7 +9,7 @@ The workflow is deliberately short:
 
 1. Open a WAV file into the single-track editor.
 2. Apply basic edits — trim, delete a region, fade in/out, gain/normalize, concatenate.
-3. Export the result as WAV, MP3, or AAC — or publish it straight to YouTube.
+3. Export the result as WAV or MP3 — or publish it straight to YouTube.
 4. Publishing: pick a cover image (or use the generated default), set title/privacy/metadata, and
    upload. The app composites the cover (title + logo), renders the audio to MP4, and uploads it.
 
@@ -25,7 +25,7 @@ edits, and wants the result online — without learning a DAW or a video editor.
   **Concatenate**.
 - Undo/redo over the edit list.
 - In-app playback and cached preview rendering.
-- **Export** to WAV (source rate/depth), MP3, AAC.
+- **Export** to WAV (source rate/depth) or MP3.
 - **Publish** to YouTube: cover compositing, MP4 generation, OAuth sign-in, resumable upload,
   metadata, optional thumbnail.
 - **Full distribution**: installers for Windows and macOS, macOS notarization, auto-update via
@@ -41,8 +41,8 @@ These are explicit scope boundaries. Do not design, build, or test for them.
 3. **Audio recording** — the app edits existing files; it never captures from a microphone.
 4. **Video editing / visual effects** — the published video is a static cover image plus the audio
    track. No video timeline, transitions, or overlays beyond the fixed cover compositing.
-5. **Non-WAV editing** — the editable format is WAV (`pcm_s16le`/`pcm_s24le`). MP3/AAC are export
-   targets only; they are never decoded for editing.
+5. **Non-WAV editing** — the editable format is WAV (`pcm_s16le`/`pcm_s24le`). MP3 (and the AAC audio
+   inside a published MP4) are output targets only; they are never decoded for editing.
 6. **Audio plugins** — no VST/LADSPA/CLAP host.
 7. **Monetization, analytics, or channel management** — publishing creates a new video; it does not
    manage channels, playlists, revenue, or community features beyond the fields a video requires.

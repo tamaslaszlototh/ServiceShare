@@ -49,7 +49,6 @@ LRA = **11 LU**.
 | Preview cache | source | `pcm_s16le` | source | WAV |
 | Export WAV | **source** (kept) | `pcm_s16le`/`pcm_s24le` per source | source (kept) | WAV |
 | Export MP3 | source (kept) | `libmp3lame -b:a 192k` | down-mix to stereo if > 2 | MP3 |
-| Export AAC | source (kept) | `aac -b:a 192k` | source | ADTS/M4A |
 | Publish MP4 | **48 kHz** | `aac -b:a 192k` (audio) · `libx264` (video) | stereo | MP4 |
 
 - **Concatenate common format**: the chain uses the **first segment's** sample rate and channel

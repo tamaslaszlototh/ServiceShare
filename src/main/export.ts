@@ -7,7 +7,6 @@ import { DiskFullError, IpcError, RenderError } from './errors';
 import { sanitizeText } from './sanitize';
 
 export const MP3_BITRATE = '192k';
-export const AAC_BITRATE = '192k';
 
 export function exportCodecArgs(format: ExportFormat, clip: ClipInfo): string[] {
   switch (format) {
@@ -20,8 +19,6 @@ export function exportCodecArgs(format: ExportFormat, clip: ClipInfo): string[] 
       }
       return args;
     }
-    case 'aac':
-      return ['-c:a', 'aac', '-b:a', AAC_BITRATE];
   }
 }
 

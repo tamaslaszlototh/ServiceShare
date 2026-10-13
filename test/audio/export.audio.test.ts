@@ -64,17 +64,3 @@ describe('export MP3', () => {
     );
   });
 });
-
-describe('export AAC', () => {
-  it('encodes the source sample rate at 192 kbps in an M4A container', async () => {
-    await load();
-    const output = await exportAs('aac', 'out.m4a');
-    const info = await ffprobeAudio(output);
-
-    expect(info.codecName).toBe('aac');
-    expect(info.sampleRate).toBe(SPEC.sampleRate);
-    expect(info.bitRate).not.toBeNull();
-    expect(Math.abs((info.bitRate ?? 0) - 192000)).toBeLessThanOrEqual(BITRATE_TOLERANCE);
-    expect(Math.abs((info.duration ?? 0) - SECONDS)).toBeLessThanOrEqual(0.05);
-  });
-});

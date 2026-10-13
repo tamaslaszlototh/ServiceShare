@@ -6,7 +6,6 @@ import { normalizeError } from '@shared/apperror';
 const FORMATS: { value: ExportFormat; label: string; hint: string }[] = [
   { value: 'wav', label: 'WAV', hint: 'Preserves source sample rate, bit depth and channels' },
   { value: 'mp3', label: 'MP3', hint: '192 kbps · smaller file, stereo down-mix if needed' },
-  { value: 'aac', label: 'AAC', hint: '192 kbps · M4A container' },
 ];
 
 interface ExportDialogProps {
