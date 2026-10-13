@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import { EditOperation, ExportOptions, IpcApi, ProgressEvent, PublishRequest } from '@shared/types';
+import {
+  EditOperation,
+  ExportFormat,
+  ExportProgress,
+  IpcApi,
+  ProgressEvent,
+  PublishRequest,
+} from '@shared/types';
 
 const api: IpcApi = {
   openFile: (filePath?: string) => ipcRenderer.invoke('openFile', filePath),
@@ -13,7 +20,14 @@ const api: IpcApi = {
   undo: () => ipcRenderer.invoke('undo'),
   redo: () => ipcRenderer.invoke('redo'),
   checkEngine: () => ipcRenderer.invoke('checkEngine'),
-  exportAudio: (opts: ExportOptions) => ipcRenderer.send('exportAudio', opts),
+  exportAudio: (format: ExportFormat) => ipcRenderer.invoke('exportAudio', format),
+  onExportProgress: (cb: (e: ExportProgress) => void) => {
+    const listener = (_e: unknown, event: ExportProgress) => cb(event);
+    ipcRenderer.on('exportProgress', listener);
+    return () => {
+      ipcRenderer.removeListener('exportProgress', listener);
+    };
+  },
   publish: (req: PublishRequest) => ipcRenderer.send('publish', req),
   signIn: () => ipcRenderer.invoke('signIn'),
   signOut: () => ipcRenderer.invoke('signOut'),

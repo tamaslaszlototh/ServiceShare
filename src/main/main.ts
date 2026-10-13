@@ -8,6 +8,7 @@ import { ffmpegResolver } from './ffmpeg';
 import { probeClip, defaultWavProbeDeps } from './probe';
 import { generatePeaks, defaultPeakDeps, killActiveDecodes } from './peaks';
 import { PreviewService, previewDepsIn } from './preview';
+import { ExportService, exportDepsIn } from './export';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
 import {
@@ -15,7 +16,8 @@ import {
   ClipInfo,
   EditOperation,
   EditResult,
-  ExportOptions,
+  ExportFormat,
+  ExportResult,
   OpenResult,
   PeaksResult,
   PreviewResult,
@@ -63,6 +65,27 @@ function errorResult(error: unknown): { status: 'error'; error: AppError } {
 const docManager = new DocumentManager();
 let previewService: PreviewService | null = null;
 let currentClip: ClipInfo | null = null;
+const exportService = new ExportService(exportDepsIn());
+
+const EXPORT_DIALOGS: Record<ExportFormat, { name: string; extension: string }> = {
+  wav: { name: 'WAV audio', extension: 'wav' },
+  mp3: { name: 'MP3 audio', extension: 'mp3' },
+  aac: { name: 'AAC audio (M4A)', extension: 'm4a' },
+};
+
+async function pickExportPath(format: ExportFormat, sourceFile: string): Promise<string | null> {
+  const { name, extension } = EXPORT_DIALOGS[format];
+  const defaultName = `${path.parse(sourceFile).name}.${extension}`;
+  const result = await dialog.showSaveDialog({
+    title: 'Export edited audio',
+    defaultPath: defaultName,
+    filters: [{ name, extensions: [extension] }],
+  });
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+  return result.filePath;
+}
 
 async function previewResponse(request: Request): Promise<Response> {
   const key = new URL(request.url).hostname;
@@ -214,8 +237,25 @@ app.whenReady().then(() => {
     await ffmpegResolver.recheck();
   });
 
-  ipcMain.on('exportAudio', (_e, opts: ExportOptions) => {
-    console.log('Export requested', opts);
+  ipcMain.handle('exportAudio', async (event, format: ExportFormat): Promise<ExportResult> => {
+    if (!currentClip) {
+      return { status: 'error', error: { code: 'EngineError', message: 'No clip loaded' } };
+    }
+    const outputPath = await pickExportPath(format, currentClip.filePath);
+    if (!outputPath) {
+      return { status: 'cancelled' };
+    }
+    try {
+      await exportService.export(
+        currentClip,
+        docManager.getEffectiveEditList(),
+        { format, outputPath },
+        (percent) => event.sender.send('exportProgress', { percent }),
+      );
+      return { status: 'ok', outputPath };
+    } catch (e) {
+      return errorResult(e);
+    }
   });
 
   ipcMain.on('publish', (_e, req: PublishRequest) => {

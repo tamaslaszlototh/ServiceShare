@@ -58,6 +58,53 @@ export function probe(filePath: string): Promise<ClipInfo> {
   return probeClip(filePath, defaultWavProbeDeps);
 }
 
+export interface AudioProbe {
+  codecName: string | null;
+  sampleRate: number | null;
+  channels: number | null;
+  bitRate: number | null;
+  duration: number | null;
+  formatName: string | null;
+}
+
+export function ffprobeAudio(filePath: string): Promise<AudioProbe> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      FFPROBE_PATH,
+      ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', filePath],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+    const stdout: Buffer[] = [];
+    let stderr = '';
+    child.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`ffprobe failed (${code}): ${stderr}`));
+        return;
+      }
+      const parsed = JSON.parse(Buffer.concat(stdout).toString());
+      const streams: Array<Record<string, unknown>> = parsed.streams ?? [];
+      const stream = streams.find((s) => s.codec_type === 'audio') ?? {};
+      const format: Record<string, unknown> = parsed.format ?? {};
+      const num = (value: unknown): number | null =>
+        value === undefined || value === null || value === '' ? null : Number(value);
+      const str = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+      resolve({
+        codecName: str(stream.codec_name),
+        sampleRate: num(stream.sample_rate),
+        channels: num(stream.channels),
+        bitRate: num(stream.bit_rate) ?? num(format.bit_rate),
+        duration: num(format.duration),
+        formatName: str(format.format_name),
+      });
+    });
+  });
+}
+
 export async function decodePcm(
   filePath: string,
   options: { startSeconds?: number; seconds?: number; sampleRate?: number } = {},

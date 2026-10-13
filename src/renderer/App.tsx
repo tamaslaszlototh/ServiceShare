@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppError, ClipInfo, Document, EditOperation, EditResult, PeakData, Selection } from '@shared/types';
 import { Timeline } from './Timeline';
+import { ExportDialog } from './ExportDialog';
+import { errorLabel } from './errors';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
 import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
@@ -21,10 +23,6 @@ import {
   trimOp,
 } from './editops';
 
-function errorLabel(error: AppError): string {
-  return error.message.startsWith(error.code) ? error.message : `${error.code}: ${error.message}`;
-}
-
 export function App() {
   const [clip, setClip] = useState<ClipInfo | null>(null);
   const [peaks, setPeaks] = useState<PeakData | null>(null);
@@ -38,6 +36,8 @@ export function App() {
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const [fadeSeconds, setFadeSeconds] = useState(FADE_DEFAULT_SECONDS);
   const [gainDb, setGainDb] = useState(0);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const playStartRef = useRef(0);
 
@@ -225,13 +225,30 @@ export function App() {
         <button className="btn" onClick={handleOpen}>
           Open
         </button>
-        <button className="btn ghost" disabled>
+        <button
+          className="btn ghost"
+          disabled={!clip}
+          onClick={() => {
+            setNotice(null);
+            setExportOpen(true);
+          }}
+        >
           Export
         </button>
         <button className="btn primary" disabled>
           Publish to YouTube
         </button>
       </header>
+
+      {exportOpen && (
+        <ExportDialog
+          onClose={() => setExportOpen(false)}
+          onExported={(outputPath) => {
+            setExportOpen(false);
+            setNotice(`Exported to ${outputPath}`);
+          }}
+        />
+      )}
 
       {error && (
         <div role="alert" className="banner">
@@ -445,6 +462,7 @@ export function App() {
             <span>
               undo: {undoCount(document)} · redo: {redoCount(document)}
             </span>
+            {notice && <span className="notice">{notice}</span>}
             <span className="spacer" />
             <span>{statusLabel}</span>
           </>

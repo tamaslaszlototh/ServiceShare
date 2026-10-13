@@ -25,6 +25,7 @@ export interface CompileInput {
   source: ClipInfo;
   editList: EditOperation[];
   output: OutputSpec;
+  logLevel?: string;
 }
 
 export type CompilePlan =
@@ -33,6 +34,26 @@ export type CompilePlan =
 
 export function needsNormalize(editList: EditOperation[]): boolean {
   return editList.some(isNormalize);
+}
+
+export function renderedDuration(source: ClipInfo, editList: EditOperation[]): number {
+  let duration = source.duration;
+  for (const op of editList) {
+    switch (op.kind) {
+      case 'trim':
+        duration = op.end - op.start;
+        break;
+      case 'cutRegion':
+        duration -= op.end - op.start;
+        break;
+      case 'concatenate':
+        duration += op.duration;
+        break;
+      default:
+        break;
+    }
+  }
+  return duration;
 }
 
 function loudnormPrefix(): string {
@@ -187,7 +208,7 @@ export function compileEditList(input: CompileInput): CompilePlan {
 
   if (normalizeIndex === -1) {
     const graph = buildFilterGraph(source, editList, null);
-    return { kind: 'render', args: assemble(source, graph, output.args, output.path) };
+    return { kind: 'render', args: assemble(source, graph, output.args, output.path, input.logLevel) };
   }
 
   const measureGraph = buildFilterGraph(source, editList.slice(0, normalizeIndex + 1), loudnormMeasureFilter());
@@ -195,7 +216,7 @@ export function compileEditList(input: CompileInput): CompilePlan {
 
   const applyArgs = (measurement: LoudnormMeasurement) => {
     const graph = buildFilterGraph(source, editList, loudnormApplyFilter(measurement));
-    return assemble(source, graph, output.args, output.path);
+    return assemble(source, graph, output.args, output.path, input.logLevel);
   };
 
   return { kind: 'normalize', measureArgs, applyArgs };

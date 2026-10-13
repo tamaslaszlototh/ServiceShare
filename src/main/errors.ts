@@ -22,6 +22,18 @@ export class EngineError extends IpcError {
   }
 }
 
+export class RenderError extends IpcError {
+  constructor(message = 'Export failed', details?: string) {
+    super('RenderError', message, details);
+  }
+}
+
+export class DiskFullError extends IpcError {
+  constructor(details?: string) {
+    super('DiskFull', 'Not enough disk space to write the export', details);
+  }
+}
+
 export const FORMAT_ERROR_MESSAGE = 'FormatError: only PCM WAV is editable';
 
 export class FormatError extends IpcError {

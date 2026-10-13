@@ -14,6 +14,7 @@ export function killActiveProcesses(): void {
 
 export interface RunOptions {
   onStdout?: (chunk: Buffer) => void;
+  onStderr?: (chunk: string) => void;
   timeoutMs?: number;
 }
 
@@ -22,7 +23,7 @@ export function runFfmpeg(
   args: string[],
   options: RunOptions = {},
 ): Promise<{ exitCode: number; stderr: string }> {
-  const { onStdout, timeoutMs = DEFAULT_RENDER_TIMEOUT_MS } = options;
+  const { onStdout, onStderr, timeoutMs = DEFAULT_RENDER_TIMEOUT_MS } = options;
   return new Promise((resolve, reject) => {
     const child = spawn(ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     active.add(child);
@@ -44,7 +45,9 @@ export function runFfmpeg(
 
     child.stdout.on('data', (chunk: Buffer) => onStdout?.(chunk));
     child.stderr.on('data', (chunk: Buffer) => {
-      if (stderr.length < 100000) stderr += chunk.toString();
+      const text = chunk.toString();
+      onStderr?.(text);
+      if (stderr.length < 100000) stderr += text;
     });
     child.on('error', (e) => finish(() => reject(new EngineError('Failed to start FFmpeg', String(e)))));
     child.on('close', (code) => finish(() => resolve({ exitCode: code ?? 1, stderr })));

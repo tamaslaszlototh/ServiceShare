@@ -63,9 +63,20 @@ export type ProgressEvent =
   | { kind: 'error'; error: AppError };
 
 export interface ExportOptions {
-  format: 'wav' | 'mp3' | 'aac';
+  format: ExportFormat;
   outputPath: string;
 }
+
+export type ExportFormat = 'wav' | 'mp3' | 'aac';
+
+export interface ExportProgress {
+  percent: number;
+}
+
+export type ExportResult =
+  | { status: 'ok'; outputPath: string }
+  | { status: 'cancelled' }
+  | { status: 'error'; error: AppError };
 
 export interface PublishRequest {
   coverImagePath?: string;
@@ -107,7 +118,8 @@ export type IpcApi = {
   undo: () => Promise<Document>;
   redo: () => Promise<Document>;
   checkEngine: () => Promise<void>;
-  exportAudio: (opts: ExportOptions) => void;
+  exportAudio: (format: ExportFormat) => Promise<ExportResult>;
+  onExportProgress: (cb: (e: ExportProgress) => void) => () => void;
   publish: (req: PublishRequest) => void;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;

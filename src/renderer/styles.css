@@ -310,6 +310,97 @@ body {
   font-size: 12px;
 }
 
+.notice {
+  color: var(--accent);
+}
+
+/* ---------- modal (export dialog) ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 11, 14, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 18px 48px #0009;
+}
+
+.modal-title {
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+
+.modal-error {
+  border: 1px solid var(--err);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.format-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.format-option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.format-option.on {
+  border-color: var(--accent);
+  background: rgba(45, 212, 167, 0.08);
+}
+
+.format-option input {
+  accent-color: var(--accent);
+}
+
+.format-label {
+  font-weight: 600;
+  min-width: 40px;
+}
+
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--panel2);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s linear;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
 /* ---------- empty state ---------- */
 
 .empty {

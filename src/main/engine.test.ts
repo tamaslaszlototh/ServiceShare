@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CompileInput, LoudnormMeasurement, compileEditList, needsNormalize } from './engine';
+import { CompileInput, LoudnormMeasurement, compileEditList, needsNormalize, renderedDuration } from './engine';
 import { ClipInfo, EditOperation } from '@shared/types';
 
 const source: ClipInfo = {
@@ -135,6 +135,32 @@ describe('compileEditList — concatenate', () => {
   });
 });
 
+describe('needsNormalize', () => {
+  it('flags normalize in an edit list', () => {
+    expect(needsNormalize([{ kind: 'gain', db: 1 }])).toBe(false);
+    expect(needsNormalize([{ kind: 'normalize' }])).toBe(true);
+  });
+});
+
+describe('renderedDuration', () => {
+  it('tracks trim, cut and concatenate through the chain', () => {
+    expect(renderedDuration(source, [])).toBe(60);
+    expect(renderedDuration(source, [{ kind: 'trim', start: 10, end: 20 }])).toBe(10);
+    expect(renderedDuration(source, [{ kind: 'cutRegion', start: 10, end: 20 }])).toBe(50);
+    expect(renderedDuration(source, [{ kind: 'concatenate', file: '/tmp/two.wav', duration: 5 }])).toBe(65);
+  });
+
+  it('ignores non-structural ops', () => {
+    const editList: EditOperation[] = [
+      { kind: 'trim', start: 0, end: 30 },
+      { kind: 'gain', db: 2 },
+      { kind: 'fadeIn', duration: 2 },
+      { kind: 'normalize' },
+    ];
+    expect(renderedDuration(source, editList)).toBe(30);
+  });
+});
+
 describe('compileEditList — normalize (two-pass)', () => {
   const measurement: LoudnormMeasurement = {
     measuredI: '-22.50',
@@ -143,11 +169,6 @@ describe('compileEditList — normalize (two-pass)', () => {
     measuredThresh: '-32.80',
     offset: '0.10',
   };
-
-  it('flags normalize in an edit list', () => {
-    expect(needsNormalize([{ kind: 'gain', db: 1 }])).toBe(false);
-    expect(needsNormalize([{ kind: 'normalize' }])).toBe(true);
-  });
 
   it('produces a measure pass and an apply pass', () => {
     const plan = compileEditList(input([{ kind: 'normalize' }]));
