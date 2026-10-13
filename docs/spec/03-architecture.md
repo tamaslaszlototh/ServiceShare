@@ -49,7 +49,7 @@ interface Document {
 - The edit list is the single source of truth for undo/redo **and** rendering.
 - Undo/redo = move `historyIndex`; the effective list for any read/render is
   `editList[0..historyIndex)`.
-- New edit after undo truncates redo (`editList.length = historyIndex + 1`).
+- New edit after undo truncates redo (`editList.length = historyIndex`, then append).
 - Session-only: the `Document` is never persisted.
 
 ## 3.3 Engine (FFmpeg)

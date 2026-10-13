@@ -96,10 +96,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle('undo', async () => {
     docManager.undo();
+    return docManager.getDocument();
   });
 
   ipcMain.handle('redo', async () => {
     docManager.redo();
+    return docManager.getDocument();
   });
 
   ipcMain.handle('checkEngine', async () => {

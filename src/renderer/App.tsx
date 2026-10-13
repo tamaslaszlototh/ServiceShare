@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppError, ClipInfo, Document, PeakData, Selection } from '@shared/types';
 import { Timeline } from './Timeline';
 import { formatSelectionRange, selectionLength } from './selection';
+import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
+import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
 
 function errorLabel(error: AppError): string {
   return error.message.startsWith(error.code) ? error.message : `${error.code}: ${error.message}`;
@@ -11,8 +13,29 @@ export function App() {
   const [clip, setClip] = useState<ClipInfo | null>(null);
   const [peaks, setPeaks] = useState<PeakData | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [document, setDocument] = useState<Document>({ sourceFile: null, editList: [], historyIndex: -1 });
+  const [document, setDocument] = useState<Document>({ sourceFile: null, editList: [], historyIndex: 0 });
   const [error, setError] = useState<AppError | null>(null);
+
+  const applyHistory = useCallback(async (action: HistoryAction) => {
+    const next = action === 'undo' ? await window.api.undo() : await window.api.redo();
+    setDocument(next);
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName))) {
+        return;
+      }
+      const action = resolveHistoryShortcut(event);
+      if (action) {
+        event.preventDefault();
+        void applyHistory(action);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [applyHistory]);
 
   const loadClip = async (filePath?: string) => {
     try {
@@ -69,6 +92,12 @@ export function App() {
       <header style={{ padding: '8px', borderBottom: '1px solid #ccc', display: 'flex', gap: '8px' }}>
         <strong>ServiceShare</strong>
         <button onClick={handleOpen}>Open</button>
+        <button onClick={() => applyHistory('undo')} disabled={!canUndo(document)}>
+          Undo
+        </button>
+        <button onClick={() => applyHistory('redo')} disabled={!canRedo(document)}>
+          Redo
+        </button>
         <button disabled>Export</button>
         <button disabled>Publish to YouTube</button>
       </header>
@@ -136,7 +165,7 @@ export function App() {
                 {' · '}selection: {formatSelectionRange(selection)} ({selectionLength(selection).toFixed(3)}s)
               </span>
             )}
-            {' · '}undo: {Math.max(0, document.historyIndex + 1)} · redo: {Math.max(0, document.editList.length - (document.historyIndex + 1))} · READY
+            {' · '}undo: {undoCount(document)} · redo: {redoCount(document)} · READY
           </>
         ) : (
           <>No clip loaded · READY</>
