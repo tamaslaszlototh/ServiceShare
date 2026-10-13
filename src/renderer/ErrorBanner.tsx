@@ -6,6 +6,7 @@ export interface ErrorBannerProps {
   onDismiss?: () => void;
   action?: ErrorAction | null;
   onRetry?: () => void;
+  onRecheck?: () => void;
   onSignIn?: () => void;
   className?: string;
   heading?: string;
@@ -21,6 +22,7 @@ export function ErrorBanner({
   onDismiss,
   action,
   onRetry,
+  onRecheck,
   onSignIn,
   className = '',
   heading,
@@ -34,7 +36,7 @@ export function ErrorBanner({
       return;
     }
     if (effective.kind === 'recheck') {
-      void window.api.checkEngine();
+      onRecheck ? onRecheck() : void window.api.checkEngine();
       onDismiss?.();
       return;
     }

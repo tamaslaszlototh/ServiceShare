@@ -231,6 +231,28 @@ a:focus-visible {
   padding: 24px;
 }
 
+.error-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: auto;
+  background: var(--bg);
+  padding: 12px 14px;
+}
+
+.error-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.error-preview .banner {
+  border: 1px solid var(--err);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
 /* ---------- work area ---------- */
 
 .workarea {

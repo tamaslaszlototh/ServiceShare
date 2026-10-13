@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ErrorPreview } from './ErrorPreview';
 import { GlobalErrorBanner } from './GlobalErrorBanner';
 import { createErrorBus, installGlobalErrorHandlers } from './globalErrors';
 import './styles.css';
@@ -16,6 +17,7 @@ if (root) {
       <ErrorBoundary>
         <App />
       </ErrorBoundary>
+      <ErrorPreview />
     </React.StrictMode>,
   );
 }
