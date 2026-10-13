@@ -102,6 +102,19 @@ describe('compileEditList — chained timelines', () => {
       ...TAIL,
     ]);
   });
+
+  it('splits the trimmed pad before cutting so the pad is not consumed twice', () => {
+    expect(render([{ kind: 'trim', start: 10, end: 20 }, { kind: 'cutRegion', start: 5, end: 15 }])).toEqual([
+      ...HEAD,
+      '-filter_complex',
+      '[0:a]atrim=start=10:end=20,asetpts=PTS-STARTPTS[s1];' +
+        '[s1]asplit=2[s2][s3];' +
+        '[s2]atrim=end=5,asetpts=PTS-STARTPTS[s4];' +
+        '[s3]atrim=start=15,asetpts=PTS-STARTPTS[s5];' +
+        '[s4][s5]concat=n=2:v=0:a=1[out]',
+      ...TAIL,
+    ]);
+  });
 });
 
 describe('compileEditList — concatenate', () => {

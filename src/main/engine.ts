@@ -134,10 +134,17 @@ function buildFilterGraph(
         break;
       case 'cutRegion': {
         const base = labelCurrent();
+        let headInput = base;
+        let tailInput = base;
+        if (base !== '0:a') {
+          headInput = nextPad();
+          tailInput = nextPad();
+          statements.push(`[${base}]asplit=2[${headInput}][${tailInput}]`);
+        }
         const head = nextPad();
         const tail = nextPad();
-        statements.push(`[${base}]atrim=end=${formatSeconds(op.start)},asetpts=PTS-STARTPTS[${head}]`);
-        statements.push(`[${base}]atrim=start=${formatSeconds(op.end)},asetpts=PTS-STARTPTS[${tail}]`);
+        statements.push(`[${headInput}]atrim=end=${formatSeconds(op.start)},asetpts=PTS-STARTPTS[${head}]`);
+        statements.push(`[${tailInput}]atrim=start=${formatSeconds(op.end)},asetpts=PTS-STARTPTS[${tail}]`);
         const out = last ? 'out' : nextPad();
         statements.push(`[${head}][${tail}]concat=n=2:v=0:a=1[${out}]`);
         currentPad = out;

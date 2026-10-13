@@ -59,6 +59,21 @@ describe('edit combinations', () => {
     expect(head).toBeLessThan(mid);
   });
 
+  it('trims then cuts within the trimmed region', async () => {
+    await load();
+    const output = `${dir()}/trim-cut.wav`;
+    const innerStart = cyclesToSeconds(FREQ, 250);
+    const innerEnd = cyclesToSeconds(FREQ, 750);
+    await render(
+      [{ kind: 'trim', start, end: cutEnd }, { kind: 'cutRegion', start: innerStart, end: innerEnd }],
+      'trim-cut',
+    );
+
+    const clip = await probe(output);
+    const expected = (cutEnd - start) - (innerEnd - innerStart);
+    expect(Math.abs(clip.duration - expected)).toBeLessThanOrEqual(DURATION_TOLERANCE_S);
+  });
+
   it('supports multiple fades as separate edit-list entries (FR-10)', async () => {
     await load();
     const output = `${dir()}/two-fades.wav`;
