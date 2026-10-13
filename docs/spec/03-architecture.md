@@ -37,7 +37,7 @@ type EditOperation =
   | { kind: 'fadeOut';     duration: number }
   | { kind: 'gain';        db: number }
   | { kind: 'normalize' }
-  | { kind: 'concatenate'; file: string }                            // appended after current end
+  | { kind: 'concatenate'; file: string; duration: number }          // appended after current end
 
 interface Document {
   sourceFile: string;          // original WAV path (pcm_s16le/s24le)
@@ -87,6 +87,8 @@ exportAudio(p, format): Pushable<Progress>
 publish(publishRequest): Pushable<Progress>   // sign-in, metadata, cover path
 signIn(): Promise<AccountInfo>; signOut(): Promise<void>
 undo(); redo();
+applyEdit(op: EditOperation): Promise<EditResult>   // append one edit-list entry
+concatenate(): Promise<EditResult>                  // pick + probe a second WAV, then append
 play(): Promise<void>; pause(); stop(position?): Promise<void>
 checkForUpdates(): Promise<UpdateInfo>
 ```

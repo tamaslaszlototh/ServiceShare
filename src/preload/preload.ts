@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import { ExportOptions, IpcApi, ProgressEvent, PublishRequest } from '@shared/types';
+import { EditOperation, ExportOptions, IpcApi, ProgressEvent, PublishRequest } from '@shared/types';
 
 const api: IpcApi = {
   openFile: (filePath?: string) => ipcRenderer.invoke('openFile', filePath),
@@ -7,6 +7,8 @@ const api: IpcApi = {
   getPreview: () => ipcRenderer.invoke('getPreview'),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   getDocument: () => ipcRenderer.invoke('getDocument'),
+  applyEdit: (op: EditOperation) => ipcRenderer.invoke('applyEdit', op),
+  concatenate: () => ipcRenderer.invoke('concatenate'),
   undo: () => ipcRenderer.invoke('undo'),
   redo: () => ipcRenderer.invoke('redo'),
   checkEngine: () => ipcRenderer.invoke('checkEngine'),

@@ -22,7 +22,6 @@ export interface CompileInput {
   source: ClipInfo;
   editList: EditOperation[];
   output: OutputSpec;
-  concatDurations?: Record<string, number>;
 }
 
 export type CompilePlan =
@@ -73,7 +72,6 @@ function buildFilterGraph(
   source: ClipInfo,
   ops: EditOperation[],
   normalizeFilter: string | null,
-  concatDurations: Record<string, number>,
 ): FilterGraph {
   const statements: string[] = [];
   const inputs: string[] = [];
@@ -149,7 +147,7 @@ function buildFilterGraph(
         const out = last ? 'out' : nextPad();
         statements.push(`[${base}][${second}]concat=n=2:v=0:a=1[${out}]`);
         currentPad = out;
-        duration = concatDurations[op.file] === undefined ? NaN : duration + concatDurations[op.file];
+        duration += op.duration;
         break;
       }
     }
@@ -181,24 +179,19 @@ function assemble(
 }
 
 export function compileEditList(input: CompileInput): CompilePlan {
-  const { source, editList, output, concatDurations = {} } = input;
+  const { source, editList, output } = input;
   const normalizeIndex = editList.findIndex((op) => op.kind === 'normalize');
 
   if (normalizeIndex === -1) {
-    const graph = buildFilterGraph(source, editList, null, concatDurations);
+    const graph = buildFilterGraph(source, editList, null);
     return { kind: 'render', args: assemble(source, graph, output.args, output.path) };
   }
 
-  const measureGraph = buildFilterGraph(
-    source,
-    editList.slice(0, normalizeIndex + 1),
-    loudnormMeasureFilter(),
-    concatDurations,
-  );
+  const measureGraph = buildFilterGraph(source, editList.slice(0, normalizeIndex + 1), loudnormMeasureFilter());
   const measureArgs = assemble(source, measureGraph, ['-f', 'null'], '-', 'info');
 
   const applyArgs = (measurement: LoudnormMeasurement) => {
-    const graph = buildFilterGraph(source, editList, loudnormApplyFilter(measurement), concatDurations);
+    const graph = buildFilterGraph(source, editList, loudnormApplyFilter(measurement));
     return assemble(source, graph, output.args, output.path);
   };
 

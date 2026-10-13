@@ -49,7 +49,7 @@ export type EditOperation =
   | { kind: 'fadeOut'; duration: number }
   | { kind: 'gain'; db: number }
   | { kind: 'normalize' }
-  | { kind: 'concatenate'; file: string };
+  | { kind: 'concatenate'; file: string; duration: number };
 
 export interface Document {
   sourceFile: string | null;
@@ -90,12 +90,19 @@ export type PreviewResult =
   | { status: 'none' }
   | { status: 'error'; error: AppError };
 
+export type EditResult =
+  | { status: 'ok'; document: Document }
+  | { status: 'cancelled' }
+  | { status: 'error'; error: AppError };
+
 export type IpcApi = {
   openFile: (filePath?: string) => Promise<OpenResult>;
   getPeaks: () => Promise<PeaksResult>;
   getPreview: () => Promise<PreviewResult>;
   getPathForFile: (file: File) => string;
   getDocument: () => Promise<Document>;
+  applyEdit: (op: EditOperation) => Promise<EditResult>;
+  concatenate: () => Promise<EditResult>;
   undo: () => Promise<Document>;
   redo: () => Promise<Document>;
   checkEngine: () => Promise<void>;

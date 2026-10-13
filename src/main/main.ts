@@ -11,7 +11,10 @@ import { PreviewService, previewDepsIn } from './preview';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
 import {
+  AppError,
   ClipInfo,
+  EditOperation,
+  EditResult,
   ExportOptions,
   OpenResult,
   PeaksResult,
@@ -48,6 +51,13 @@ function createWindow(): BrowserWindow {
 
 function engineErrorEvent(error: unknown): ProgressEvent {
   return { kind: 'error', error: toAppError(error, 'EngineError') };
+}
+
+function errorResult(error: unknown): { status: 'error'; error: AppError } {
+  if (error instanceof IpcError) {
+    return { status: 'error', error: error.toAppError() };
+  }
+  throw error;
 }
 
 const docManager = new DocumentManager();
@@ -118,10 +128,7 @@ app.whenReady().then(() => {
       currentClip = clip;
       return { status: 'ok', clip };
     } catch (e) {
-      if (e instanceof IpcError) {
-        return { status: 'error', error: e.toAppError() };
-      }
-      throw e;
+      return errorResult(e);
     }
   });
 
@@ -133,10 +140,7 @@ app.whenReady().then(() => {
       const peaks = await generatePeaks(currentClip, defaultPeakDeps);
       return { status: 'ok', peaks };
     } catch (e) {
-      if (e instanceof IpcError) {
-        return { status: 'error', error: e.toAppError() };
-      }
-      throw e;
+      return errorResult(e);
     }
   });
 
@@ -150,15 +154,35 @@ app.whenReady().then(() => {
       const result = await previewService.ensure(currentClip, docManager.getEffectiveEditList());
       return { status: 'ok', url: result.url };
     } catch (e) {
-      if (e instanceof IpcError) {
-        return { status: 'error', error: e.toAppError() };
-      }
-      throw e;
+      return errorResult(e);
     }
   });
 
   ipcMain.handle('getDocument', async () => {
     return docManager.getDocument();
+  });
+
+  ipcMain.handle('applyEdit', async (_e, op: EditOperation): Promise<EditResult> => {
+    try {
+      docManager.appendEdit(op);
+      return { status: 'ok', document: docManager.getDocument() };
+    } catch (e) {
+      return errorResult(e);
+    }
+  });
+
+  ipcMain.handle('concatenate', async (): Promise<EditResult> => {
+    const target = await pickClipPath();
+    if (!target) {
+      return { status: 'cancelled' };
+    }
+    try {
+      const second = await probeClip(target, defaultWavProbeDeps);
+      docManager.appendEdit({ kind: 'concatenate', file: target, duration: second.duration });
+      return { status: 'ok', document: docManager.getDocument() };
+    } catch (e) {
+      return errorResult(e);
+    }
   });
 
   ipcMain.handle('undo', async () => {

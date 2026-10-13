@@ -106,7 +106,7 @@ describe('compileEditList — chained timelines', () => {
 
 describe('compileEditList — concatenate', () => {
   it('adds a second input, resamples it, and concats', () => {
-    expect(render([{ kind: 'concatenate', file: '/tmp/two.wav' }])).toEqual([
+    expect(render([{ kind: 'concatenate', file: '/tmp/two.wav', duration: 5 }])).toEqual([
       '-v', 'error', '-i', '/tmp/in.wav', '-i', '/tmp/two.wav',
       '-filter_complex',
       '[1:a]aresample=44100,aformat=sample_fmts=s16:channel_layouts=stereo[s1];' +
@@ -117,9 +117,7 @@ describe('compileEditList — concatenate', () => {
 
   it('extends the chain duration by the appended file for a following fade out', () => {
     expect(
-      render([{ kind: 'concatenate', file: '/tmp/two.wav' }, { kind: 'fadeOut', duration: 3 }], {
-        concatDurations: { '/tmp/two.wav': 5 },
-      }),
+      render([{ kind: 'concatenate', file: '/tmp/two.wav', duration: 5 }, { kind: 'fadeOut', duration: 3 }]),
     ).toEqual([
       '-v', 'error', '-i', '/tmp/in.wav', '-i', '/tmp/two.wav',
       '-filter_complex',
@@ -131,7 +129,9 @@ describe('compileEditList — concatenate', () => {
   });
 
   it('refuses a fade out after a concatenation with unknown duration', () => {
-    expect(() => render([{ kind: 'concatenate', file: '/tmp/two.wav' }, { kind: 'fadeOut', duration: 3 }])).toThrow();
+    expect(() =>
+      render([{ kind: 'concatenate', file: '/tmp/two.wav', duration: NaN }, { kind: 'fadeOut', duration: 3 }]),
+    ).toThrow();
   });
 });
 

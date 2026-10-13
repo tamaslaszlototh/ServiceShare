@@ -142,6 +142,21 @@ describe('PreviewService', () => {
     expect(applyArgs.join(' ')).toContain('measured_I=-22.50');
   });
 
+  it('compiles a concat fade-out using the duration carried on the op', async () => {
+    const { deps } = makeDeps();
+    const service = new PreviewService(deps);
+    const list: EditOperation[] = [
+      { kind: 'concatenate', file: '/tmp/b.wav', duration: 10 },
+      { kind: 'fadeOut', duration: 2 },
+    ];
+
+    await service.ensure(clip, list);
+
+    const args = (deps.runRender as ReturnType<typeof vi.fn>).mock.calls[0][1] as string[];
+    expect(args.join(' ')).toContain('-i /tmp/b.wav');
+    expect(args.join(' ')).toContain('afade=t=out:st=68:d=2');
+  });
+
   it('surfaces a render failure as an EngineError', async () => {
     const { deps } = makeDeps({ runRender: async () => ({ exitCode: 1, stderr: 'boom' }) });
     const service = new PreviewService(deps);

@@ -1,9 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppError, ClipInfo, Document, PeakData, Selection } from '@shared/types';
+import { AppError, ClipInfo, Document, EditOperation, EditResult, PeakData, Selection } from '@shared/types';
 import { Timeline } from './Timeline';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
 import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
+import {
+  FADE_DEFAULT_SECONDS,
+  FADE_MAX_SECONDS,
+  FADE_MIN_SECONDS,
+  GAIN_MAX_DB,
+  GAIN_MIN_DB,
+  clampFadeSeconds,
+  clampGainDb,
+  cutOp,
+  fadeInOp,
+  fadeOutOp,
+  gainOp,
+  hasSelection,
+  isStructural,
+  normalizeOp,
+  trimOp,
+} from './editops';
 
 function errorLabel(error: AppError): string {
   return error.message.startsWith(error.code) ? error.message : `${error.code}: ${error.message}`;
@@ -20,6 +37,8 @@ export function App() {
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const [fadeSeconds, setFadeSeconds] = useState(FADE_DEFAULT_SECONDS);
+  const [gainDb, setGainDb] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const playStartRef = useRef(0);
 
@@ -40,9 +59,9 @@ export function App() {
     async (action: HistoryAction) => {
       const next = action === 'undo' ? await window.api.undo() : await window.api.redo();
       setDocument(next);
-      resetPlayback();
+      resetPlayback(clip?.duration ?? 0);
     },
-    [resetPlayback],
+    [clip, resetPlayback],
   );
 
   const handlePlay = async () => {
@@ -99,6 +118,32 @@ export function App() {
     audio.currentTime = clamped;
     playStartRef.current = clamped;
     setPosition(clamped);
+  };
+
+  const applyEditResult = useCallback(
+    (result: EditResult, structural: boolean) => {
+      if (result.status === 'cancelled') {
+        return;
+      }
+      if (result.status === 'error') {
+        setError(result.error);
+        return;
+      }
+      setDocument(result.document);
+      resetPlayback(clip?.duration ?? 0);
+      if (structural) {
+        setSelection(null);
+      }
+    },
+    [clip, resetPlayback],
+  );
+
+  const applyEdit = async (op: EditOperation) => {
+    applyEditResult(await window.api.applyEdit(op), isStructural(op));
+  };
+
+  const handleConcatenate = async () => {
+    applyEditResult(await window.api.concatenate(), true);
   };
 
   const statusLabel = rendering ? 'RENDERING' : playing ? 'PLAYING' : 'READY';
@@ -209,12 +254,79 @@ export function App() {
         </div>
       )}
 
-      <div style={{ padding: '8px', borderBottom: '1px solid #ccc', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <button disabled>Trim</button>
-        <button disabled>Cut region</button>
-        <button disabled>Fade in/out</button>
-        <button disabled>Gain/Normalize</button>
-        <button disabled>Concatenate</button>
+      <div
+        style={{
+          padding: '8px',
+          borderBottom: '1px solid #ccc',
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        <button
+          aria-label="Trim to selection"
+          disabled={!clip || !hasSelection(selection)}
+          onClick={() => {
+            const op = trimOp(selection);
+            if (op) void applyEdit(op);
+          }}
+        >
+          Trim
+        </button>
+        <button
+          aria-label="Cut region"
+          disabled={!clip || !hasSelection(selection)}
+          onClick={() => {
+            const op = cutOp(selection);
+            if (op) void applyEdit(op);
+          }}
+        >
+          Cut region
+        </button>
+        <label style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          Fade
+          <input
+            aria-label="Fade duration in seconds"
+            type="number"
+            min={FADE_MIN_SECONDS}
+            max={FADE_MAX_SECONDS}
+            step={0.5}
+            value={fadeSeconds}
+            onChange={(e) => setFadeSeconds(clampFadeSeconds(parseFloat(e.target.value)))}
+            style={{ width: '4.5em' }}
+          />
+          s
+        </label>
+        <button aria-label="Fade in" disabled={!clip} onClick={() => void applyEdit(fadeInOp(fadeSeconds))}>
+          In
+        </button>
+        <button aria-label="Fade out" disabled={!clip} onClick={() => void applyEdit(fadeOutOp(fadeSeconds))}>
+          Out
+        </button>
+        <label style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          Gain
+          <input
+            aria-label="Gain in decibels"
+            type="number"
+            min={GAIN_MIN_DB}
+            max={GAIN_MAX_DB}
+            step={0.5}
+            value={gainDb}
+            onChange={(e) => setGainDb(clampGainDb(parseFloat(e.target.value)))}
+            style={{ width: '4em' }}
+          />
+          dB
+        </label>
+        <button aria-label="Apply gain" disabled={!clip} onClick={() => void applyEdit(gainOp(gainDb))}>
+          Apply
+        </button>
+        <button aria-label="Normalize loudness" disabled={!clip} onClick={() => void applyEdit(normalizeOp())}>
+          Normalize
+        </button>
+        <button aria-label="Concatenate a second WAV" disabled={!clip} onClick={() => void handleConcatenate()}>
+          Concatenate
+        </button>
         <span style={{ marginLeft: 'auto' }}>
           <button onClick={handlePlay} disabled={!clip || rendering || playing}>
             Play
