@@ -151,14 +151,15 @@ export function startLoopbackServer(
 
 export async function performOAuthFlow(config: OAuthConfig): Promise<TokenResponse> {
   const pkce = generatePkce();
-  const { server, redirectUri, code } = await new Promise<{
+  let serverRef: Server | undefined;
+  const result = await new Promise<{
     server: Server;
     redirectUri: string;
     code: string;
   }>((resolve, reject) => {
     const srv = createServer((req, res) => {
       try {
-        const url = new URL(req.url!, redirectUri);
+        const url = new URL(req.url!, `http://127.0.0.1:${(srv.address() as any)?.port}`);
         const authCode = url.searchParams.get('code');
         if (!authCode) {
           res.writeHead(400, { 'Content-Type': 'text/html' });
@@ -170,13 +171,14 @@ export async function performOAuthFlow(config: OAuthConfig): Promise<TokenRespon
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end('<html><body>Success! You can close this window.</body></html>');
         srv.close();
-        resolve({ server: srv, redirectUri, code: authCode });
+        resolve({ server: srv, redirectUri: `http://127.0.0.1:${(srv.address() as any)?.port}`, code: authCode });
       } catch (e) {
         srv.close();
         reject(e);
       }
     });
 
+    serverRef = srv;
     srv.on('error', reject);
     srv.listen(0, '127.0.0.1', async () => {
       const port = (srv.address() as any).port;
@@ -186,6 +188,6 @@ export async function performOAuthFlow(config: OAuthConfig): Promise<TokenRespon
     });
   });
 
-  const tokens = await exchangeCodeForTokens(config, code, pkce, redirectUri);
+  const tokens = await exchangeCodeForTokens(config, result.code, pkce, result.redirectUri);
   return tokens;
 }
