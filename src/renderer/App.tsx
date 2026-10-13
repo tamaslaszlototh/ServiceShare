@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { AppError, ClipInfo, Document, PeakData } from '@shared/types';
-import { Ruler } from './Ruler';
-import { Waveform } from './Waveform';
+import { AppError, ClipInfo, Document, PeakData, Selection } from '@shared/types';
+import { Timeline } from './Timeline';
+import { formatSelectionRange, selectionLength } from './selection';
 
 function errorLabel(error: AppError): string {
   return error.message.startsWith(error.code) ? error.message : `${error.code}: ${error.message}`;
@@ -10,6 +10,7 @@ function errorLabel(error: AppError): string {
 export function App() {
   const [clip, setClip] = useState<ClipInfo | null>(null);
   const [peaks, setPeaks] = useState<PeakData | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
   const [document, setDocument] = useState<Document>({ sourceFile: null, editList: [], historyIndex: -1 });
   const [error, setError] = useState<AppError | null>(null);
 
@@ -25,6 +26,7 @@ export function App() {
       }
       setClip(result.clip);
       setPeaks(null);
+      setSelection(null);
       setDocument(await window.api.getDocument());
       setError(null);
 
@@ -113,26 +115,13 @@ export function App() {
 
       <main style={{ flex: 1, padding: '16px', background: '#fafafa', display: 'flex', flexDirection: 'column' }}>
         {clip ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <Ruler duration={clip.duration} />
-            <div
-              style={{
-                position: 'relative',
-                flex: 1,
-                minHeight: '120px',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                background: '#fff',
-              }}
-            >
-              {peaks ? (
-                <Waveform peaks={peaks} />
-              ) : (
-                <div style={{ padding: '16px', color: '#666' }}>Loading waveform…</div>
-              )}
-            </div>
-          </div>
+          <Timeline
+            duration={clip.duration}
+            sampleRate={clip.sampleRate}
+            peaks={peaks}
+            selection={selection}
+            onSelectionChange={setSelection}
+          />
         ) : (
           <div style={{ color: '#666' }}>Open a WAV to begin</div>
         )}
@@ -141,7 +130,13 @@ export function App() {
       <footer style={{ padding: '8px', borderTop: '1px solid #ccc', fontSize: '12px', color: '#333' }}>
         {clip ? (
           <>
-            {clip.sampleRate} Hz · {clip.bitDepth}-bit · {channelLabel(clip.channels)} · {formatTime(clip.duration)} · undo: {Math.max(0, document.historyIndex + 1)} · redo: {Math.max(0, document.editList.length - (document.historyIndex + 1))} · READY
+            {clip.sampleRate} Hz · {clip.bitDepth}-bit · {channelLabel(clip.channels)} · {formatTime(clip.duration)}
+            {selection && (
+              <span aria-live="polite">
+                {' · '}selection: {formatSelectionRange(selection)} ({selectionLength(selection).toFixed(3)}s)
+              </span>
+            )}
+            {' · '}undo: {Math.max(0, document.historyIndex + 1)} · redo: {Math.max(0, document.editList.length - (document.historyIndex + 1))} · READY
           </>
         ) : (
           <>No clip loaded · READY</>
