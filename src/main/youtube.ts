@@ -6,19 +6,26 @@ import {
   refreshTokens,
   TokenResponse,
 } from './auth';
-import { AuthRevokedError, TokenStorageError } from './errors';
+import { OAuthCredentials, loadCredentials } from './credentials';
+import { AuthRevokedError, EngineError, TokenStorageError } from './errors';
 
 const YOUTUBE_SCOPES = [
   'https://www.googleapis.com/auth/youtube.upload',
   'https://www.googleapis.com/auth/youtube.readonly',
 ];
 
-const OAUTH_CONFIG: OAuthConfig = {
-  clientId: 'serviceshare-511421', // From spec 06
-  authEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
-  scopes: YOUTUBE_SCOPES,
-};
+export function oauthConfig(credentials: OAuthCredentials | null): OAuthConfig | null {
+  if (!credentials) {
+    return null;
+  }
+  return {
+    clientId: credentials.clientId,
+    clientSecret: credentials.clientSecret || undefined,
+    authEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenEndpoint: 'https://oauth2.googleapis.com/token',
+    scopes: YOUTUBE_SCOPES,
+  };
+}
 
 export interface YouTubeAuthState {
   tokens: AuthTokens | null;
@@ -48,6 +55,19 @@ export class YouTubeService {
   private account: AccountInfo | null = null;
   private accountFetched = false;
 
+  constructor(private readonly credentials: OAuthCredentials | null = loadCredentials()) {}
+
+  private config(): OAuthConfig {
+    const config = oauthConfig(this.credentials);
+    if (!config) {
+      throw new EngineError(
+        'Missing Google OAuth credentials',
+        'Place credentials.json in ~/.config/serviceshare or set SERVICESHARE_CREDENTIALS',
+      );
+    }
+    return config;
+  }
+
   async initialize(): Promise<void> {
     try {
       const loaded = await loadTokens();
@@ -65,7 +85,7 @@ export class YouTubeService {
 
   async signIn(): Promise<AccountInfo | null> {
     try {
-      const tokenResponse = await performOAuthFlow(OAUTH_CONFIG);
+      const tokenResponse = await performOAuthFlow(this.config());
       this.tokens = this.tokenResponseToTokens(tokenResponse);
       await storeTokens(this.tokens);
       this.account = await this.fetchAccountInfo(this.tokens);
@@ -93,7 +113,7 @@ export class YouTubeService {
         if (!this.tokens.refreshToken) {
           throw new AuthRevokedError('No refresh token available');
         }
-        const refreshed = await refreshTokens(OAUTH_CONFIG, this.tokens.refreshToken);
+        const refreshed = await refreshTokens(this.config(), this.tokens.refreshToken);
         const newTokens = this.tokenResponseToTokens(refreshed, this.tokens.refreshToken);
         this.tokens = newTokens;
         await storeTokens(this.tokens);

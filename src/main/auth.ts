@@ -1,5 +1,6 @@
 import { randomBytes, createHash } from 'crypto';
-import { createServer, Server } from 'http';
+import { createServer } from 'http';
+import { AddressInfo } from 'net';
 import { shell } from 'electron';
 export interface Pkce {
   verifier: string;
@@ -40,6 +41,7 @@ export interface TokenResponse {
 
 export interface OAuthConfig {
   clientId: string;
+  clientSecret?: string;
   tokenEndpoint: string;
   authEndpoint: string;
   scopes: string[];
@@ -69,6 +71,9 @@ export async function exchangeCodeForTokens(
     grant_type: 'authorization_code',
     redirect_uri: redirectUri,
   });
+  if (config.clientSecret) {
+    params.set('client_secret', config.clientSecret);
+  }
 
   const response = await fetch(config.tokenEndpoint, {
     method: 'POST',
@@ -95,6 +100,9 @@ export async function refreshTokens(
     refresh_token: refreshToken,
     grant_type: 'refresh_token',
   });
+  if (config.clientSecret) {
+    params.set('client_secret', config.clientSecret);
+  }
 
   const response = await fetch(config.tokenEndpoint, {
     method: 'POST',
@@ -112,82 +120,40 @@ export async function refreshTokens(
   return (await response.json()) as TokenResponse;
 }
 
-export function startLoopbackServer(
-  expectedPath = '/',
-): Promise<{ server: Server; redirectUri: string; code: string }> {
-  return new Promise((resolve, reject) => {
-    const server = createServer((req, res) => {
-      try {
-        const url = new URL(req.url!, 'http://127.0.0.1');
-        if (url.pathname !== expectedPath && expectedPath !== '*') {
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end('<html><body>Invalid request</body></html>');
-          return;
-        }
-
-        const code = url.searchParams.get('code');
-        if (!code) {
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end('<html><body>Missing code parameter</body></html>');
-          return;
-        }
-
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end('<html><body>Authorization successful. You may close this window.</body></html>');
-        server.close();
-        resolve({ server, redirectUri: `http://127.0.0.1:${(server.address() as any)?.port}`, code });
-      } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'text/html' });
-        res.end('<html><body>Error</body></html>');
-        server.close();
-        reject(e);
-      }
-    });
-
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1');
-  });
-}
-
 export async function performOAuthFlow(config: OAuthConfig): Promise<TokenResponse> {
   const pkce = generatePkce();
-  let serverRef: Server | undefined;
-  const result = await new Promise<{
-    server: Server;
-    redirectUri: string;
-    code: string;
-  }>((resolve, reject) => {
-    const srv = createServer((req, res) => {
-      try {
-        const url = new URL(req.url!, `http://127.0.0.1:${(srv.address() as any)?.port}`);
-        const authCode = url.searchParams.get('code');
-        if (!authCode) {
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end('<html><body>Missing code</body></html>');
-          srv.close();
-          reject(new Error('Missing authorization code'));
-          return;
+  const { code, redirectUri } = await new Promise<{ code: string; redirectUri: string }>(
+    (resolve, reject) => {
+      const server = createServer((req, res) => {
+        try {
+          const url = new URL(req.url!, 'http://127.0.0.1');
+          const authCode = url.searchParams.get('code');
+          if (!authCode) {
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end('<html><body>Missing authorization code</body></html>');
+            server.close();
+            reject(new Error('Missing authorization code'));
+            return;
+          }
+
+          const redirectUri = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end('<html><body>Authorization successful. You may close this window.</body></html>');
+          server.close();
+          resolve({ code: authCode, redirectUri });
+        } catch (e) {
+          server.close();
+          reject(e);
         }
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end('<html><body>Success! You can close this window.</body></html>');
-        srv.close();
-        resolve({ server: srv, redirectUri: `http://127.0.0.1:${(srv.address() as any)?.port}`, code: authCode });
-      } catch (e) {
-        srv.close();
-        reject(e);
-      }
-    });
+      });
 
-    serverRef = srv;
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', async () => {
-      const port = (srv.address() as any).port;
-      const authRedirectUri = `http://127.0.0.1:${port}`;
-      const authUrl = createAuthUrl(config, pkce, authRedirectUri);
-      await shell.openExternal(authUrl);
-    });
-  });
+      server.on('error', reject);
+      server.listen(0, '127.0.0.1', async () => {
+        const port = (server.address() as AddressInfo).port;
+        await shell.openExternal(createAuthUrl(config, pkce, `http://127.0.0.1:${port}`));
+      });
+    },
+  );
 
-  const tokens = await exchangeCodeForTokens(config, result.code, pkce, result.redirectUri);
-  return tokens;
+  return exchangeCodeForTokens(config, code, pkce, redirectUri);
 }

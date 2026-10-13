@@ -1,5 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { parseChannel } from './youtube';
+import { oauthConfig, parseChannel } from './youtube';
+
+describe('oauthConfig', () => {
+  it('carries the client id and secret into the OAuth config', () => {
+    const config = oauthConfig({ clientId: 'real-id', clientSecret: 'real-secret' });
+    expect(config).toMatchObject({
+      clientId: 'real-id',
+      clientSecret: 'real-secret',
+      tokenEndpoint: 'https://oauth2.googleapis.com/token',
+    });
+  });
+
+  it('returns null when no credentials are configured', () => {
+    expect(oauthConfig(null)).toBeNull();
+  });
+
+  it('omits an empty secret so Google does not reject the request', () => {
+    const config = oauthConfig({ clientId: 'id', clientSecret: '' });
+    expect(config?.clientSecret).toBeUndefined();
+  });
+});
 
 describe('parseChannel', () => {
   it('reads the signed-in channel id and title', () => {
