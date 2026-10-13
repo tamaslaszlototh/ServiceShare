@@ -1,5 +1,6 @@
 import { AppError } from '@shared/types';
-import { ErrorAction, errorAction } from './errors';
+import { ErrorAction, errorAction, localizedErrorLabel } from './errors';
+import { useT } from './LocaleContext';
 
 export interface ErrorBannerProps {
   error: AppError;
@@ -12,11 +13,6 @@ export interface ErrorBannerProps {
   heading?: string;
 }
 
-function bodyText(error: AppError): string {
-  const prefix = `${error.code}: `;
-  return error.message.startsWith(prefix) ? error.message.slice(prefix.length) : error.message;
-}
-
 export function ErrorBanner({
   error,
   onDismiss,
@@ -27,7 +23,8 @@ export function ErrorBanner({
   className = '',
   heading,
 }: ErrorBannerProps) {
-  const effective = action === undefined ? errorAction(error.code) : action;
+  const t = useT();
+  const effective = action === undefined ? errorAction(error.code, t) : action;
 
   const handleAction = () => {
     if (!effective) return;
@@ -54,7 +51,7 @@ export function ErrorBanner({
     <div role="alert" className={`banner ${className}`.trim()}>
       <span className="message">
         {heading ? <strong>{heading} </strong> : null}
-        <span className="code">{error.code}</span> {bodyText(error)}
+        {localizedErrorLabel(error, t)}
         {error.details ? `\n${error.details}` : ''}
       </span>
       {effective?.kind === 'link' && effective.href && (
