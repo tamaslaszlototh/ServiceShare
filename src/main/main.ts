@@ -171,6 +171,21 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle(
+    'toggleFade',
+    async (_e, kind: 'fadeIn' | 'fadeOut', seconds: number): Promise<EditResult> => {
+      try {
+        const removed = docManager.removeActiveEdit((op) => op.kind === kind);
+        if (!removed) {
+          docManager.appendEdit({ kind, duration: seconds });
+        }
+        return { status: 'ok', document: docManager.getDocument() };
+      } catch (e) {
+        return errorResult(e);
+      }
+    },
+  );
+
   ipcMain.handle('concatenate', async (): Promise<EditResult> => {
     const target = await pickClipPath();
     if (!target) {

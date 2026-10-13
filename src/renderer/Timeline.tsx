@@ -25,6 +25,8 @@ interface TimelineProps {
   peaks: PeakData | null;
   selection: Selection | null;
   position?: number;
+  fadeIn?: number | null;
+  fadeOut?: number | null;
   onSelectionChange: (selection: Selection) => void;
   onSeek?: (time: number) => void;
 }
@@ -35,6 +37,8 @@ export function Timeline({
   peaks,
   selection,
   position = 0,
+  fadeIn = null,
+  fadeOut = null,
   onSelectionChange,
   onSeek,
 }: TimelineProps) {
@@ -109,20 +113,12 @@ export function Timeline({
   const startFraction = selection ? timeToFraction(selection.start, duration) : 0;
   const endFraction = selection ? timeToFraction(selection.end, duration) : 0;
   const playheadFraction = position > 0 ? timeToFraction(position, duration) : null;
+  const fadeInFraction = fadeIn && duration > 0 ? Math.min(1, fadeIn / duration) : null;
+  const fadeOutFraction = fadeOut && duration > 0 ? Math.min(1, fadeOut / duration) : null;
   const overlayBase = { position: 'absolute', top: 0, bottom: 0 } as const;
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        border: '1px solid #ccc',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        background: '#fff',
-      }}
-    >
+    <div className="timeline">
       <div
         ref={surfaceRef}
         role="group"
@@ -142,8 +138,50 @@ export function Timeline({
         }}
       >
         <Ruler duration={duration} />
-        <div style={{ flex: 1, position: 'relative', minHeight: '120px' }}>
-          {peaks ? <Waveform peaks={peaks} /> : <div style={{ padding: '16px', color: '#666' }}>Loading waveform…</div>}
+        <div className="wave-lane">
+          {peaks ? <Waveform peaks={peaks} /> : <div className="wave-loading">Loading waveform…</div>}
+          {fadeInFraction !== null && (
+            <div
+              className="fade in"
+              data-testid="fade-in-overlay"
+              style={{ width: `${fadeInFraction * 100}%` }}
+            >
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <polygon points="0,0 0,100 100,0" fill="rgba(45, 212, 167, 0.16)" />
+                <line
+                  x1="0"
+                  y1="100"
+                  x2="100"
+                  y2="0"
+                  stroke="var(--accent)"
+                  strokeWidth="1.5"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+              <span className="fade-label">fade in {formatFade(fadeIn)}</span>
+            </div>
+          )}
+          {fadeOutFraction !== null && (
+            <div
+              className="fade out"
+              data-testid="fade-out-overlay"
+              style={{ width: `${fadeOutFraction * 100}%` }}
+            >
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <polygon points="100,0 100,100 0,0" fill="rgba(45, 212, 167, 0.16)" />
+                <line
+                  x1="0"
+                  y1="0"
+                  x2="100"
+                  y2="100"
+                  stroke="var(--accent)"
+                  strokeWidth="1.5"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+              <span className="fade-label">fade out {formatFade(fadeOut)}</span>
+            </div>
+          )}
           {selection &&
             (isCursor(selection) ? (
               <div
@@ -151,7 +189,7 @@ export function Timeline({
                   ...overlayBase,
                   left: `${startFraction * 100}%`,
                   width: '2px',
-                  background: '#2dd4a7',
+                  background: 'var(--accent)',
                   pointerEvents: 'none',
                 }}
               />
@@ -162,8 +200,8 @@ export function Timeline({
                   left: `${startFraction * 100}%`,
                   width: `${(endFraction - startFraction) * 100}%`,
                   background: 'rgba(45, 212, 167, 0.16)',
-                  borderLeft: '2px solid #2dd4a7',
-                  borderRight: '2px solid #2dd4a7',
+                  borderLeft: '2px solid var(--accent)',
+                  borderRight: '2px solid var(--accent)',
                   pointerEvents: 'none',
                 }}
               />
@@ -176,7 +214,7 @@ export function Timeline({
               ...overlayBase,
               left: `${playheadFraction * 100}%`,
               width: '2px',
-              background: '#d33',
+              background: 'var(--warn)',
               pointerEvents: 'none',
             }}
           />
@@ -184,4 +222,8 @@ export function Timeline({
       </div>
     </div>
   );
+}
+
+function formatFade(seconds: number | null): string {
+  return `${(seconds ?? 0).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}s`;
 }

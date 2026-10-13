@@ -8,6 +8,7 @@ const api: IpcApi = {
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   getDocument: () => ipcRenderer.invoke('getDocument'),
   applyEdit: (op: EditOperation) => ipcRenderer.invoke('applyEdit', op),
+  toggleFade: (kind, seconds) => ipcRenderer.invoke('toggleFade', kind, seconds),
   concatenate: () => ipcRenderer.invoke('concatenate'),
   undo: () => ipcRenderer.invoke('undo'),
   redo: () => ipcRenderer.invoke('redo'),

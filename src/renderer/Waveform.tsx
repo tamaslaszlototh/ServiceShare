@@ -11,6 +11,12 @@ function drawPeaks(
   const lanes = Math.max(1, peaks.channels);
   const laneHeight = height / lanes;
 
+  const gradient = ctx.createLinearGradient(0, 0, 0, height);
+  gradient.addColorStop(0, '#4aa8ff');
+  gradient.addColorStop(1, '#2b6aa0');
+  ctx.strokeStyle = gradient;
+  ctx.lineWidth = 1;
+
   peaks.buckets.forEach((channel, lane) => {
     const middle = lane * laneHeight + laneHeight / 2;
     const amplitude = (laneHeight / 2) * 0.92;

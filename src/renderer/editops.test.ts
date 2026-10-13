@@ -5,6 +5,7 @@ import {
   FADE_MIN_SECONDS,
   GAIN_MAX_DB,
   GAIN_MIN_DB,
+  activeFadeSeconds,
   clampFadeSeconds,
   clampGainDb,
   cutOp,
@@ -81,5 +82,24 @@ describe('isStructural', () => {
     expect(isStructural({ kind: 'gain', db: 3 })).toBe(false);
     expect(isStructural({ kind: 'normalize' })).toBe(false);
     expect(isStructural({ kind: 'fadeIn', duration: 2 })).toBe(false);
+  });
+});
+
+describe('activeFadeSeconds', () => {
+  const editList = [fadeInOp(2), gainOp(3), fadeInOp(4), fadeOutOp(1.5)];
+
+  it('returns the latest active fade duration of the requested kind', () => {
+    expect(activeFadeSeconds(editList, editList.length, 'fadeIn')).toBe(4);
+    expect(activeFadeSeconds(editList, editList.length, 'fadeOut')).toBe(1.5);
+  });
+
+  it('ignores fades beyond the history cursor', () => {
+    expect(activeFadeSeconds(editList, 1, 'fadeIn')).toBe(2);
+    expect(activeFadeSeconds(editList, 1, 'fadeOut')).toBeNull();
+  });
+
+  it('returns null when no active fade of that kind exists', () => {
+    expect(activeFadeSeconds([gainOp(3)], 1, 'fadeIn')).toBeNull();
+    expect(activeFadeSeconds([], 0, 'fadeOut')).toBeNull();
   });
 });

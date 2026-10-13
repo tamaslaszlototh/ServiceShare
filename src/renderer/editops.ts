@@ -57,3 +57,17 @@ export function normalizeOp(): EditOperation {
 export function isStructural(op: EditOperation): boolean {
   return op.kind === 'trim' || op.kind === 'cutRegion' || op.kind === 'concatenate';
 }
+
+export function activeFadeSeconds(
+  editList: EditOperation[],
+  historyIndex: number,
+  kind: 'fadeIn' | 'fadeOut',
+): number | null {
+  for (let i = Math.min(historyIndex, editList.length) - 1; i >= 0; i--) {
+    const op = editList[i];
+    if (op.kind === kind) {
+      return op.duration;
+    }
+  }
+  return null;
+}

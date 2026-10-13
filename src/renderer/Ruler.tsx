@@ -4,16 +4,7 @@ export function Ruler({ duration }: { duration: number }) {
   const ticks = rulerTicks(duration);
 
   return (
-    <div
-      role="presentation"
-      style={{
-        position: 'relative',
-        height: '20px',
-        fontSize: '11px',
-        color: '#666',
-        fontFamily: 'ui-monospace, Menlo, monospace',
-      }}
-    >
+    <div role="presentation" className="ruler">
       {ticks.map((tick, index) => (
         <span
           key={index}

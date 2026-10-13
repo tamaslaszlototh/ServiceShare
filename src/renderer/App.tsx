@@ -10,11 +10,10 @@ import {
   FADE_MIN_SECONDS,
   GAIN_MAX_DB,
   GAIN_MIN_DB,
+  activeFadeSeconds,
   clampFadeSeconds,
   clampGainDb,
   cutOp,
-  fadeInOp,
-  fadeOutOp,
   gainOp,
   hasSelection,
   isStructural,
@@ -142,11 +141,17 @@ export function App() {
     applyEditResult(await window.api.applyEdit(op), isStructural(op));
   };
 
+  const applyFade = async (kind: 'fadeIn' | 'fadeOut') => {
+    applyEditResult(await window.api.toggleFade(kind, clampFadeSeconds(fadeSeconds)), false);
+  };
+
   const handleConcatenate = async () => {
     applyEditResult(await window.api.concatenate(), true);
   };
 
   const statusLabel = rendering ? 'RENDERING' : playing ? 'PLAYING' : 'READY';
+  const fadeInSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeIn');
+  const fadeOutSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeOut');
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -212,138 +217,177 @@ export function App() {
   };
 
   return (
-    <div
-      style={{ fontFamily: 'system-ui', height: '100vh', display: 'flex', flexDirection: 'column' }}
-      onDrop={handleDrop}
-      onDragOver={(event) => event.preventDefault()}
-    >
-      <header style={{ padding: '8px', borderBottom: '1px solid #ccc', display: 'flex', gap: '8px' }}>
-        <strong>ServiceShare</strong>
-        <button onClick={handleOpen}>Open</button>
-        <button onClick={() => applyHistory('undo')} disabled={!canUndo(document)}>
-          Undo
+    <div className="app" onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
+      <header className="app-header">
+        <span className="title">ServiceShare</span>
+        <span className="file">{clip ? baseName(clip.filePath) : 'No file'}</span>
+        <span className="spacer" />
+        <button className="btn" onClick={handleOpen}>
+          Open
         </button>
-        <button onClick={() => applyHistory('redo')} disabled={!canRedo(document)}>
-          Redo
+        <button className="btn ghost" disabled>
+          Export
         </button>
-        <button disabled>Export</button>
-        <button disabled>Publish to YouTube</button>
+        <button className="btn primary" disabled>
+          Publish to YouTube
+        </button>
       </header>
 
       {error && (
-        <div
-          role="alert"
-          style={{
-            padding: '8px',
-            background: '#fdecea',
-            color: '#611a15',
-            borderBottom: '1px solid #f5c6cb',
-            display: 'flex',
-            gap: '8px',
-            alignItems: 'flex-start',
-            whiteSpace: 'pre-wrap',
-          }}
-        >
-          <span style={{ flex: 1 }}>
+        <div role="alert" className="banner">
+          <span className="message">
             {errorLabel(error)}
             {error.details ? `\n${error.details}` : ''}
           </span>
-          <button aria-label="Dismiss error" onClick={() => setError(null)}>
+          <button className="dismiss" aria-label="Dismiss error" onClick={() => setError(null)}>
             ×
           </button>
         </div>
       )}
 
-      <div
-        style={{
-          padding: '8px',
-          borderBottom: '1px solid #ccc',
-          display: 'flex',
-          gap: '8px',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
+      <div className="toolbar">
         <button
-          aria-label="Trim to selection"
-          disabled={!clip || !hasSelection(selection)}
-          onClick={() => {
-            const op = trimOp(selection);
-            if (op) void applyEdit(op);
-          }}
+          className="btn ghost icon"
+          aria-label="Undo"
+          title="Undo"
+          onClick={() => applyHistory('undo')}
+          disabled={!canUndo(document)}
         >
-          Trim
+          ↶
         </button>
         <button
-          aria-label="Cut region"
-          disabled={!clip || !hasSelection(selection)}
-          onClick={() => {
-            const op = cutOp(selection);
-            if (op) void applyEdit(op);
-          }}
+          className="btn ghost icon"
+          aria-label="Redo"
+          title="Redo"
+          onClick={() => applyHistory('redo')}
+          disabled={!canRedo(document)}
         >
-          Cut region
+          ↷
         </button>
-        <label style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          Fade
-          <input
-            aria-label="Fade duration in seconds"
-            type="number"
-            min={FADE_MIN_SECONDS}
-            max={FADE_MAX_SECONDS}
-            step={0.5}
-            value={fadeSeconds}
-            onChange={(e) => setFadeSeconds(clampFadeSeconds(parseFloat(e.target.value)))}
-            style={{ width: '4.5em' }}
-          />
-          s
-        </label>
-        <button aria-label="Fade in" disabled={!clip} onClick={() => void applyEdit(fadeInOp(fadeSeconds))}>
-          In
-        </button>
-        <button aria-label="Fade out" disabled={!clip} onClick={() => void applyEdit(fadeOutOp(fadeSeconds))}>
-          Out
-        </button>
-        <label style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          Gain
-          <input
-            aria-label="Gain in decibels"
-            type="number"
-            min={GAIN_MIN_DB}
-            max={GAIN_MAX_DB}
-            step={0.5}
-            value={gainDb}
-            onChange={(e) => setGainDb(clampGainDb(parseFloat(e.target.value)))}
-            style={{ width: '4em' }}
-          />
-          dB
-        </label>
-        <button aria-label="Apply gain" disabled={!clip} onClick={() => void applyEdit(gainOp(gainDb))}>
-          Apply
-        </button>
-        <button aria-label="Normalize loudness" disabled={!clip} onClick={() => void applyEdit(normalizeOp())}>
-          Normalize
-        </button>
-        <button aria-label="Concatenate a second WAV" disabled={!clip} onClick={() => void handleConcatenate()}>
-          Concatenate
-        </button>
-        <span style={{ marginLeft: 'auto' }}>
-          <button onClick={handlePlay} disabled={!clip || rendering || playing}>
-            Play
+        <span className="divider" />
+        <div className="group">
+          <button
+            className="btn chip"
+            aria-label="Trim to selection"
+            disabled={!clip || !hasSelection(selection)}
+            onClick={() => {
+              const op = trimOp(selection);
+              if (op) void applyEdit(op);
+            }}
+          >
+            Trim
           </button>
-          <button onClick={handlePause} disabled={!playing}>
-            Pause
+          <button
+            className="btn chip"
+            aria-label="Cut region"
+            disabled={!clip || !hasSelection(selection)}
+            onClick={() => {
+              const op = cutOp(selection);
+              if (op) void applyEdit(op);
+            }}
+          >
+            Cut region
           </button>
-          <button onClick={handleStop} disabled={!clip}>
-            Stop
+        </div>
+        <span className="divider" />
+        <div className="group">
+          <label className="field">
+            Fade
+            <input
+              aria-label="Fade duration in seconds"
+              type="number"
+              min={FADE_MIN_SECONDS}
+              max={FADE_MAX_SECONDS}
+              step={0.5}
+              value={fadeSeconds}
+              onChange={(e) => setFadeSeconds(clampFadeSeconds(parseFloat(e.target.value)))}
+              style={{ width: '4.5em' }}
+            />
+            s
+          </label>
+          <button
+            className={`btn chip${fadeInSeconds !== null ? ' active' : ''}`}
+            aria-label="Fade in"
+            aria-pressed={fadeInSeconds !== null}
+            title={fadeInSeconds !== null ? 'Turn fade in off' : 'Turn fade in on'}
+            disabled={!clip}
+            onClick={() => void applyFade('fadeIn')}
+          >
+            In
           </button>
-          {rendering && <span style={{ marginLeft: '8px', color: '#666' }}>Rendering…</span>}
-          <span style={{ marginLeft: '8px' }}>
+          <button
+            className={`btn chip${fadeOutSeconds !== null ? ' active' : ''}`}
+            aria-label="Fade out"
+            aria-pressed={fadeOutSeconds !== null}
+            title={fadeOutSeconds !== null ? 'Turn fade out off' : 'Turn fade out on'}
+            disabled={!clip}
+            onClick={() => void applyFade('fadeOut')}
+          >
+            Out
+          </button>
+        </div>
+        <span className="divider" />
+        <div className="group">
+          <label className="field">
+            Gain
+            <input
+              aria-label="Gain in decibels"
+              type="number"
+              min={GAIN_MIN_DB}
+              max={GAIN_MAX_DB}
+              step={0.5}
+              value={gainDb}
+              onChange={(e) => setGainDb(clampGainDb(parseFloat(e.target.value)))}
+              style={{ width: '4em' }}
+            />
+            dB
+          </label>
+          <button className="btn chip" aria-label="Apply gain" disabled={!clip} onClick={() => void applyEdit(gainOp(gainDb))}>
+            Apply
+          </button>
+          <button className="btn chip" aria-label="Normalize loudness" disabled={!clip} onClick={() => void applyEdit(normalizeOp())}>
+            Normalize
+          </button>
+        </div>
+        <button
+          className="btn chip"
+          aria-label="Concatenate a second WAV"
+          disabled={!clip}
+          onClick={() => void handleConcatenate()}
+        >
+          Concatenate…
+        </button>
+        <span className="divider" />
+        <div className="group">
+          <button
+            className="btn ghost icon"
+            aria-label="Play"
+            title="Play"
+            onClick={handlePlay}
+            disabled={!clip || rendering || playing}
+          >
+            ▶
+          </button>
+          <button className="btn ghost icon" aria-label="Pause" title="Pause" onClick={handlePause} disabled={!playing}>
+            ⏸
+          </button>
+          <button className="btn ghost icon" aria-label="Stop" title="Stop" onClick={handleStop} disabled={!clip}>
+            ⏹
+          </button>
+          <span className="timecode">
             {formatTime(position)} / {formatTime(duration)}
           </span>
-        </span>
-        <button disabled>Zoom -</button>
-        <button disabled>+ Zoom</button>
+          {rendering && <span className="muted">Rendering…</span>}
+        </div>
+        <span className="spacer" />
+        <div className="group">
+          <button className="btn ghost icon" aria-label="Zoom out" disabled>
+            −
+          </button>
+          <button className="btn ghost icon" aria-label="Zoom in" disabled>
+            +
+          </button>
+        </div>
       </div>
 
       <audio
@@ -353,39 +397,72 @@ export function App() {
         onEnded={() => setPlaying(false)}
       />
 
-      <main style={{ flex: 1, padding: '16px', background: '#fafafa', display: 'flex', flexDirection: 'column' }}>
+      <main className="workarea">
         {clip ? (
-          <Timeline
-            duration={clip.duration}
-            sampleRate={clip.sampleRate}
-            peaks={peaks}
-            selection={selection}
-            position={position}
-            onSelectionChange={setSelection}
-            onSeek={handleSeek}
-          />
+          <>
+            <Timeline
+              duration={clip.duration}
+              sampleRate={clip.sampleRate}
+              peaks={peaks}
+              selection={selection}
+              position={position}
+              fadeIn={fadeInSeconds}
+              fadeOut={fadeOutSeconds}
+              onSelectionChange={setSelection}
+              onSeek={handleSeek}
+            />
+            <div className="meta">
+              <span>
+                {clip.sampleRate} Hz / {clip.bitDepth}-bit
+              </span>
+              <span>{channelLabel(clip.channels)}</span>
+              <span>{formatTime(clip.duration)}</span>
+              <span className="spacer" />
+              {selection && (
+                <span aria-live="polite">
+                  selection: {formatSelectionRange(selection)} ({selectionLength(selection).toFixed(3)}s)
+                </span>
+              )}
+            </div>
+          </>
         ) : (
-          <div style={{ color: '#666' }}>Open a WAV to begin</div>
+          <div className="empty">
+            <div className="empty-card">
+              <div className="big">♪</div>
+              <h3>No file opened</h3>
+              <p className="muted">Open a WAV file to start editing.</p>
+              <button className="btn primary" onClick={handleOpen}>
+                Open WAV…
+              </button>
+            </div>
+          </div>
         )}
       </main>
 
-      <footer style={{ padding: '8px', borderTop: '1px solid #ccc', fontSize: '12px', color: '#333' }}>
+      <footer className="status">
         {clip ? (
           <>
-            {clip.sampleRate} Hz · {clip.bitDepth}-bit · {channelLabel(clip.channels)} · {formatTime(clip.duration)}
-            {selection && (
-              <span aria-live="polite">
-                {' · '}selection: {formatSelectionRange(selection)} ({selectionLength(selection).toFixed(3)}s)
-              </span>
-            )}
-            {' · '}undo: {undoCount(document)} · redo: {redoCount(document)} · {statusLabel}
+            <span>
+              undo: {undoCount(document)} · redo: {redoCount(document)}
+            </span>
+            <span className="spacer" />
+            <span>{statusLabel}</span>
           </>
         ) : (
-          <>No clip loaded · READY</>
+          <>
+            <span>No clip loaded</span>
+            <span className="spacer" />
+            <span>READY</span>
+          </>
         )}
       </footer>
     </div>
   );
+}
+
+function baseName(filePath: string): string {
+  const parts = filePath.split(/[\\/]/);
+  return parts[parts.length - 1] || filePath;
 }
 
 function channelLabel(channels: number): string {

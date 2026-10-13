@@ -1,0 +1,343 @@
+/* ServiceShare editor UI — design tokens and shared atoms.
+   Mirrors the accepted prototype (variant A, Classic DAW):
+   prototype/editor-ui @ prototype/editor-ui. Dark theme. */
+
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel2: #1d2129;
+  --line: #2a2f3a;
+  --text: #e6e9ef;
+  --muted: #8a93a5;
+  --accent: #2dd4a7;
+  --accent2: #4aa8ff;
+  --warn: #ffb454;
+  --err: #ff5d5d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ---------- shared atoms ---------- */
+
+.btn {
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  border-radius: 7px;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn:hover {
+  border-color: #3c4351;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06251d;
+  font-weight: 600;
+}
+
+.btn.ghost {
+  background: transparent;
+}
+
+.btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(45, 212, 167, 0.12);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chip {
+  padding: 6px 10px;
+}
+
+.kbd {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.divider {
+  border-left: 1px solid var(--line);
+  height: 20px;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timecode {
+  color: var(--muted);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.field input {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent2);
+}
+
+/* ---------- app shell ---------- */
+
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.app-header .file {
+  color: var(--muted);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.toolbar .icon {
+  padding: 6px 10px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ---------- error banner ---------- */
+
+.banner {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  white-space: pre-wrap;
+  padding: 8px 14px;
+  background: rgba(255, 93, 93, 0.12);
+  color: var(--text);
+  border-bottom: 1px solid var(--err);
+}
+
+.banner .message {
+  flex: 1;
+}
+
+.banner .code {
+  background: #000;
+  color: var(--err);
+  font-family: ui-monospace, Menlo, monospace;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.banner .dismiss {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* ---------- work area ---------- */
+
+.workarea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 14px;
+}
+
+.timeline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel2);
+  min-height: 0;
+}
+
+.wave-lane {
+  flex: 1;
+  position: relative;
+  min-height: 120px;
+}
+
+.ruler {
+  position: relative;
+  height: 20px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: ui-monospace, Menlo, monospace;
+  flex: none;
+}
+
+.wave-loading {
+  padding: 16px;
+  color: var(--muted);
+}
+
+.fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.fade svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.fade.in {
+  left: 0;
+}
+
+.fade.out {
+  right: 0;
+}
+
+.fade-label {
+  position: absolute;
+  top: 4px;
+  font-size: 10px;
+  font-family: ui-monospace, Menlo, monospace;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.fade.in .fade-label {
+  left: 4px;
+}
+
+.fade.out .fade-label {
+  right: 4px;
+}
+
+.meta {
+  display: flex;
+  gap: 18px;
+  padding: 8px 2px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------- empty state ---------- */
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-card {
+  background: var(--panel);
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  padding: 34px 44px;
+  text-align: center;
+  max-width: 380px;
+}
+
+.empty-card .big {
+  font-size: 30px;
+  margin: 10px 0 14px;
+  color: var(--muted);
+}
+
+.empty-card h3 {
+  margin: 0 0 6px;
+}
+
+.empty-card p {
+  margin: 0 0 14px;
+}

@@ -102,6 +102,7 @@ export type IpcApi = {
   getPathForFile: (file: File) => string;
   getDocument: () => Promise<Document>;
   applyEdit: (op: EditOperation) => Promise<EditResult>;
+  toggleFade: (kind: 'fadeIn' | 'fadeOut', seconds: number) => Promise<EditResult>;
   concatenate: () => Promise<EditResult>;
   undo: () => Promise<Document>;
   redo: () => Promise<Document>;

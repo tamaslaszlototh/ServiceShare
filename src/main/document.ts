@@ -27,6 +27,19 @@ export class DocumentManager {
     this.doc.historyIndex = this.doc.editList.length;
   }
 
+  removeActiveEdit(predicate: (op: EditOperation) => boolean): EditOperation | null {
+    const active = this.doc.editList.slice(0, this.doc.historyIndex);
+    for (let i = active.length - 1; i >= 0; i--) {
+      if (predicate(active[i])) {
+        const [removed] = active.splice(i, 1);
+        this.doc.editList = active;
+        this.doc.historyIndex = active.length;
+        return removed;
+      }
+    }
+    return null;
+  }
+
   undo(): void {
     this.doc.historyIndex = Math.max(0, this.doc.historyIndex - 1);
   }

@@ -82,4 +82,27 @@ describe('DocumentManager', () => {
     expect(dm.getDocument().historyIndex).toBe(2);
     expect(dm.getEffectiveEditList()).toEqual([{ kind: 'gain', db: 1 }, { kind: 'gain', db: 3 }]);
   });
+
+  it('removes the last matching active edit and drops the redo tail', () => {
+    const dm = new DocumentManager();
+    dm.appendEdit({ kind: 'gain', db: 1 });
+    dm.appendEdit({ kind: 'fadeIn', duration: 2 });
+    dm.appendEdit({ kind: 'gain', db: 3 });
+
+    const removed = dm.removeActiveEdit((op) => op.kind === 'fadeIn');
+
+    expect(removed).toEqual({ kind: 'fadeIn', duration: 2 });
+    expect(dm.getDocument().editList).toEqual([{ kind: 'gain', db: 1 }, { kind: 'gain', db: 3 }]);
+    expect(dm.getDocument().historyIndex).toBe(2);
+    expect(dm.getEffectiveEditList()).toEqual([{ kind: 'gain', db: 1 }, { kind: 'gain', db: 3 }]);
+  });
+
+  it('removeActiveEdit returns null and leaves the document untouched when nothing matches', () => {
+    const dm = new DocumentManager();
+    dm.appendEdit({ kind: 'gain', db: 1 });
+
+    expect(dm.removeActiveEdit((op) => op.kind === 'fadeOut')).toBeNull();
+    expect(dm.getDocument().editList).toEqual([{ kind: 'gain', db: 1 }]);
+    expect(dm.getDocument().historyIndex).toBe(1);
+  });
 });
