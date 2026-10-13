@@ -331,7 +331,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('exportAudio', async (event, format: ExportFormat): Promise<ExportResult> => {
     if (!currentClip) {
-      return { status: 'error', error: { code: 'EngineError', message: 'No clip loaded' } };
+      return { status: 'error', error: { code: 'NoClip', message: 'No clip loaded' } };
     }
     const outputPath = await pickExportPath(format, currentClip.filePath);
     if (!outputPath) {
@@ -352,12 +352,12 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('publish', async (event, req: PublishRequest): Promise<PublishResult> => {
     if (!currentClip || !publishService) {
-      return { status: 'error', error: { code: 'EngineError', message: 'No clip loaded' } };
+      return { status: 'error', error: { code: 'NoClip', message: 'No clip loaded' } };
     }
     if (activePublish) {
       return {
         status: 'error',
-        error: { code: 'EngineError', message: 'A publish is already in progress' },
+        error: { code: 'PublishInProgress', message: 'A publish is already in progress' },
       };
     }
     const controller = new AbortController();
@@ -386,7 +386,7 @@ app.whenReady().then(async () => {
       if (!coverPreviewService) {
         return {
           status: 'error',
-          error: { code: 'EngineError', message: 'Cover preview is not available' },
+          error: { code: 'CoverUnavailable', message: 'Cover preview is not available' },
         };
       }
       try {
@@ -422,7 +422,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('copyText', async (_e, text: unknown): Promise<VoidResult> => {
     if (typeof text !== 'string') {
-      return { status: 'error', error: new IpcError('EngineError', 'copyText expects a string').toAppError() };
+      return { status: 'error', error: new IpcError('InternalError', 'copyText expects a string').toAppError() };
     }
     clipboard.writeText(text);
     return { status: 'ok' };

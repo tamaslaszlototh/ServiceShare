@@ -15,6 +15,10 @@ export const ERROR_CODES: ErrorCode[] = [
   'TooLong',
   'UnverifiedProject',
   'TokenStorageError',
+  'NoClip',
+  'PublishInProgress',
+  'CoverUnavailable',
+  'InternalError',
 ];
 
 export function isErrorCode(value: unknown): value is ErrorCode {

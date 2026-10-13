@@ -11,12 +11,19 @@ export type ErrorCode =
   | 'UploadExpired'
   | 'TooLong'
   | 'UnverifiedProject'
-  | 'TokenStorageError';
+  | 'TokenStorageError'
+  | 'NoClip'
+  | 'PublishInProgress'
+  | 'CoverUnavailable'
+  | 'InternalError';
+
+export type ErrorParams = Record<string, string | number>;
 
 export interface AppError {
   code: ErrorCode;
   message: string;
   details?: string;
+  params?: ErrorParams;
 }
 
 export interface ClipInfo {

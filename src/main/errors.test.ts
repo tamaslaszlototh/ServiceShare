@@ -1,5 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import { isAppError, isErrorCode } from '@shared/apperror';
+import { ERROR_CODES, isAppError, isErrorCode } from '@shared/apperror';
+import type { ErrorCode } from '@shared/types';
+
+const DOCUMENTED_CODES: Record<ErrorCode, true> = {
+  FormatError: true,
+  CorruptFile: true,
+  PermissionError: true,
+  DiskFull: true,
+  EngineError: true,
+  RenderError: true,
+  NetworkError: true,
+  QuotaExceeded: true,
+  AuthRevoked: true,
+  UploadExpired: true,
+  TooLong: true,
+  UnverifiedProject: true,
+  TokenStorageError: true,
+  NoClip: true,
+  PublishInProgress: true,
+  CoverUnavailable: true,
+  InternalError: true,
+};
 import {
   AuthRevokedError,
   NetworkError,
@@ -61,6 +82,17 @@ describe('guards', () => {
     expect(isErrorCode('TooLong')).toBe(true);
     expect(isErrorCode('Nope')).toBe(false);
     expect(isErrorCode(42)).toBe(false);
+  });
+
+  it('recognises every documented code', () => {
+    const documented = Object.keys(DOCUMENTED_CODES) as ErrorCode[];
+    for (const code of documented) {
+      expect(isErrorCode(code)).toBe(true);
+    }
+  });
+
+  it('catalogues exactly the documented codes', () => {
+    expect([...ERROR_CODES].sort()).toEqual(Object.keys(DOCUMENTED_CODES).sort());
   });
 
   it('recognises structured AppErrors', () => {

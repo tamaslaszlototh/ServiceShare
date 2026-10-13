@@ -44,4 +44,27 @@ describe('redactAppError', () => {
       message: 'boom',
     });
   });
+
+  it('redacts secret material from string params', () => {
+    const out = redactAppError({
+      code: 'PermissionError',
+      message: 'Cannot read file',
+      params: { filePath: '/tmp/clip.wav', token: 'refresh_token=abc' },
+    });
+    expect(out.params).toEqual({ filePath: '/tmp/clip.wav', token: `refresh_token=${REDACTED}` });
+  });
+
+  it('leaves numeric params untouched', () => {
+    const out = redactAppError({
+      code: 'TooLong',
+      message: 'too long',
+      params: { minutes: 12, clip: 2 },
+    });
+    expect(out.params).toEqual({ minutes: 12, clip: 2 });
+  });
+
+  it('does not invent a params field', () => {
+    const out = redactAppError({ code: 'PermissionError', message: 'x' });
+    expect(out).not.toHaveProperty('params');
+  });
 });
