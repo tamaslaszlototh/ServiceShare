@@ -4,6 +4,7 @@ import { access } from 'fs/promises';
 import { ClipInfo } from '@shared/types';
 import { ffmpegResolver } from './ffmpeg';
 import { CorruptFileError, FormatError, PermissionError } from './errors';
+import { sanitizeText } from './sanitize';
 
 export interface FfprobeOutput {
   stdout: string;
@@ -42,10 +43,6 @@ const SUPPORTED_BIT_DEPTHS: Record<string, 16 | 24> = {
 
 const FFPROBE_ARGS = ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams'];
 
-function sanitize(text: string): string {
-  return text.trim().split('\n').slice(-5).join('\n').slice(0, 1000);
-}
-
 function toNumber(value: string | number | undefined): number | null {
   if (value === undefined || value === '') {
     return null;
@@ -58,7 +55,7 @@ function parseFfprobeJson(stdout: string): FfprobeJson {
   try {
     return JSON.parse(stdout) as FfprobeJson;
   } catch {
-    throw new CorruptFileError('The WAV header could not be parsed', sanitize(stdout));
+    throw new CorruptFileError('The WAV header could not be parsed', sanitizeText(stdout));
   }
 }
 
@@ -71,7 +68,7 @@ export async function probeClip(filePath: string, deps: WavProbeDeps): Promise<C
   const output = await deps.runFfprobe(ffprobePath, filePath);
 
   if (output.exitCode !== 0) {
-    throw new CorruptFileError('The WAV header could not be read', sanitize(output.stderr));
+    throw new CorruptFileError('The WAV header could not be read', sanitizeText(output.stderr));
   }
 
   const parsed = parseFfprobeJson(output.stdout);

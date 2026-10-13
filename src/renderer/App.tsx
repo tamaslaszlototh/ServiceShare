@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { AppError, ClipInfo, Document } from '@shared/types';
+import { AppError, ClipInfo, Document, PeakData } from '@shared/types';
+import { Ruler } from './Ruler';
+import { Waveform } from './Waveform';
 
 function errorLabel(error: AppError): string {
   return error.message.startsWith(error.code) ? error.message : `${error.code}: ${error.message}`;
@@ -7,6 +9,7 @@ function errorLabel(error: AppError): string {
 
 export function App() {
   const [clip, setClip] = useState<ClipInfo | null>(null);
+  const [peaks, setPeaks] = useState<PeakData | null>(null);
   const [document, setDocument] = useState<Document>({ sourceFile: null, editList: [], historyIndex: -1 });
   const [error, setError] = useState<AppError | null>(null);
 
@@ -21,8 +24,16 @@ export function App() {
         return;
       }
       setClip(result.clip);
+      setPeaks(null);
       setDocument(await window.api.getDocument());
       setError(null);
+
+      const peaksResult = await window.api.getPeaks();
+      if (peaksResult.status === 'ok') {
+        setPeaks(peaksResult.peaks);
+      } else if (peaksResult.status === 'error') {
+        setError(peaksResult.error);
+      }
     } catch (e) {
       setError({ code: 'CorruptFile', message: e instanceof Error ? e.message : String(e) });
     }
@@ -100,11 +111,27 @@ export function App() {
         <button disabled>+ Zoom</button>
       </div>
 
-      <main style={{ flex: 1, padding: '16px', background: '#fafafa' }}>
+      <main style={{ flex: 1, padding: '16px', background: '#fafafa', display: 'flex', flexDirection: 'column' }}>
         {clip ? (
-          <div>
-            <div style={{ height: '120px', background: '#e0e0e0', marginBottom: '8px' }}>Waveform</div>
-            <div style={{ height: '40px', background: '#f0f0f0' }}>Ruler</div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <Ruler duration={clip.duration} />
+            <div
+              style={{
+                position: 'relative',
+                flex: 1,
+                minHeight: '120px',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                background: '#fff',
+              }}
+            >
+              {peaks ? (
+                <Waveform peaks={peaks} />
+              ) : (
+                <div style={{ padding: '16px', color: '#666' }}>Loading waveform…</div>
+              )}
+            </div>
           </div>
         ) : (
           <div style={{ color: '#666' }}>Open a WAV to begin</div>

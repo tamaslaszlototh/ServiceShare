@@ -6,5 +6,6 @@
     "outDir": "dist/renderer",
     "jsx": "react-jsx"
   },
-  "include": ["src/renderer/**/*", "src/shared/**/*"]
+  "include": ["src/renderer/**/*", "src/shared/**/*"],
+  "exclude": ["src/**/*.test.ts"]
 }

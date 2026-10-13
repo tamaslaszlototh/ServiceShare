@@ -3,6 +3,7 @@ import { ExportOptions, IpcApi, ProgressEvent, PublishRequest } from '@shared/ty
 
 const api: IpcApi = {
   openFile: (filePath?: string) => ipcRenderer.invoke('openFile', filePath),
+  getPeaks: () => ipcRenderer.invoke('getPeaks'),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   getDocument: () => ipcRenderer.invoke('getDocument'),
   undo: () => ipcRenderer.invoke('undo'),

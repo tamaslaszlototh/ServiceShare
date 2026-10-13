@@ -32,6 +32,16 @@ export interface Selection {
   end: number;
 }
 
+export interface PeakBucket {
+  min: number;
+  max: number;
+}
+
+export interface PeakData {
+  channels: number;
+  buckets: PeakBucket[][];
+}
+
 export type EditOperation =
   | { kind: 'trim'; start: number; end: number }
   | { kind: 'cutRegion'; start: number; end: number }
@@ -70,8 +80,14 @@ export type OpenResult =
   | { status: 'cancelled' }
   | { status: 'error'; error: AppError };
 
+export type PeaksResult =
+  | { status: 'ok'; peaks: PeakData }
+  | { status: 'none' }
+  | { status: 'error'; error: AppError };
+
 export type IpcApi = {
   openFile: (filePath?: string) => Promise<OpenResult>;
+  getPeaks: () => Promise<PeaksResult>;
   getPathForFile: (file: File) => string;
   getDocument: () => Promise<Document>;
   undo: () => Promise<void>;

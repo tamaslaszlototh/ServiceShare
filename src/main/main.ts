@@ -3,8 +3,9 @@ import * as path from 'path';
 import { DocumentManager } from './document';
 import { ffmpegResolver } from './ffmpeg';
 import { probeClip, defaultWavProbeDeps } from './probe';
+import { generatePeaks, defaultPeakDeps, killActiveDecodes } from './peaks';
 import { IpcError, toAppError } from './errors';
-import { ExportOptions, OpenResult, ProgressEvent, PublishRequest } from '@shared/types';
+import { ClipInfo, ExportOptions, OpenResult, PeaksResult, ProgressEvent, PublishRequest } from '@shared/types';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -33,6 +34,7 @@ function engineErrorEvent(error: unknown): ProgressEvent {
 }
 
 const docManager = new DocumentManager();
+let currentClip: ClipInfo | null = null;
 
 async function pickClipPath(): Promise<string | null> {
   const result = await dialog.showOpenDialog({
@@ -63,7 +65,23 @@ app.whenReady().then(() => {
     try {
       const clip = await probeClip(target, defaultWavProbeDeps);
       docManager.setSourceFile(clip.filePath);
+      currentClip = clip;
       return { status: 'ok', clip };
+    } catch (e) {
+      if (e instanceof IpcError) {
+        return { status: 'error', error: e.toAppError() };
+      }
+      throw e;
+    }
+  });
+
+  ipcMain.handle('getPeaks', async (): Promise<PeaksResult> => {
+    if (!currentClip) {
+      return { status: 'none' };
+    }
+    try {
+      const peaks = await generatePeaks(currentClip, defaultPeakDeps);
+      return { status: 'ok', peaks };
     } catch (e) {
       if (e instanceof IpcError) {
         return { status: 'error', error: e.toAppError() };
@@ -113,4 +131,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  killActiveDecodes();
 });

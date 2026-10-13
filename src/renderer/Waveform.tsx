@@ -1,0 +1,67 @@
+import { useEffect, useRef } from 'react';
+import { PeakData } from '@shared/types';
+
+function drawPeaks(
+  ctx: CanvasRenderingContext2D,
+  peaks: PeakData,
+  width: number,
+  height: number,
+): void {
+  ctx.clearRect(0, 0, width, height);
+  const lanes = Math.max(1, peaks.channels);
+  const laneHeight = height / lanes;
+
+  peaks.buckets.forEach((channel, lane) => {
+    const middle = lane * laneHeight + laneHeight / 2;
+    const amplitude = (laneHeight / 2) * 0.92;
+    const count = channel.length;
+
+    ctx.beginPath();
+    for (let i = 0; i < count; i++) {
+      const x = count <= 1 ? 0 : (i / (count - 1)) * (width - 1);
+      const bucket = channel[i];
+      ctx.moveTo(x, middle - bucket.max * amplitude);
+      ctx.lineTo(x, middle - bucket.min * amplitude);
+    }
+    ctx.stroke();
+  });
+}
+
+export function Waveform({ peaks }: { peaks: PeakData }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const render = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      canvas.width = Math.max(1, Math.round(width * dpr));
+      canvas.height = Math.max(1, Math.round(height * dpr));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawPeaks(ctx, peaks, width, height);
+    };
+
+    render();
+    const observer = new ResizeObserver(render);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [peaks]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      role="img"
+      aria-label={`Waveform (${peaks.channels} channel${peaks.channels === 1 ? '' : 's'})`}
+      style={{ width: '100%', height: '100%', display: 'block' }}
+    />
+  );
+}
