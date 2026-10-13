@@ -2,10 +2,12 @@ import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import { PeakData, Selection } from '@shared/types';
 import { Ruler } from './Ruler';
 import { Waveform } from './Waveform';
+import { useLocale } from './LocaleContext';
 import {
   KEYBOARD_STEP_SECONDS,
   cursorAt,
   extendSelection,
+  formatFadeSeconds,
   fractionToTime,
   hitEdge,
   isCursor,
@@ -42,6 +44,7 @@ export function Timeline({
   onSelectionChange,
   onSeek,
 }: TimelineProps) {
+  const { locale, t } = useLocale();
   const surfaceRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag | null>(null);
 
@@ -123,7 +126,7 @@ export function Timeline({
         ref={surfaceRef}
         role="group"
         tabIndex={0}
-        aria-label="Timeline — drag to select, or click to place the cursor"
+        aria-label={t('timeline.ariaLabel')}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
@@ -139,7 +142,7 @@ export function Timeline({
       >
         <Ruler duration={duration} />
         <div className="wave-lane">
-          {peaks ? <Waveform peaks={peaks} /> : <div className="wave-loading">Loading waveform…</div>}
+          {peaks ? <Waveform peaks={peaks} /> : <div className="wave-loading">{t('timeline.loading')}</div>}
           {fadeInFraction !== null && (
             <div
               className="fade in"
@@ -158,7 +161,9 @@ export function Timeline({
                   vectorEffect="non-scaling-stroke"
                 />
               </svg>
-              <span className="fade-label">fade in {formatFade(fadeIn)}</span>
+              <span className="fade-label">
+                {t('timeline.fadeIn', { seconds: formatFadeSeconds(fadeIn, locale) })}
+              </span>
             </div>
           )}
           {fadeOutFraction !== null && (
@@ -179,7 +184,9 @@ export function Timeline({
                   vectorEffect="non-scaling-stroke"
                 />
               </svg>
-              <span className="fade-label">fade out {formatFade(fadeOut)}</span>
+              <span className="fade-label">
+                {t('timeline.fadeOut', { seconds: formatFadeSeconds(fadeOut, locale) })}
+              </span>
             </div>
           )}
           {selection &&
@@ -224,6 +231,3 @@ export function Timeline({
   );
 }
 
-function formatFade(seconds: number | null): string {
-  return `${(seconds ?? 0).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}s`;
-}

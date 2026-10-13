@@ -36,6 +36,22 @@ describe('t', () => {
     expect(t('hu', 'header.noFile')).toBe('Nincs fájl');
   });
 
+  it('serves the editor shell in both languages', () => {
+    expect(t('en', 'toolbar.undo')).toBe('Undo');
+    expect(t('hu', 'toolbar.undo')).toBe('Visszavonás');
+    expect(t('en', 'status.ready')).toBe('READY');
+    expect(t('hu', 'status.noClip')).toBe('Nincs betöltött klip');
+    expect(t('en', 'empty.noFile')).toBe('No file opened');
+    expect(t('hu', 'empty.noFile')).toBe('Nincs megnyitott fájl');
+    expect(t('en', 'meta.format', { rate: 44100, bits: 16 })).toBe('44100 Hz / 16-bit');
+    expect(t('hu', 'meta.format', { rate: 44100, bits: 16 })).toBe('44100 Hz / 16 bit');
+  });
+
+  it('pluralises the channel count per language', () => {
+    expect(t('en', 'meta.channel.other', { count: 6 })).toBe('6 channels');
+    expect(t('hu', 'meta.channel.other', { count: 6 })).toBe('6 csatorna');
+  });
+
   it('interpolates named string parameters', () => {
     expect(t('en', 'header.currentFile', { name: 'Song.wav' })).toBe('Current file: Song.wav');
     expect(t('hu', 'header.currentFile', { name: 'Song.wav' })).toBe('Aktuális fájl: Song.wav');

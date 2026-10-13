@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { PeakData } from '@shared/types';
+import { useT } from './LocaleContext';
+import { channelLabel } from './labels';
 
 function drawPeaks(
   ctx: CanvasRenderingContext2D,
@@ -34,6 +36,7 @@ function drawPeaks(
 }
 
 export function Waveform({ peaks }: { peaks: PeakData }) {
+  const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -73,7 +76,7 @@ export function Waveform({ peaks }: { peaks: PeakData }) {
     <canvas
       ref={canvasRef}
       role="img"
-      aria-label={`Waveform (${peaks.channels} channel${peaks.channels === 1 ? '' : 's'})`}
+      aria-label={t('waveform.label', { channels: channelLabel(peaks.channels, t) })}
       style={{ width: '100%', height: '100%', display: 'block' }}
     />
   );

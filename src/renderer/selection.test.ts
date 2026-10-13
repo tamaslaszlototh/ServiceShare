@@ -8,8 +8,10 @@ import {
   selectionLength,
   moveSelection,
   extendSelection,
+  formatTime,
   formatTimecode,
   formatSelectionRange,
+  formatFadeSeconds,
   timeToFraction,
   xToFraction,
   fractionToTime,
@@ -81,17 +83,46 @@ describe('Keyboard nudges', () => {
   });
 });
 
+describe('formatTime', () => {
+  it('formats m:ss.mmm with a locale decimal separator', () => {
+    expect(formatTime(0, 'en')).toBe('0:00.000');
+    expect(formatTime(48.3, 'en')).toBe('0:48.300');
+    expect(formatTime(62.5, 'hu')).toBe('1:02,500');
+  });
+
+  it('clamps invalid values', () => {
+    expect(formatTime(-1, 'en')).toBe('0:00.000');
+    expect(formatTime(Number.NaN, 'hu')).toBe('0:00,000');
+  });
+});
+
 describe('formatTimecode', () => {
-  it('formats HH:MM:SS.mmm', () => {
-    expect(formatTimecode(0)).toBe('00:00:00.000');
-    expect(formatTimecode(48.3)).toBe('00:00:48.300');
-    expect(formatTimecode(3723.456)).toBe('01:02:03.456');
+  it('formats HH:MM:SS.mmm with a locale decimal separator', () => {
+    expect(formatTimecode(0, 'en')).toBe('00:00:00.000');
+    expect(formatTimecode(48.3, 'en')).toBe('00:00:48.300');
+    expect(formatTimecode(3723.456, 'hu')).toBe('01:02:03,456');
+  });
+
+  it('clamps invalid values', () => {
+    expect(formatTimecode(Number.NaN, 'en')).toBe('00:00:00.000');
+    expect(formatTimecode(-5, 'en')).toBe('00:00:00.000');
   });
 });
 
 describe('formatSelectionRange', () => {
-  it('renders start → end', () => {
-    expect(formatSelectionRange({ start: 12, end: 48.3 })).toBe('00:00:12.000 → 00:00:48.300');
+  it('renders start → end in the locale', () => {
+    expect(formatSelectionRange({ start: 12, end: 48.3 }, 'en')).toBe('00:00:12.000 → 00:00:48.300');
+    expect(formatSelectionRange({ start: 12, end: 48.3 }, 'hu')).toBe('00:00:12,000 → 00:00:48,300');
+  });
+});
+
+describe('formatFadeSeconds', () => {
+  it('trims trailing zeros and localizes the separator', () => {
+    expect(formatFadeSeconds(0.5, 'en')).toBe('0.5s');
+    expect(formatFadeSeconds(0.5, 'hu')).toBe('0,5s');
+    expect(formatFadeSeconds(1, 'en')).toBe('1s');
+    expect(formatFadeSeconds(0.25, 'hu')).toBe('0,25s');
+    expect(formatFadeSeconds(null, 'en')).toBe('0s');
   });
 });
 

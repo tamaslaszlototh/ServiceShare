@@ -1,4 +1,6 @@
 import { Selection } from '@shared/types';
+import { Locale } from '@shared/i18n';
+import { decimalSeparator } from '@shared/format';
 
 export const EDGE_HIT_PX = 6;
 export const KEYBOARD_STEP_SECONDS = 0.1;
@@ -72,17 +74,35 @@ function pad(value: number, width: number): string {
   return String(value).padStart(width, '0');
 }
 
-export function formatTimecode(seconds: number): string {
-  const totalMs = Math.max(0, Math.round(seconds * 1000));
+function totalMilliseconds(seconds: number): number {
+  return Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds * 1000) : 0;
+}
+
+export function formatTime(seconds: number, locale: Locale): string {
+  const totalMs = totalMilliseconds(seconds);
+  const minutes = Math.floor(totalMs / 60_000);
+  const secs = Math.floor((totalMs % 60_000) / 1000);
+  const millis = totalMs % 1000;
+  return `${minutes}:${pad(secs, 2)}${decimalSeparator(locale)}${pad(millis, 3)}`;
+}
+
+export function formatTimecode(seconds: number, locale: Locale): string {
+  const totalMs = totalMilliseconds(seconds);
   const hours = Math.floor(totalMs / 3_600_000);
   const minutes = Math.floor((totalMs % 3_600_000) / 60_000);
   const secs = Math.floor((totalMs % 60_000) / 1000);
   const millis = totalMs % 1000;
-  return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(secs, 2)}.${pad(millis, 3)}`;
+  return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(secs, 2)}${decimalSeparator(locale)}${pad(millis, 3)}`;
 }
 
-export function formatSelectionRange(selection: Selection): string {
-  return `${formatTimecode(selection.start)} → ${formatTimecode(selection.end)}`;
+export function formatSelectionRange(selection: Selection, locale: Locale): string {
+  return `${formatTimecode(selection.start, locale)} → ${formatTimecode(selection.end, locale)}`;
+}
+
+export function formatFadeSeconds(seconds: number | null, locale: Locale): string {
+  const trimmed = (seconds ?? 0).toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  const [whole, fraction] = trimmed.split('.');
+  return fraction ? `${whole}${decimalSeparator(locale)}${fraction}s` : `${whole}s`;
 }
 
 export function xToFraction(x: number, width: number): number {

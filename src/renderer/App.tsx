@@ -6,9 +6,11 @@ import { PublishDialog } from './PublishDialog';
 import { ErrorBanner } from './ErrorBanner';
 import { normalizeError } from '@shared/apperror';
 import { resolveLocale } from '@shared/i18n';
+import { formatDecimal } from '@shared/format';
 import { useLocale } from './LocaleContext';
 import { editedDuration, removedSourceRanges } from './timelineRanges';
-import { formatSelectionRange, selectionLength } from './selection';
+import { formatSelectionRange, formatTime, selectionLength } from './selection';
+import { channelLabel } from './labels';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
 import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
 import {
@@ -45,7 +47,7 @@ export function App() {
   const [gainDb, setGainDb] = useState(0);
   const [exportOpen, setExportOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [exportedPath, setExportedPath] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const playStartRef = useRef(0);
 
@@ -172,7 +174,11 @@ export function App() {
     applyEditResult(await window.api.concatenate(), true);
   };
 
-  const statusLabel = rendering ? 'RENDERING' : playing ? 'PLAYING' : 'READY';
+  const statusLabel = rendering
+    ? t('status.rendering')
+    : playing
+      ? t('status.playing')
+      : t('status.ready');
   const fadeInSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeIn');
   const fadeOutSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeOut');
   const normalizeActive = activeNormalize(document.editList, document.historyIndex);
@@ -223,8 +229,7 @@ export function App() {
   };
 
   const confirmReplace = () =>
-    document.editList.length === 0 ||
-    window.confirm('Opening a new file discards your edits. Continue?');
+    document.editList.length === 0 || window.confirm(t('dialog.discardEdits'));
 
   const handleOpen = async () => {
     if (confirmReplace()) {
@@ -265,7 +270,7 @@ export function App() {
           className="btn ghost"
           disabled={!clip}
           onClick={() => {
-            setNotice(null);
+            setExportedPath(null);
             setExportOpen(true);
           }}
         >
@@ -281,7 +286,7 @@ export function App() {
           onClose={() => setExportOpen(false)}
           onExported={(outputPath) => {
             setExportOpen(false);
-            setNotice(`Exported to ${outputPath}`);
+            setExportedPath(outputPath);
           }}
         />
       )}
@@ -300,8 +305,8 @@ export function App() {
       <div className="toolbar">
         <button
           className="btn ghost icon"
-          aria-label="Undo"
-          title="Undo"
+          aria-label={t('toolbar.undo')}
+          title={t('toolbar.undo')}
           onClick={() => applyHistory('undo')}
           disabled={!canUndo(document)}
         >
@@ -309,8 +314,8 @@ export function App() {
         </button>
         <button
           className="btn ghost icon"
-          aria-label="Redo"
-          title="Redo"
+          aria-label={t('toolbar.redo')}
+          title={t('toolbar.redo')}
           onClick={() => applyHistory('redo')}
           disabled={!canRedo(document)}
         >
@@ -320,33 +325,33 @@ export function App() {
         <div className="group">
           <button
             className="btn chip"
-            aria-label="Trim to selection"
+            aria-label={t('toolbar.trimAria')}
             disabled={!clip || !hasSelection(selection)}
             onClick={() => {
               const op = trimOp(selection);
               if (op) void applyEdit(op);
             }}
           >
-            Trim
+            {t('toolbar.trim')}
           </button>
           <button
             className="btn chip"
-            aria-label="Cut region"
+            aria-label={t('toolbar.cutRegion')}
             disabled={!clip || !hasSelection(selection)}
             onClick={() => {
               const op = cutOp(selection);
               if (op) void applyEdit(op);
             }}
           >
-            Cut region
+            {t('toolbar.cutRegion')}
           </button>
         </div>
         <span className="divider" />
         <div className="group">
           <label className="field">
-            Fade
+            {t('toolbar.fade')}
             <input
-              aria-label="Fade duration in seconds"
+              aria-label={t('toolbar.fadeDuration')}
               type="number"
               min={FADE_MIN_SECONDS}
               max={FADE_MAX_SECONDS}
@@ -359,31 +364,31 @@ export function App() {
           </label>
           <button
             className={`btn chip${fadeInSeconds !== null ? ' active' : ''}`}
-            aria-label="Fade in"
+            aria-label={t('toolbar.fadeIn')}
             aria-pressed={fadeInSeconds !== null}
-            title={fadeInSeconds !== null ? 'Turn fade in off' : 'Turn fade in on'}
+            title={fadeInSeconds !== null ? t('toolbar.fadeInOff') : t('toolbar.fadeInOn')}
             disabled={!clip}
             onClick={() => void applyFade('fadeIn')}
           >
-            In
+            {t('toolbar.fadeInShort')}
           </button>
           <button
             className={`btn chip${fadeOutSeconds !== null ? ' active' : ''}`}
-            aria-label="Fade out"
+            aria-label={t('toolbar.fadeOut')}
             aria-pressed={fadeOutSeconds !== null}
-            title={fadeOutSeconds !== null ? 'Turn fade out off' : 'Turn fade out on'}
+            title={fadeOutSeconds !== null ? t('toolbar.fadeOutOff') : t('toolbar.fadeOutOn')}
             disabled={!clip}
             onClick={() => void applyFade('fadeOut')}
           >
-            Out
+            {t('toolbar.fadeOutShort')}
           </button>
         </div>
         <span className="divider" />
         <div className="group">
           <label className="field">
-            Gain
+            {t('toolbar.gain')}
             <input
-              aria-label="Gain in decibels"
+              aria-label={t('toolbar.gainDb')}
               type="number"
               min={GAIN_MIN_DB}
               max={GAIN_MAX_DB}
@@ -394,56 +399,73 @@ export function App() {
             />
             dB
           </label>
-          <button className="btn chip" aria-label="Apply gain" disabled={!clip} onClick={() => void applyEdit(gainOp(gainDb))}>
-            Apply
+          <button
+            className="btn chip"
+            aria-label={t('toolbar.applyGainAria')}
+            disabled={!clip}
+            onClick={() => void applyEdit(gainOp(gainDb))}
+          >
+            {t('toolbar.apply')}
           </button>
           <button
             className={`btn chip${normalizeActive ? ' active' : ''}`}
-            aria-label="Normalize loudness"
+            aria-label={t('toolbar.normalizeAria')}
             aria-pressed={normalizeActive}
-            title={normalizeActive ? 'Turn loudness normalization off' : 'Normalize loudness to −16 LUFS'}
+            title={normalizeActive ? t('toolbar.normalizeOff') : t('toolbar.normalizeOn')}
             disabled={!clip}
             onClick={() => void applyNormalize()}
           >
-            Normalize
+            {t('toolbar.normalize')}
           </button>
         </div>
         <button
           className="btn chip"
-          aria-label="Concatenate a second WAV"
+          aria-label={t('toolbar.concatenateAria')}
           disabled={!clip}
           onClick={() => void handleConcatenate()}
         >
-          Concatenate…
+          {t('toolbar.concatenate')}
         </button>
         <span className="divider" />
         <div className="group">
           <button
             className="btn ghost icon"
-            aria-label="Play"
-            title="Play"
+            aria-label={t('toolbar.play')}
+            title={t('toolbar.play')}
             onClick={handlePlay}
             disabled={!clip || rendering || playing}
           >
             ▶
           </button>
-          <button className="btn ghost icon" aria-label="Pause" title="Pause" onClick={handlePause} disabled={!playing}>
+          <button
+            className="btn ghost icon"
+            aria-label={t('toolbar.pause')}
+            title={t('toolbar.pause')}
+            onClick={handlePause}
+            disabled={!playing}
+          >
             ⏸
           </button>
-          <button className="btn ghost icon" aria-label="Stop" title="Stop" onClick={handleStop} disabled={!clip}>
+          <button
+            className="btn ghost icon"
+            aria-label={t('toolbar.stop')}
+            title={t('toolbar.stop')}
+            onClick={handleStop}
+            disabled={!clip}
+          >
             ⏹
           </button>
           <span className="timecode">
-            {formatTime(position)} / {formatTime(duration)}
+            {formatTime(position, locale)} / {formatTime(duration, locale)}
           </span>
-          {rendering && <span className="muted">Rendering…</span>}
+          {rendering && <span className="muted">{t('toolbar.rendering')}</span>}
         </div>
         <span className="spacer" />
         <div className="group">
-          <button className="btn ghost icon" aria-label="Zoom out" disabled>
+          <button className="btn ghost icon" aria-label={t('toolbar.zoomOut')} disabled>
             −
           </button>
-          <button className="btn ghost icon" aria-label="Zoom in" disabled>
+          <button className="btn ghost icon" aria-label={t('toolbar.zoomIn')} disabled>
             +
           </button>
         </div>
@@ -471,16 +493,21 @@ export function App() {
               onSeek={handleSeek}
             />
             <div className="meta">
-              <span>
-                {clip.sampleRate} Hz / {clip.bitDepth}-bit
-              </span>
-              <span>{channelLabel(clip.channels)}</span>
-              <span>{formatTime(timelineDuration)}</span>
-              {removedSeconds > 0 && <span className="muted">removed {formatTime(removedSeconds)}</span>}
+              <span>{t('meta.format', { rate: clip.sampleRate, bits: clip.bitDepth })}</span>
+              <span>{channelLabel(clip.channels, t)}</span>
+              <span>{formatTime(timelineDuration, locale)}</span>
+              {removedSeconds > 0 && (
+                <span className="muted">
+                  {t('meta.removed', { time: formatTime(removedSeconds, locale) })}
+                </span>
+              )}
               <span className="spacer" />
               {selection && (
                 <span aria-live="polite">
-                  selection: {formatSelectionRange(selection)} ({selectionLength(selection).toFixed(3)}s)
+                  {t('meta.selection', {
+                    range: formatSelectionRange(selection, locale),
+                    length: formatDecimal(selectionLength(selection), locale, 3),
+                  })}
                 </span>
               )}
             </div>
@@ -489,10 +516,10 @@ export function App() {
           <div className="empty">
             <div className="empty-card">
               <div className="big">♪</div>
-              <h3>No file opened</h3>
-              <p className="muted">Open a WAV file to start editing.</p>
+              <h3>{t('empty.noFile')}</h3>
+              <p className="muted">{t('empty.hint')}</p>
               <button className="btn primary" onClick={handleOpen}>
-                Open WAV…
+                {t('empty.open')}
               </button>
             </div>
           </div>
@@ -502,18 +529,18 @@ export function App() {
       <footer className="status">
         {clip ? (
           <>
-            <span>
-              undo: {undoCount(document)} · redo: {redoCount(document)}
-            </span>
-            {notice && <span className="notice">{notice}</span>}
+            <span>{t('status.undoRedo', { undo: undoCount(document), redo: redoCount(document) })}</span>
+            {exportedPath && (
+              <span className="notice">{t('notice.exported', { path: exportedPath })}</span>
+            )}
             <span className="spacer" />
             <span>{statusLabel}</span>
           </>
         ) : (
           <>
-            <span>No clip loaded</span>
+            <span>{t('status.noClip')}</span>
             <span className="spacer" />
-            <span>READY</span>
+            <span>{t('status.ready')}</span>
           </>
         )}
       </footer>
@@ -524,17 +551,4 @@ export function App() {
 function baseName(filePath: string): string {
   const parts = filePath.split(/[\\/]/);
   return parts[parts.length - 1] || filePath;
-}
-
-function channelLabel(channels: number): string {
-  if (channels === 1) return 'mono';
-  if (channels === 2) return 'stereo';
-  return `${channels} channels`;
-}
-
-function formatTime(s: number): string {
-  if (isNaN(s) || s < 0) return '0:00.000';
-  const m = Math.floor(s / 60);
-  const sec = s - m * 60;
-  return `${m}:${sec.toFixed(3).padStart(6, '0')}`;
 }
