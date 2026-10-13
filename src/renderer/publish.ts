@@ -1,11 +1,12 @@
-import { AccountInfo, EditOperation, ErrorCode, PrivacyStatus, PublishEvent, PublishRequest } from '@shared/types';
+import { AccountInfo, AppError, EditOperation, ErrorCode, PrivacyStatus, PublishEvent, PublishRequest } from '@shared/types';
+import { LONG_VIDEO_SECONDS, TOO_LONG_MESSAGE } from '@shared/limits';
+import { ErrorAction, errorAction } from './errors';
 
-export const LONG_VIDEO_SECONDS = 15 * 60;
+export { LONG_VIDEO_SECONDS };
+
 export const PUBLISH_TITLE_MAX = 100;
 export const PUBLISH_DESCRIPTION_MAX = 5000;
 export const PUBLISH_TAGS_MAX_CHARS = 500;
-export const QUOTA_DOCS_URL = 'https://support.google.com/youtube/answer/6301186';
-export const VERIFY_ACCOUNT_URL = 'https://support.google.com/youtube/answer/71673';
 
 export const PRIVACY_OPTIONS: { value: PrivacyStatus; label: string }[] = [
   { value: 'unlisted', label: 'Unlisted' },
@@ -76,9 +77,9 @@ export function editedDuration(sourceDuration: number, editList: EditOperation[]
   return duration;
 }
 
-export function durationWarning(durationSeconds: number): string | null {
+export function durationWarning(durationSeconds: number): AppError | null {
   if (durationSeconds > LONG_VIDEO_SECONDS) {
-    return 'Videos over 15 minutes require a verified account on YouTube.';
+    return { code: 'TooLong', message: TOO_LONG_MESSAGE };
   }
   return null;
 }
@@ -105,24 +106,8 @@ export function uploadPercent(event: PublishEvent): number | null {
   return 'stage' in event && event.stage === 'upload' ? event.percent : null;
 }
 
-export interface PublishErrorAction {
-  kind: 'retry' | 'signin' | 'link';
-  label: string;
-  href?: string;
-}
-
-export function publishErrorAction(code: ErrorCode): PublishErrorAction {
-  switch (code) {
-    case 'QuotaExceeded':
-      return { kind: 'link', label: 'About quotas', href: QUOTA_DOCS_URL };
-    case 'UnverifiedProject':
-      return { kind: 'link', label: 'Verify your account', href: VERIFY_ACCOUNT_URL };
-    case 'AuthRevoked':
-    case 'TokenStorageError':
-      return { kind: 'signin', label: 'Sign in again' };
-    default:
-      return { kind: 'retry', label: 'Retry' };
-  }
+export function publishErrorAction(code: ErrorCode): ErrorAction {
+  return errorAction(code) ?? { kind: 'retry', label: 'Retry' };
 }
 
 export function toPublishRequest(form: PublishForm): PublishRequest {

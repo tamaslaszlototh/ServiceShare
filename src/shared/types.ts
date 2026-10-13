@@ -131,6 +131,8 @@ export type EditResult =
   | { status: 'cancelled' }
   | { status: 'error'; error: AppError };
 
+export type VoidResult = { status: 'ok' } | { status: 'error'; error: AppError };
+
 export interface AccountInfo {
   channelId?: string;
   channelTitle?: string;
@@ -165,7 +167,7 @@ export type IpcApi = {
   concatenate: () => Promise<EditResult>;
   undo: () => Promise<Document>;
   redo: () => Promise<Document>;
-  checkEngine: () => Promise<void>;
+  checkEngine: () => Promise<VoidResult>;
   exportAudio: (format: ExportFormat) => Promise<ExportResult>;
   onExportProgress: (cb: (e: ExportProgress) => void) => () => void;
   publish: (req: PublishRequest) => Promise<PublishResult>;
@@ -174,8 +176,8 @@ export type IpcApi = {
   composeCoverPreview: (req: CoverPreviewRequest) => Promise<CoverPreviewResult>;
   getAccount: () => Promise<AccountState>;
   signIn: () => Promise<AuthResult>;
-  signOut: () => Promise<void>;
-  copyText: (text: string) => Promise<void>;
+  signOut: () => Promise<VoidResult>;
+  copyText: (text: string) => Promise<VoidResult>;
   checkForUpdates: () => Promise<void>;
   onProgress: (cb: (e: ProgressEvent) => void) => () => void;
 };

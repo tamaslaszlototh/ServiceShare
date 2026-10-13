@@ -219,6 +219,18 @@ a:focus-visible {
   line-height: 1;
 }
 
+.global-error {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.app-fallback {
+  padding: 24px;
+}
+
 /* ---------- work area ---------- */
 
 .workarea {

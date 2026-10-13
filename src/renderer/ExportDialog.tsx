@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppError, ExportFormat } from '@shared/types';
-import { errorLabel } from './errors';
+import { ErrorBanner } from './ErrorBanner';
+import { normalizeError } from '@shared/apperror';
 
 const FORMATS: { value: ExportFormat; label: string; hint: string }[] = [
   { value: 'wav', label: 'WAV', hint: 'Preserves source sample rate, bit depth and channels' },
@@ -37,7 +38,7 @@ export function ExportDialog({ onClose, onExported }: ExportDialogProps) {
         onExported(result.outputPath);
       }
     } catch (e) {
-      setError({ code: 'RenderError', message: e instanceof Error ? e.message : String(e) });
+      setError(normalizeError(e, 'RenderError'));
     } finally {
       setExporting(false);
     }
@@ -69,12 +70,12 @@ export function ExportDialog({ onClose, onExported }: ExportDialogProps) {
         </div>
 
         {error && (
-          <div role="alert" className="banner modal-error">
-            <span className="message">
-              {errorLabel(error)}
-              {error.details ? `\n${error.details}` : ''}
-            </span>
-          </div>
+          <ErrorBanner
+            className="modal-error"
+            error={error}
+            onDismiss={() => setError(null)}
+            onRetry={() => void run()}
+          />
         )}
 
         {exporting && (

@@ -1,6 +1,8 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { AccountInfo, AppError, EditOperation, PublishEvent, PublishResult } from '@shared/types';
 import { errorLabel } from './errors';
+import { normalizeError } from '@shared/apperror';
+import { ErrorBanner } from './ErrorBanner';
 import {
   PRIVACY_OPTIONS,
   PUBLISH_DESCRIPTION_MAX,
@@ -204,7 +206,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
       setSignedIn(true);
       setAccount(auth.account);
     } catch (e) {
-      setError({ code: 'AuthRevoked', message: e instanceof Error ? e.message : String(e) });
+      setError(normalizeError(e, 'AuthRevoked'));
     } finally {
       setSigningIn(false);
     }
@@ -212,11 +214,15 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
 
   const signOut = async () => {
     try {
-      await window.api.signOut();
+      const result = await window.api.signOut();
+      if (result.status === 'error') {
+        setError(result.error);
+        return;
+      }
       setSignedIn(false);
       setAccount(null);
     } catch (e) {
-      setError({ code: 'AuthRevoked', message: e instanceof Error ? e.message : String(e) });
+      setError(normalizeError(e, 'AuthRevoked'));
     }
   };
 
@@ -254,18 +260,22 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         setAccount(null);
       }
     } catch (e) {
-      setError({ code: 'EngineError', message: e instanceof Error ? e.message : String(e) });
+      setError(normalizeError(e, 'EngineError'));
       setPhase('failed');
     }
   };
 
   const copyLink = async (url: string) => {
     try {
-      await window.api.copyText(url);
+      const result = await window.api.copyText(url);
+      if (result.status === 'error') {
+        setError(result.error);
+        return;
+      }
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
+    } catch (e) {
+      setError(normalizeError(e, 'EngineError'));
     }
   };
 
@@ -281,17 +291,6 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!publishing) void run();
-  };
-
-  const onErrorAction = () => {
-    if (!action || !error) return;
-    if (action.kind === 'retry') {
-      void run();
-      return;
-    }
-    setPhase('edit');
-    setError(null);
-    void signIn();
   };
 
   return (
@@ -450,7 +449,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
               </div>
             </div>
 
-            {warning && <div className="warning">{warning}</div>}
+            {warning && <div className="warning">{warning.message}</div>}
             {showUnverified && (
               <div className="warning">
                 <span>{UNVERIFIED_NOTE}</span>
@@ -478,22 +477,17 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
             )}
 
             {error && (
-              <div role="alert" className="banner modal-error">
-                <span className="message">
-                  {errorLabel(error)}
-                  {error.details ? `\n${error.details}` : ''}
-                </span>
-                {action?.kind === 'link' && action.href && (
-                  <a className="btn ghost" href={action.href} target="_blank" rel="noreferrer">
-                    {action.label}
-                  </a>
-                )}
-                {action && action.kind !== 'link' && (
-                  <button className="btn ghost" type="button" onClick={onErrorAction}>
-                    {action.label}
-                  </button>
-                )}
-              </div>
+              <ErrorBanner
+                className="modal-error"
+                error={error}
+                action={action}
+                onRetry={() => void run()}
+                onSignIn={() => void signIn()}
+                onDismiss={() => {
+                  setError(null);
+                  setPhase('edit');
+                }}
+              />
             )}
 
             <div className="modal-actions">

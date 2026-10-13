@@ -16,6 +16,7 @@ import { YouTubeService } from './youtube';
 import { assetResolver } from './assets';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
+import { logError, logInfo } from './log';
 import {
   AccountState,
   AppError,
@@ -25,6 +26,7 @@ import {
   CoverPreviewResult,
   EditOperation,
   EditResult,
+  ErrorCode,
   ExportFormat,
   ExportResult,
   OpenResult,
@@ -33,6 +35,7 @@ import {
   ProgressEvent,
   PublishRequest,
   PublishResult,
+  VoidResult,
 } from '@shared/types';
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -73,11 +76,8 @@ function engineErrorEvent(error: unknown): ProgressEvent {
   return { kind: 'error', error: toAppError(error, 'EngineError') };
 }
 
-function errorResult(error: unknown): { status: 'error'; error: AppError } {
-  if (error instanceof IpcError) {
-    return { status: 'error', error: error.toAppError() };
-  }
-  throw error;
+function errorResult(error: unknown, fallbackCode: ErrorCode = 'EngineError'): { status: 'error'; error: AppError } {
+  return { status: 'error', error: toAppError(error, fallbackCode) };
 }
 
 const docManager = new DocumentManager();
@@ -194,7 +194,7 @@ app.whenReady().then(async () => {
       removeDir: (dir) => rm(dir, { recursive: true, force: true }),
     }),
   );
-  await youtubeService.initialize().catch((e) => console.error('Failed to initialize YouTube service', e));
+  await youtubeService.initialize().catch((e) => logError('youtube', 'INIT', e));
   const win = createWindow();
 
   win.webContents.once('did-finish-load', () => {
@@ -215,7 +215,7 @@ app.whenReady().then(async () => {
       currentClip = clip;
       return { status: 'ok', clip };
     } catch (e) {
-      return errorResult(e);
+      return errorResult(e, 'CorruptFile');
     }
   });
 
@@ -227,7 +227,7 @@ app.whenReady().then(async () => {
       const peaks = await generatePeaks(currentClip, defaultPeakDeps);
       return { status: 'ok', peaks };
     } catch (e) {
-      return errorResult(e);
+      return errorResult(e, 'RenderError');
     }
   });
 
@@ -242,7 +242,7 @@ app.whenReady().then(async () => {
       const result = await previewService.ensure(currentClip, docManager.getEffectiveEditList());
       return { status: 'ok', url: result.url };
     } catch (e) {
-      return errorResult(e);
+      return errorResult(e, 'RenderError');
     }
   });
 
@@ -255,7 +255,7 @@ app.whenReady().then(async () => {
       docManager.appendEdit(op);
       return { status: 'ok', document: docManager.getDocument() };
     } catch (e) {
-      return errorResult(e);
+      return errorResult(e, 'EngineError');
     }
   });
 
@@ -269,7 +269,7 @@ app.whenReady().then(async () => {
         }
         return { status: 'ok', document: docManager.getDocument() };
       } catch (e) {
-        return errorResult(e);
+        return errorResult(e, 'EngineError');
       }
     },
   );
@@ -284,7 +284,7 @@ app.whenReady().then(async () => {
       docManager.appendEdit({ kind: 'concatenate', file: target, duration: second.duration });
       return { status: 'ok', document: docManager.getDocument() };
     } catch (e) {
-      return errorResult(e);
+      return errorResult(e, 'CorruptFile');
     }
   });
 
@@ -298,8 +298,13 @@ app.whenReady().then(async () => {
     return docManager.getDocument();
   });
 
-  ipcMain.handle('checkEngine', async () => {
-    await ffmpegResolver.recheck();
+  ipcMain.handle('checkEngine', async (): Promise<VoidResult> => {
+    try {
+      await ffmpegResolver.recheck();
+      return { status: 'ok' };
+    } catch (e) {
+      return errorResult(e, 'EngineError');
+    }
   });
 
   ipcMain.handle('exportAudio', async (event, format: ExportFormat): Promise<ExportResult> => {
@@ -319,7 +324,7 @@ app.whenReady().then(async () => {
       );
       return { status: 'ok', outputPath };
     } catch (e) {
-      return errorResult(e);
+      return errorResult(e, 'RenderError');
     }
   });
 
@@ -366,7 +371,7 @@ app.whenReady().then(async () => {
         const preview = await coverPreviewService.ensure(req.title, req.coverImagePath);
         return { status: 'ok', url: preview.url };
       } catch (e) {
-        return errorResult(e);
+        return errorResult(e, 'RenderError');
       }
     },
   );
@@ -380,27 +385,29 @@ app.whenReady().then(async () => {
       const account = await youtubeService.signIn();
       return { status: 'ok', account };
     } catch (e) {
-      return errorResult(e);
+      return errorResult(e, 'AuthRevoked');
     }
   });
 
-  ipcMain.handle('signOut', async () => {
+  ipcMain.handle('signOut', async (): Promise<VoidResult> => {
     try {
       await youtubeService.signOut();
+      return { status: 'ok' };
     } catch (e) {
-      return errorResult(e);
+      return errorResult(e, 'AuthRevoked');
     }
   });
 
-  ipcMain.handle('copyText', async (_e, text: unknown) => {
+  ipcMain.handle('copyText', async (_e, text: unknown): Promise<VoidResult> => {
     if (typeof text !== 'string') {
-      throw new IpcError('EngineError', 'copyText expects a string');
+      return { status: 'error', error: new IpcError('EngineError', 'copyText expects a string').toAppError() };
     }
     clipboard.writeText(text);
+    return { status: 'ok' };
   });
 
   ipcMain.handle('checkForUpdates', async () => {
-    console.log('Check for updates requested');
+    logInfo('updater', 'CHECK');
   });
 });
 

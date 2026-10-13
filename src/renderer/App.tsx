@@ -3,7 +3,8 @@ import { AppError, ClipInfo, Document, EditOperation, EditResult, PeakData, Sele
 import { Timeline } from './Timeline';
 import { ExportDialog } from './ExportDialog';
 import { PublishDialog } from './PublishDialog';
-import { errorLabel } from './errors';
+import { ErrorBanner } from './ErrorBanner';
+import { normalizeError } from '@shared/apperror';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
 import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
@@ -92,7 +93,7 @@ export function App() {
       await audio.play();
       setPlaying(true);
     } catch (e) {
-      setError({ code: 'RenderError', message: e instanceof Error ? e.message : String(e) });
+      setError(normalizeError(e, 'RenderError'));
     } finally {
       setRendering(false);
     }
@@ -198,7 +199,7 @@ export function App() {
         setError(peaksResult.error);
       }
     } catch (e) {
-      setError({ code: 'CorruptFile', message: e instanceof Error ? e.message : String(e) });
+      setError(normalizeError(e, 'CorruptFile'));
     }
   };
 
@@ -264,17 +265,7 @@ export function App() {
         />
       )}
 
-      {error && (
-        <div role="alert" className="banner">
-          <span className="message">
-            {errorLabel(error)}
-            {error.details ? `\n${error.details}` : ''}
-          </span>
-          <button className="dismiss" aria-label="Dismiss error" onClick={() => setError(null)}>
-            ×
-          </button>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} onDismiss={() => setError(null)} />}
 
       <div className="toolbar">
         <button

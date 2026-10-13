@@ -205,6 +205,21 @@ describe('resumableUpload', () => {
     expect(deps.sleep).not.toHaveBeenCalled();
   });
 
+  it('maps an unverified-project 403 to UnverifiedProject', async () => {
+    const body = JSON.stringify({
+      error: { code: 403, errors: [{ reason: 'forbidden' }], message: 'The project is not verified' },
+    });
+    const deps = makeDeps({
+      http: vi
+        .fn()
+        .mockResolvedValueOnce({ status: 200, headers: { location: 'https://up/1' }, text: '' })
+        .mockResolvedValueOnce({ status: 403, headers: {}, text: body }),
+    });
+
+    await expect(resumableUpload(options(), deps)).rejects.toMatchObject({ code: 'UnverifiedProject' });
+    expect(deps.sleep).not.toHaveBeenCalled();
+  });
+
   it('maps a 401 to AuthRevoked', async () => {
     const deps = makeDeps({
       http: vi

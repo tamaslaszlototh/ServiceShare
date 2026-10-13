@@ -189,6 +189,7 @@ export class PublishService {
     }
 
     let dir: string | null = null;
+    let warning: AppError | undefined;
     try {
       const accessToken = await this.deps.getAccessToken();
       dir = await this.deps.makeTempDir();
@@ -218,7 +219,6 @@ export class PublishService {
         onProgress: (percent) => emit({ stage: 'upload', percent }),
       });
 
-      let warning: AppError | undefined;
       if (request.thumbnailPath) {
         try {
           const thumbnailSize = await this.deps.statSize(request.thumbnailPath);

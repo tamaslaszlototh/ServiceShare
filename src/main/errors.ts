@@ -1,4 +1,7 @@
 import { AppError, ErrorCode } from '@shared/types';
+import { normalizeError } from '@shared/apperror';
+import { redactAppError } from '@shared/redact';
+import { TOO_LONG_MESSAGE } from '@shared/limits';
 
 export class IpcError extends Error implements AppError {
   readonly code: ErrorCode;
@@ -30,7 +33,7 @@ export class RenderError extends IpcError {
 
 export class DiskFullError extends IpcError {
   constructor(details?: string) {
-    super('DiskFull', 'Not enough disk space to write the export', details);
+    super('DiskFull', 'Not enough disk space to write the file; free up space and try again', details);
   }
 }
 
@@ -84,12 +87,25 @@ export class UploadExpiredError extends IpcError {
   }
 }
 
-export function toAppError(error: unknown, fallbackCode: ErrorCode = 'CorruptFile'): AppError {
-  if (error instanceof IpcError) {
-    return error.toAppError();
+export class TooLongError extends IpcError {
+  constructor(details?: string) {
+    super('TooLong', TOO_LONG_MESSAGE, details);
   }
-  return {
-    code: fallbackCode,
-    message: error instanceof Error ? error.message : String(error),
-  };
+}
+
+export class UnverifiedProjectError extends IpcError {
+  constructor(details?: string) {
+    super(
+      'UnverifiedProject',
+      'YouTube restricted this upload because the Google project is not verified',
+      details,
+    );
+  }
+}
+
+export function toAppError(error: unknown, fallbackCode: ErrorCode = 'EngineError'): AppError {
+  if (error instanceof IpcError) {
+    return redactAppError(error.toAppError());
+  }
+  return normalizeError(error, fallbackCode);
 }

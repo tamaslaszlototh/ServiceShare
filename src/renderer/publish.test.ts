@@ -67,16 +67,17 @@ describe('durationWarning', () => {
   it('warns only above the 15-minute threshold', () => {
     expect(LONG_VIDEO_SECONDS).toBe(900);
     expect(durationWarning(900)).toBeNull();
-    expect(durationWarning(901)).toMatch(/verified account/);
+    expect(durationWarning(901)).toMatchObject({ code: 'TooLong' });
+    expect(durationWarning(901)?.message).toMatch(/verified account/);
   });
 
   it('uses the edited duration, not the source length', () => {
     expect(editedDuration(1000, [{ kind: 'trim', start: 0, end: 30 }])).toBe(30);
     expect(editedDuration(100, [{ kind: 'cutRegion', start: 10, end: 40 }])).toBe(70);
     expect(editedDuration(800, [{ kind: 'concatenate', file: '/b.wav', duration: 200 }])).toBe(1000);
-    expect(durationWarning(editedDuration(800, [{ kind: 'concatenate', file: '/b.wav', duration: 200 }]))).toMatch(
-      /verified account/,
-    );
+    expect(
+      durationWarning(editedDuration(800, [{ kind: 'concatenate', file: '/b.wav', duration: 200 }])),
+    ).toMatchObject({ code: 'TooLong' });
   });
 });
 

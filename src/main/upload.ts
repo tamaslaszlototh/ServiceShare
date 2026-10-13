@@ -7,6 +7,7 @@ import {
   IpcError,
   NetworkError,
   QuotaExceededError,
+  UnverifiedProjectError,
   UploadExpiredError,
 } from './errors';
 
@@ -111,6 +112,9 @@ export function classifyUploadStatus(status: number, body: string): IpcError {
   }
   if (status === 403) {
     const reason = apiErrorReason(body) ?? '';
+    if (/unverified|not verified|audit/i.test(`${reason} ${body}`)) {
+      return new UnverifiedProjectError(body);
+    }
     if (/quota|limit|rate/i.test(`${reason} ${body}`)) {
       return new QuotaExceededError(body);
     }
