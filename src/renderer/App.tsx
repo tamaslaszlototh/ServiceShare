@@ -5,6 +5,7 @@ import { ExportDialog } from './ExportDialog';
 import { PublishDialog } from './PublishDialog';
 import { ErrorBanner } from './ErrorBanner';
 import { normalizeError } from '@shared/apperror';
+import { keptSourceRanges, removedSourceRanges } from './timelineRanges';
 import { formatSelectionRange, selectionLength } from './selection';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
 import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
@@ -157,9 +158,12 @@ export function App() {
   };
 
   const statusLabel = rendering ? 'RENDERING' : playing ? 'PLAYING' : 'READY';
+  const effectiveEditList = document.editList.slice(0, document.historyIndex);
   const fadeInSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeIn');
   const fadeOutSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeOut');
   const normalizeActive = activeNormalize(document.editList, document.historyIndex);
+  const keptRanges = clip ? keptSourceRanges(clip.duration, effectiveEditList) : [];
+  const removedRanges = clip ? removedSourceRanges(clip.duration, effectiveEditList) : [];
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -265,7 +269,7 @@ export function App() {
         <PublishDialog
           sourceFile={clip.filePath}
           sourceDuration={clip.duration}
-          editList={document.editList.slice(0, document.historyIndex)}
+          editList={effectiveEditList}
           onClose={() => setPublishOpen(false)}
         />
       )}
@@ -442,6 +446,8 @@ export function App() {
               position={position}
               fadeIn={fadeInSeconds}
               fadeOut={fadeOutSeconds}
+              keptRanges={keptRanges}
+              removedRanges={removedRanges}
               onSelectionChange={setSelection}
               onSeek={handleSeek}
             />
