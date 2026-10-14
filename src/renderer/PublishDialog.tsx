@@ -1,17 +1,15 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { AccountInfo, AppError, EditOperation, PublishEvent, PublishResult } from '@shared/types';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { EditOperation } from '@shared/types';
+import { parseRecipients } from '@shared/recipients';
 import { errorLabel, errorMessage } from './errors';
-import { normalizeError } from '@shared/apperror';
 import { ErrorBanner } from './ErrorBanner';
 import { useT } from './LocaleContext';
 import {
   PUBLISH_DESCRIPTION_MAX,
   PUBLISH_TAGS_MAX_CHARS,
   PUBLISH_TITLE_MAX,
-  PublishForm,
   accountLabel,
   canPublish,
-  defaultTitle,
   durationWarning,
   editedDuration,
   parseTags,
@@ -20,20 +18,12 @@ import {
   stageLabel,
   tagsCharCount,
   titleMissing,
-  toPublishRequest,
   uploadPercent,
 } from './publish';
-import { normalizeRecipients, parseRecipients } from '@shared/recipients';
-import {
-  canSendEmail,
-  defaultEmailBody,
-  defaultEmailSubject,
-  emailErrorAction,
-  recipientValidationError,
-} from './email';
+import { canSendEmail, emailErrorAction } from './email';
+import { PublishFlow, createPublishFlow } from './publishFlow';
 
 const UNVERIFIED_NOTE_KEY = 'serviceshare.unverifiedNoteDismissed';
-const COVER_DEBOUNCE_MS = 200;
 const IMAGE_ACCEPT = 'image/png,image/jpeg,.png,.jpg,.jpeg';
 
 interface PublishDialogProps {
@@ -63,48 +53,36 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
   const thumbInputRef = useRef<HTMLInputElement>(null);
   const onCloseRef = useRef(onClose);
   const publishingRef = useRef(false);
-
-  const [signedIn, setSignedIn] = useState(false);
-  const [account, setAccount] = useState<AccountInfo | null>(null);
-  const [accountReady, setAccountReady] = useState(false);
-  const [signingIn, setSigningIn] = useState(false);
-  const [hasEmailScope, setHasEmailScope] = useState(false);
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
-  const [emailTo, setEmailTo] = useState('');
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailError, setEmailError] = useState<AppError | null>(null);
-  const [title, setTitle] = useState(() => defaultTitle(sourceFile));
-  const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
-  const [privacyStatus, setPrivacyStatus] = useState<PublishForm['privacyStatus']>('unlisted');
-  const [coverImagePath, setCoverImagePath] = useState<string | null>(null);
-  const [thumbnailPath, setThumbnailPath] = useState<string | null>(null);
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [coverError, setCoverError] = useState<AppError | null>(null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [logoCustom, setLogoCustom] = useState(false);
-  const [logoVersion, setLogoVersion] = useState(0);
-  const [phase, setPhase] = useState<'edit' | 'publishing' | 'done' | 'failed'>('edit');
-  const [stage, setStage] = useState<PublishEvent | null>(null);
-  const [result, setResult] = useState<Extract<PublishResult, { status: 'ok' }> | null>(null);
-  const [error, setError] = useState<AppError | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [showUnverified, setShowUnverified] = useState(() => !readDismissed());
-
-  const form: PublishForm = { title, description, tags, privacyStatus, coverImagePath, thumbnailPath };
-  const publishing = phase === 'publishing';
-  publishingRef.current = publishing;
+  const tRef = useRef(t);
+  tRef.current = t;
   onCloseRef.current = onClose;
 
+  const flowRef = useRef<PublishFlow | null>(null);
+  if (!flowRef.current) {
+    flowRef.current = createPublishFlow({
+      ipc: window.api,
+      translate: () => tRef.current,
+      sourceFile,
+    });
+  }
+  const flow = flowRef.current;
+
+  const state = useSyncExternalStore(flow.subscribe, flow.getState, flow.getState);
+  const form = state.form;
+  const publishing = state.phase === 'publishing';
+  publishingRef.current = publishing;
+
+  const [showUnverified, setShowUnverified] = useState(() => !readDismissed());
+
   const warning = durationWarning(editedDuration(sourceDuration, editList));
-  const tagsOverLimit = tagsCharCount(parseTags(tags)) > PUBLISH_TAGS_MAX_CHARS;
-  const percent = stage ? uploadPercent(stage) : null;
-  const action = phase === 'failed' && error ? publishErrorAction(error.code, t) : null;
+  const tagsOverLimit = tagsCharCount(parseTags(form.tags)) > PUBLISH_TAGS_MAX_CHARS;
+  const percent = state.stage ? uploadPercent(state.stage) : null;
+  const action = state.phase === 'failed' && state.error ? publishErrorAction(state.error.code, t) : null;
+
+  useEffect(() => {
+    flow.start();
+    return () => flow.dispose();
+  }, [flow]);
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -120,8 +98,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         event.preventDefault();
         event.stopPropagation();
         if (publishingRef.current) {
-          setCancelling(true);
-          window.api.cancelPublish();
+          flow.cancel();
         } else {
           onCloseRef.current();
         }
@@ -146,260 +123,13 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
       window.removeEventListener('keydown', onKey, true);
       opener?.focus();
     };
-  }, []);
+  }, [flow]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void window.api
-      .getAccount()
-      .then((state) => {
-        if (cancelled) return;
-        setSignedIn(state.signedIn);
-        setAccount(state.account ?? null);
-        setHasEmailScope(state.canSendEmail);
-      })
-      .catch(() => {
-        if (!cancelled) setSignedIn(false);
-      })
-      .finally(() => {
-        if (!cancelled) setAccountReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    return window.api.onPublishProgress((event) => {
-      if ('kind' in event) return;
-      setStage(event);
-      if (event.stage === 'done') {
-        setResult({ status: 'ok', videoId: event.videoId, url: event.url, warning: event.warning });
-        setPhase('done');
-        setCancelling(false);
-      } else if (event.stage === 'cancelled') {
-        setNotice(t('publish.cancelled'));
-        setPhase('edit');
-        setCancelling(false);
-      }
-    });
-  }, [t]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void window.api
-      .getDefaultLogo()
-      .then((logo) => {
-        if (cancelled) return;
-        setLogoUrl(logo.url);
-        setLogoCustom(logo.custom);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      void window.api
-        .composeCoverPreview({
-          title: title.trim() || ' ',
-          coverImagePath: coverImagePath ?? undefined,
-        })
-        .then((preview) => {
-          if (cancelled) return;
-          if (preview.status === 'ok') {
-            setCoverUrl(preview.url);
-            setCoverError(null);
-          } else {
-            setCoverError(preview.error);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setCoverError({ code: 'RenderError', message: t('publish.coverError') });
-          }
-        });
-    }, COVER_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [title, coverImagePath, logoVersion]);
-
-  const signIn = async () => {
-    setSigningIn(true);
-    setError(null);
-    try {
-      const auth = await window.api.signIn();
-      if (auth.status === 'error') {
-        setError(auth.error);
-        setEmailError(auth.error);
-        return;
-      }
-      setSignedIn(true);
-      setAccount(auth.account);
-      const state = await window.api.getAccount().catch(() => null);
-      if (state) {
-        setHasEmailScope(state.canSendEmail);
-      }
-      setEmailError(null);
-    } catch (e) {
-      const failure = normalizeError(e, 'AuthRevoked');
-      setError(failure);
-      setEmailError(failure);
-    } finally {
-      setSigningIn(false);
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      const result = await window.api.signOut();
-      if (result.status === 'error') {
-        setError(result.error);
-        return;
-      }
-      setSignedIn(false);
-      setAccount(null);
-    } catch (e) {
-      setError(normalizeError(e, 'AuthRevoked'));
-    }
-  };
-
-  const pickFile = (event: ChangeEvent<HTMLInputElement>, setPath: (path: string) => void) => {
+  const pickFile = (event: ChangeEvent<HTMLInputElement>, set: (file: File) => void) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    setPath(window.api.getPathForFile(file));
-  };
-
-  const chooseLogo = async () => {
-    setError(null);
-    try {
-      const result = await window.api.chooseDefaultLogo();
-      if (result.status === 'cancelled') return;
-      if (result.status === 'error') {
-        setError(result.error);
-        return;
-      }
-      setLogoUrl(result.url);
-      setLogoCustom(true);
-      setLogoVersion((version) => version + 1);
-    } catch (e) {
-      setError(normalizeError(e, 'RenderError'));
-    }
-  };
-
-  const clearLogo = async () => {
-    setError(null);
-    try {
-      const result = await window.api.clearDefaultLogo();
-      if (result.status === 'error') {
-        setError(result.error);
-        return;
-      }
-      const logo = await window.api.getDefaultLogo();
-      setLogoUrl(logo.url);
-      setLogoCustom(logo.custom);
-      setLogoVersion((version) => version + 1);
-    } catch (e) {
-      setError(normalizeError(e, 'RenderError'));
-    }
-  };
-
-  const run = async () => {
-    if (!canPublish(title, signedIn)) return;
-    setPhase('publishing');
-    setError(null);
-    setNotice(null);
-    setStage(null);
-    setCancelling(false);
-    try {
-      const published = await window.api.publish(toPublishRequest(form));
-      if (published.status === 'ok') {
-        setResult(published);
-        setPhase('done');
-        return;
-      }
-      if (published.status === 'cancelled') {
-        setNotice(t('publish.cancelled'));
-        setPhase('edit');
-        setCancelling(false);
-        return;
-      }
-      setError(published.error);
-      setPhase('failed');
-      if (published.error.code === 'AuthRevoked' || published.error.code === 'TokenStorageError') {
-        setSignedIn(false);
-        setAccount(null);
-      }
-    } catch (e) {
-      setError(normalizeError(e, 'EngineError'));
-      setPhase('failed');
-    }
-  };
-
-  const copyLink = async (url: string) => {
-    try {
-      const result = await window.api.copyText(url);
-      if (result.status === 'error') {
-        setError(result.error);
-        return;
-      }
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch (e) {
-      setError(normalizeError(e, 'EngineError'));
-    }
-  };
-
-  const toggleEmailPanel = () => {
-    if (emailOpen) {
-      setEmailOpen(false);
-      return;
-    }
-    if (!result) return;
-    setEmailSubject(defaultEmailSubject(title));
-    setEmailBody(defaultEmailBody(result.url, t));
-    setEmailTo('');
-    setEmailSent(false);
-    setEmailError(null);
-    setEmailOpen(true);
-  };
-
-  const sendEmailMessage = async () => {
-    if (!result) return;
-    const recipients = normalizeRecipients(parseRecipients(emailTo));
-    const validationError = recipientValidationError(recipients);
-    if (validationError) {
-      setEmailSent(false);
-      setEmailError(validationError);
-      return;
-    }
-    if (!canSendEmail(emailSubject, emailBody, recipients)) return;
-    setEmailSending(true);
-    setEmailError(null);
-    setEmailSent(false);
-    try {
-      const outcome = await window.api.sendEmail({ to: recipients, subject: emailSubject, body: emailBody });
-      if (outcome.status === 'error') {
-        setEmailError(outcome.error);
-        if (outcome.error.code === 'AuthRevoked' || outcome.error.code === 'TokenStorageError') {
-          setSignedIn(false);
-          setAccount(null);
-          setHasEmailScope(false);
-        }
-        return;
-      }
-      setEmailSent(true);
-    } catch (e) {
-      setEmailError(normalizeError(e, 'EmailSendError'));
-    } finally {
-      setEmailSending(false);
-    }
+    set(file);
   };
 
   const dismissUnverified = () => {
@@ -413,7 +143,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!publishing) void run();
+    if (!publishing) void flow.publish();
   };
 
   return (
@@ -429,10 +159,10 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
       >
         <h3 className="modal-title">{t('publish.title')}</h3>
 
-        {phase === 'done' && result ? (
+        {state.phase === 'done' && state.result ? (
           <div className="publish-done">
             <p>{t('publish.doneHeading')}</p>
-            <a className="done-link" href={result.url} target="_blank" rel="noreferrer">
+            <a className="done-link" href={state.result.url} target="_blank" rel="noreferrer">
               {t('publish.openVideo')}
             </a>
             <div className="done-link-row">
@@ -440,100 +170,100 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 className="done-url"
                 aria-label={t('publish.videoUrl')}
                 readOnly
-                value={result.url}
+                value={state.result.url}
                 onFocus={(event) => event.currentTarget.select()}
               />
-              <button className="btn ghost" type="button" onClick={() => void copyLink(result.url)}>
-                {copied ? t('publish.copied') : t('publish.copyLink')}
+              <button className="btn ghost" type="button" onClick={() => void flow.copyLink(state.result!.url)}>
+                {state.copied ? t('publish.copied') : t('publish.copyLink')}
               </button>
             </div>
             <div className="done-email-row">
               <button
                 className="btn ghost"
                 type="button"
-                aria-expanded={emailOpen}
+                aria-expanded={state.emailOpen}
                 aria-controls="email-panel"
-                onClick={toggleEmailPanel}
+                onClick={flow.toggleEmail}
               >
                 {t('publish.sendEmail')}
               </button>
             </div>
-            {emailOpen && (
+            {state.emailOpen && (
               <div className="email-panel" id="email-panel" role="group" aria-label={t('publish.emailPanel')}>
-                {privacyStatus === 'private' && (
+                {form.privacyStatus === 'private' && (
                   <div className="warning">
                     <span>{t('publish.emailPrivateNote')}</span>
                   </div>
                 )}
                 <p className="email-from muted">
-                  {t('publish.emailFrom')}: {account?.email ?? accountLabel(account, t)}
+                  {t('publish.emailFrom')}: {state.account?.email ?? accountLabel(state.account, t)}
                 </p>
                 <label>
                   {t('publish.emailSubject')}
                   <input
                     aria-label={t('publish.emailSubject')}
-                    value={emailSubject}
-                    onChange={(event) => setEmailSubject(event.target.value)}
+                    value={state.emailSubject}
+                    onChange={(event) => flow.setEmailSubject(event.target.value)}
                   />
                 </label>
                 <label>
                   {t('publish.emailTo')}
                   <input
                     aria-label={t('publish.emailTo')}
-                    value={emailTo}
+                    value={state.emailTo}
                     placeholder={t('publish.emailToHint')}
-                    onChange={(event) => setEmailTo(event.target.value)}
+                    onChange={(event) => flow.setEmailTo(event.target.value)}
                   />
                 </label>
                 <label>
                   {t('publish.emailMessage')}
                   <textarea
                     aria-label={t('publish.emailMessage')}
-                    value={emailBody}
-                    onChange={(event) => setEmailBody(event.target.value)}
+                    value={state.emailBody}
+                    onChange={(event) => flow.setEmailBody(event.target.value)}
                   />
                 </label>
-                {signedIn && !hasEmailScope && <p className="muted">{t('publish.emailScopeNote')}</p>}
-                {emailError && (
+                {state.signedIn && !state.hasEmailScope && <p className="muted">{t('publish.emailScopeNote')}</p>}
+                {state.emailError && (
                   <ErrorBanner
                     className="modal-error"
-                    error={emailError}
-                    action={emailErrorAction(emailError.code, t)}
-                    onRetry={() => void sendEmailMessage()}
-                    onSignIn={() => void signIn()}
-                    onDismiss={() => setEmailError(null)}
+                    error={state.emailError}
+                    action={emailErrorAction(state.emailError.code, t)}
+                    onRetry={() => void flow.sendEmail()}
+                    onSignIn={() => void flow.signIn()}
+                    onDismiss={flow.dismissEmailError}
                   />
                 )}
-                {emailSent && (
+                {state.emailSent && (
                   <p className="notice" role="status">
                     {t('publish.emailSent')}
                   </p>
                 )}
                 <div className="email-actions">
                   <span className="spacer" />
-                  {signedIn && hasEmailScope ? (
+                  {state.signedIn && state.hasEmailScope ? (
                     <button
                       className="btn primary"
                       type="button"
-                      disabled={!canSendEmail(emailSubject, emailBody, parseRecipients(emailTo)) || emailSending}
-                      onClick={() => void sendEmailMessage()}
+                      disabled={!canSendEmail(state.emailSubject, state.emailBody, parseRecipients(state.emailTo)) || state.emailSending}
+                      onClick={() => void flow.sendEmail()}
                     >
-                      {emailSending ? t('publish.emailSending') : t('publish.emailSend')}
+                      {state.emailSending ? t('publish.emailSending') : t('publish.emailSend')}
                     </button>
                   ) : (
                     <button
                       className="btn primary"
                       type="button"
-                      disabled={signingIn}
-                      onClick={() => void signIn()}
+                      disabled={state.signingIn}
+                      onClick={() => void flow.signIn()}
                     >
-                      {signingIn ? t('publish.waitingGoogle') : t('publish.signIn')}
+                      {state.signingIn ? t('publish.waitingGoogle') : t('publish.signIn')}
                     </button>
                   )}
                 </div>
               </div>
             )}
-            {result.warning && (
+            {state.result.warning && (
               <div className="warning">
                 <span>{t('publish.doneSub')}</span>
               </div>
@@ -548,18 +278,18 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         ) : (
           <form onSubmit={onSubmit}>
             <div className="publish-account">
-              {!accountReady ? (
+              {!state.accountReady ? (
                 <span className="muted">{t('publish.checkingAccount')}</span>
-              ) : signedIn ? (
+              ) : state.signedIn ? (
                 <>
-                  <span className="account-chip">{accountLabel(account, t)}</span>
-                  <button className="btn ghost" type="button" onClick={() => void signOut()} disabled={publishing}>
+                  <span className="account-chip">{accountLabel(state.account, t)}</span>
+                  <button className="btn ghost" type="button" onClick={() => void flow.signOut()} disabled={publishing}>
                     {t('publish.signOut')}
                   </button>
                 </>
               ) : (
-                <button className="btn primary" type="button" onClick={() => void signIn()} disabled={signingIn || publishing}>
-                  {signingIn ? t('publish.waitingGoogle') : t('publish.signIn')}
+                <button className="btn primary" type="button" onClick={() => void flow.signIn()} disabled={state.signingIn || publishing}>
+                  {state.signingIn ? t('publish.waitingGoogle') : t('publish.signIn')}
                 </button>
               )}
             </div>
@@ -567,33 +297,38 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
             <div className="publish-grid">
               <div className="publish-col">
                 <div className="cover-preview">
-                  {coverUrl ? <img src={coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">{t('publish.updatingPreview')}</span>}
+                  {state.coverUrl ? <img src={state.coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">{t('publish.updatingPreview')}</span>}
                 </div>
                 <div className="cover-actions">
                   <button className="btn ghost" type="button" disabled={publishing} onClick={() => coverInputRef.current?.click()}>
                     {t('publish.coverChoose')}
                   </button>
-                  <button className="btn ghost" type="button" disabled={publishing || !coverImagePath} onClick={() => setCoverImagePath(null)}>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    disabled={publishing || !form.coverImagePath}
+                    onClick={() => flow.setForm({ coverImagePath: null })}
+                  >
                     {t('publish.coverClear')}
                   </button>
-                  <span className="muted">{coverImagePath ? fileName(coverImagePath) : t('publish.cover')}</span>
+                  <span className="muted">{form.coverImagePath ? fileName(form.coverImagePath) : t('publish.cover')}</span>
                   <input
                     ref={coverInputRef}
                     type="file"
                     accept={IMAGE_ACCEPT}
                     hidden
-                    onChange={(event) => pickFile(event, setCoverImagePath)}
+                    onChange={(event) => pickFile(event, flow.setCoverFile)}
                   />
                 </div>
-                {coverError && <p className="muted">{errorLabel(coverError)}</p>}
+                {state.coverError && <p className="muted">{errorLabel(state.coverError)}</p>}
                 <div className="logo-row">
                   <span className="logo-label">{t('publish.defaultLogo')}</span>
-                  {logoUrl && <img className="logo-thumb" src={logoUrl} alt="" />}
-                  <button className="btn ghost" type="button" disabled={publishing} onClick={() => void chooseLogo()}>
+                  {state.logoUrl && <img className="logo-thumb" src={state.logoUrl} alt="" />}
+                  <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.chooseLogo()}>
                     {t('publish.defaultLogoChoose')}
                   </button>
-                  {logoCustom && (
-                    <button className="btn ghost" type="button" disabled={publishing} onClick={() => void clearLogo()}>
+                  {state.logoCustom && (
+                    <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.clearLogo()}>
                       {t('publish.defaultLogoClear')}
                     </button>
                   )}
@@ -606,32 +341,32 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 {t('publish.titleLabel')}
                 <input
                   aria-label={t('publish.titleLabel')}
-                  value={title}
+                  value={form.title}
                   maxLength={PUBLISH_TITLE_MAX}
                   required
                   disabled={publishing}
-                  onChange={(event) => setTitle(event.target.value)}
+                  onChange={(event) => flow.setForm({ title: event.target.value })}
                 />
               </label>
-              {titleMissing(title) && <span className="muted">{t('publish.titleRequired')}</span>}
+              {titleMissing(form.title) && <span className="muted">{t('publish.titleRequired')}</span>}
               <label>
                 {t('publish.description')}
                 <textarea
                   aria-label={t('publish.description')}
-                  value={description}
+                  value={form.description}
                   maxLength={PUBLISH_DESCRIPTION_MAX}
                   disabled={publishing}
-                  onChange={(event) => setDescription(event.target.value)}
+                  onChange={(event) => flow.setForm({ description: event.target.value })}
                 />
               </label>
               <label>
                 {t('publish.tags')}
                 <input
                   aria-label={t('publish.tagsHint')}
-                  value={tags}
+                  value={form.tags}
                   placeholder={t('publish.tagsHint')}
                   disabled={publishing}
-                  onChange={(event) => setTags(event.target.value)}
+                  onChange={(event) => flow.setForm({ tags: event.target.value })}
                 />
               </label>
               {tagsOverLimit && <span className="muted">{t('publish.tagsOverLimit')}</span>}
@@ -639,9 +374,9 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 {t('publish.privacy')}
                 <select
                   aria-label={t('publish.privacy')}
-                  value={privacyStatus}
+                  value={form.privacyStatus}
                   disabled={publishing}
-                  onChange={(event) => setPrivacyStatus(event.target.value as PublishForm['privacyStatus'])}
+                  onChange={(event) => flow.setForm({ privacyStatus: event.target.value as typeof form.privacyStatus })}
                 >
                   {privacyOptions(t).map((option) => (
                     <option key={option.value} value={option.value}>
@@ -658,18 +393,18 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 <button
                   className="btn ghost"
                   type="button"
-                  disabled={publishing || !thumbnailPath}
-                  onClick={() => setThumbnailPath(null)}
+                  disabled={publishing || !form.thumbnailPath}
+                  onClick={() => flow.setForm({ thumbnailPath: null })}
                 >
                   {t('publish.thumbnailClear')}
                 </button>
-                <span className="muted">{thumbnailPath ? fileName(thumbnailPath) : t('publish.usesCover')}</span>
+                <span className="muted">{form.thumbnailPath ? fileName(form.thumbnailPath) : t('publish.usesCover')}</span>
                 <input
                   ref={thumbInputRef}
                   type="file"
                   accept={IMAGE_ACCEPT}
                   hidden
-                  onChange={(event) => pickFile(event, setThumbnailPath)}
+                  onChange={(event) => pickFile(event, flow.setThumbnailFile)}
                 />
               </div>
               </div>
@@ -684,7 +419,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 </button>
               </div>
             )}
-            {notice && <p className="notice">{notice}</p>}
+            {state.notice && <p className="notice">{state.notice}</p>}
 
             {publishing && (
               <>
@@ -694,27 +429,24 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={percent ?? 0}
-                  aria-label={stage ? stageLabel(stage, t) : t('publish.startingPublish')}
+                  aria-label={state.stage ? stageLabel(state.stage, t) : t('publish.startingPublish')}
                 >
                   <div className="progress-fill" style={{ width: `${percent ?? 8}%` }} />
                 </div>
                 <p className="muted">
-                  {cancelling ? t('publish.cancelling') : stage ? stageLabel(stage, t) : t('publish.starting')}
+                  {state.cancelling ? t('publish.cancelling') : state.stage ? stageLabel(state.stage, t) : t('publish.starting')}
                 </p>
               </>
             )}
 
-            {error && (
+            {state.error && (
               <ErrorBanner
                 className="modal-error"
-                error={error}
+                error={state.error}
                 action={action}
-                onRetry={() => void run()}
-                onSignIn={() => void signIn()}
-                onDismiss={() => {
-                  setError(null);
-                  setPhase('edit');
-                }}
+                onRetry={() => void flow.publish()}
+                onSignIn={() => void flow.signIn()}
+                onDismiss={flow.dismissError}
               />
             )}
 
@@ -724,20 +456,17 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 <button
                   className="btn ghost"
                   type="button"
-                  disabled={cancelling}
-                  onClick={() => {
-                    setCancelling(true);
-                    window.api.cancelPublish();
-                  }}
+                  disabled={state.cancelling}
+                  onClick={flow.cancel}
                 >
-                  {cancelling ? t('publish.cancelling') : t('dialog.cancel')}
+                  {state.cancelling ? t('publish.cancelling') : t('dialog.cancel')}
                 </button>
               ) : (
                 <button className="btn ghost" type="button" onClick={onClose}>
                   {t('publish.close')}
                 </button>
               )}
-              <button className="btn primary" type="submit" disabled={!canPublish(title, signedIn) || publishing || signingIn}>
+              <button className="btn primary" type="submit" disabled={!canPublish(form.title, state.signedIn) || publishing || state.signingIn}>
                 {t('publish.publish')}
               </button>
             </div>
