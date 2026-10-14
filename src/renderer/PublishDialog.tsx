@@ -20,7 +20,14 @@ import {
   uploadPercent,
 } from './publish';
 import { canSendEmail, emailErrorAction } from './email';
-import { PublishFlow, createPublishFlow, emailRecipients, isRecipientChecked } from './publishFlow';
+import {
+  PublishFlow,
+  PublishedVideo,
+  createPublishFlow,
+  emailRecipients,
+  isRecipientChecked,
+  wasSentTo,
+} from './publishFlow';
 
 const UNVERIFIED_NOTE_KEY = 'serviceshare.unverifiedNoteDismissed';
 const IMAGE_ACCEPT = 'image/png,image/jpeg,.png,.jpg,.jpeg';
@@ -29,6 +36,9 @@ interface PublishDialogProps {
   sourceFile: string;
   sourceDuration: number;
   editList: readonly EditOperation[];
+  /** Reopens this earlier publish on its done screen instead of starting a new one. */
+  publishedVideo?: PublishedVideo | null;
+  onPublishedVideo: (video: PublishedVideo) => void;
   onClose: () => void;
 }
 
@@ -45,7 +55,14 @@ function readDismissed(): boolean {
   }
 }
 
-export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }: PublishDialogProps) {
+export function PublishDialog({
+  sourceFile,
+  sourceDuration,
+  editList,
+  publishedVideo,
+  onPublishedVideo,
+  onClose,
+}: PublishDialogProps) {
   const t = useT();
   const cardRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +72,8 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
   const tRef = useRef(t);
   tRef.current = t;
   onCloseRef.current = onClose;
+  const onPublishedVideoRef = useRef(onPublishedVideo);
+  onPublishedVideoRef.current = onPublishedVideo;
 
   const flowRef = useRef<PublishFlow | null>(null);
   if (!flowRef.current) {
@@ -62,6 +81,8 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
       ipc: window.api,
       translate: () => tRef.current,
       sourceFile,
+      publishedVideo,
+      onPublishedVideo: (video) => onPublishedVideoRef.current(video),
     });
   }
   const flow = flowRef.current;
@@ -161,6 +182,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         {state.phase === 'done' && state.result ? (
           <div className="publish-done">
             <p>{t('publish.doneHeading')}</p>
+            <p className="done-title">{form.title}</p>
             <a className="done-link" href={state.result.url} target="_blank" rel="noreferrer">
               {t('publish.openVideo')}
             </a>
@@ -189,6 +211,11 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
             </div>
             {state.emailOpen && (
               <div className="email-panel" id="email-panel" role="group" aria-label={t('publish.emailPanel')}>
+                {state.sentTo.length > 0 && (
+                  <p className="email-sent-to muted">
+                    {t('publish.emailSentTo', { addresses: state.sentTo.join(', ') })}
+                  </p>
+                )}
                 {form.privacyStatus === 'private' && (
                   <div className="warning">
                     <span>{t('publish.emailPrivateNote')}</span>
@@ -218,6 +245,9 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                           />
                           <span>{address}</span>
                         </label>
+                        {wasSentTo(state, address) && (
+                          <span className="email-sent-tag muted">{t('publish.emailAlreadySent')}</span>
+                        )}
                         <button
                           className="btn ghost email-forget"
                           type="button"
@@ -306,7 +336,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
             <div className="modal-actions">
               <span className="spacer" />
               <button className="btn primary" type="button" onClick={onClose}>
-                {t('publish.back')}
+                {t('publish.close')}
               </button>
             </div>
           </div>

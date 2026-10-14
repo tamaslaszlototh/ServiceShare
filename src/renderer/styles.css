@@ -625,6 +625,12 @@ a:focus-visible {
   gap: 12px;
 }
 
+.done-title {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 .done-link {
   color: var(--accent2);
 }
@@ -737,6 +743,17 @@ a:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.email-sent-tag {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.email-sent-to {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .email-to-row {

@@ -13,6 +13,7 @@ import {
   EmailSendRequest,
   EmailSendResult,
   LogoResult,
+  PrivacyStatus,
   PublishEvent,
   PublishRequest,
   PublishResult,
@@ -37,6 +38,21 @@ const COPY_RESET_MS = 1500;
 export type PublishPhase = 'edit' | 'publishing' | 'done' | 'failed';
 
 export type PublishSuccess = Extract<PublishResult, { status: 'ok' }>;
+
+/**
+ * What outlives the publish dialog: enough to reopen the done screen and email
+ * the link again, without re-sending to whoever already got it.
+ */
+export interface PublishedVideo {
+  videoId: string;
+  url: string;
+  title: string;
+  privacyStatus: PrivacyStatus;
+  /** The subject and message last emailed; null until the first send. */
+  emailSubject: string | null;
+  emailBody: string | null;
+  sentTo: string[];
+}
 
 export interface PublishFlowState {
   phase: PublishPhase;
@@ -64,6 +80,8 @@ export interface PublishFlowState {
   emailSending: boolean;
   emailSent: boolean;
   emailError: AppError | null;
+  /** Who already got this video's link, in the order they were sent to. */
+  sentTo: string[];
   form: PublishForm;
 }
 
@@ -118,10 +136,17 @@ export interface PublishFlowOptions {
   translate: () => Translator;
   sourceFile: string;
   coverDebounceMs?: number;
+  /** Reopens the done screen of an earlier publish with its email panel open. */
+  publishedVideo?: PublishedVideo | null;
+  onPublishedVideo?: (video: PublishedVideo) => void;
 }
 
 export function isRecipientChecked(state: PublishFlowState, address: string): boolean {
   return !state.uncheckedRecipients.includes(recipientKey(address));
+}
+
+export function wasSentTo(state: PublishFlowState, address: string): boolean {
+  return state.sentTo.some((sent) => recipientKey(sent) === recipientKey(address));
 }
 
 /**
@@ -138,11 +163,13 @@ export function createPublishFlow({
   translate,
   sourceFile,
   coverDebounceMs = COVER_DEBOUNCE_MS,
+  publishedVideo: reopened = null,
+  onPublishedVideo,
 }: PublishFlowOptions): PublishFlow {
   let state: PublishFlowState = {
-    phase: 'edit',
+    phase: reopened ? 'done' : 'edit',
     stage: null,
-    result: null,
+    result: reopened ? { status: 'ok', videoId: reopened.videoId, url: reopened.url } : null,
     error: null,
     notice: null,
     copied: false,
@@ -165,11 +192,12 @@ export function createPublishFlow({
     emailSending: false,
     emailSent: false,
     emailError: null,
+    sentTo: reopened?.sentTo ?? [],
     form: {
-      title: defaultTitle(sourceFile),
+      title: reopened?.title ?? defaultTitle(sourceFile),
       description: '',
       tags: '',
-      privacyStatus: 'unlisted',
+      privacyStatus: reopened?.privacyStatus ?? 'unlisted',
       coverImagePath: null,
       thumbnailPath: null,
     },
@@ -265,18 +293,52 @@ export function createPublishFlow({
     }, coverDebounceMs);
   }
 
+  let latestVideo: PublishedVideo | null = reopened;
+
+  function rememberPublishedVideo(video: PublishedVideo): void {
+    latestVideo = video;
+    onPublishedVideo?.(video);
+  }
+
+  function finishPublish(result: PublishSuccess): void {
+    update({ result, phase: 'done', cancelling: false });
+    // the done event and the resolved publish both report the same video
+    if (latestVideo?.videoId === result.videoId) return;
+    rememberPublishedVideo({
+      videoId: result.videoId,
+      url: result.url,
+      title: state.form.title.trim(),
+      privacyStatus: state.form.privacyStatus,
+      emailSubject: null,
+      emailBody: null,
+      sentTo: [],
+    });
+  }
+
   function onProgress(event: PublishEvent): void {
     if ('kind' in event) return;
     update({ stage: event });
     if (event.stage === 'done') {
-      update({
-        result: { status: 'ok', videoId: event.videoId, url: event.url, warning: event.warning },
-        phase: 'done',
-        cancelling: false,
-      });
+      finishPublish({ status: 'ok', videoId: event.videoId, url: event.url, warning: event.warning });
     } else if (event.stage === 'cancelled') {
       update({ notice: translate()('publish.cancelled'), phase: 'edit', cancelling: false });
     }
+  }
+
+  function openEmail(): void {
+    const { result, form } = state;
+    if (!result) return;
+    update({
+      emailSubject: latestVideo?.emailSubject ?? defaultEmailSubject(form.title),
+      emailBody: latestVideo?.emailBody ?? defaultEmailBody(result.url, translate()),
+      emailTo: '',
+      // whoever already got the link starts unchecked, so a resend reaches only the rest
+      uncheckedRecipients: state.sentTo.map(recipientKey),
+      emailSent: false,
+      emailError: null,
+      emailOpen: true,
+    });
+    void loadSavedRecipients();
   }
 
   function setForm(patch: Partial<PublishForm>): void {
@@ -293,6 +355,10 @@ export function createPublishFlow({
       started = true;
       unsubscribeProgress = ipc.onPublishProgress(onProgress);
       void refreshAccount();
+      if (reopened) {
+        openEmail();
+        return;
+      }
       void loadLogo();
       scheduleCoverPreview();
     },
@@ -448,7 +514,7 @@ export function createPublishFlow({
       try {
         const published = await ipc.publish(toPublishRequest(form));
         if (published.status === 'ok') {
-          update({ result: published, phase: 'done' });
+          finishPublish(published);
           return;
         }
         if (published.status === 'cancelled') {
@@ -494,18 +560,7 @@ export function createPublishFlow({
         update({ emailOpen: false });
         return;
       }
-      const { result, form } = state;
-      if (!result) return;
-      update({
-        emailSubject: defaultEmailSubject(form.title),
-        emailBody: defaultEmailBody(result.url, translate()),
-        emailTo: '',
-        uncheckedRecipients: [],
-        emailSent: false,
-        emailError: null,
-        emailOpen: true,
-      });
-      void loadSavedRecipients();
+      openEmail();
     },
 
     async sendEmail() {
@@ -531,7 +586,17 @@ export function createPublishFlow({
           update(patch);
           return;
         }
-        update({ emailSent: true });
+        const sentTo = normalizeRecipients([...state.sentTo, ...recipients]);
+        update({
+          emailSent: true,
+          emailTo: '',
+          sentTo,
+          // add to the unchecks rather than reset them: an address left out on purpose stays out
+          uncheckedRecipients: normalizeRecipients([...state.uncheckedRecipients, ...recipients.map(recipientKey)]),
+        });
+        if (latestVideo) {
+          rememberPublishedVideo({ ...latestVideo, emailSubject, emailBody, sentTo });
+        }
       } catch (e) {
         update({ emailError: normalizeError(e, 'EmailSendError') });
       } finally {

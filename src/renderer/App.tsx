@@ -3,6 +3,7 @@ import { AppError, ClipInfo, Document, EditOperation, EditResult, FadeKind, Peak
 import { Timeline } from './Timeline';
 import { ExportDialog } from './ExportDialog';
 import { PublishDialog } from './PublishDialog';
+import { PublishedVideo } from './publishFlow';
 import { ErrorBanner } from './ErrorBanner';
 import { normalizeError } from '@shared/apperror';
 import { resolveLocale } from '@shared/i18n';
@@ -51,7 +52,10 @@ export function App() {
   const [fadeSeconds, setFadeSeconds] = useState(FADE_DEFAULT_SECONDS);
   const [gainDb, setGainDb] = useState(0);
   const [exportOpen, setExportOpen] = useState(false);
-  const [publishOpen, setPublishOpen] = useState(false);
+  // 'publish' starts a new publish; 'email' reopens the last one to email its link
+  const [publishMode, setPublishMode] = useState<'publish' | 'email' | null>(null);
+  const publishOpen = publishMode !== null;
+  const [publishedVideo, setPublishedVideo] = useState<PublishedVideo | null>(null);
   const [exportedPath, setExportedPath] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const playStartRef = useRef(0);
@@ -223,6 +227,7 @@ export function App() {
         return;
       }
       setClip(result.clip);
+      setPublishedVideo(null);
       setPeaks(null);
       setSelection(null);
       resetPlayback(result.clip.duration);
@@ -299,7 +304,18 @@ export function App() {
         >
           {t('header.export')}
         </button>
-        <button className="btn primary" disabled={!clip} onClick={() => setPublishOpen(true)}>
+        <button
+          className="btn ghost"
+          disabled={!publishedVideo}
+          onClick={() => setPublishMode('email')}
+        >
+          {t('header.emailLink')}
+        </button>
+        <button
+          className="btn primary"
+          disabled={!clip}
+          onClick={() => setPublishMode('publish')}
+        >
           {t('header.publish')}
         </button>
       </header>
@@ -319,7 +335,9 @@ export function App() {
           sourceFile={clip.filePath}
           sourceDuration={clip.duration}
           editList={document.effectiveEditList}
-          onClose={() => setPublishOpen(false)}
+          publishedVideo={publishMode === 'email' ? publishedVideo : null}
+          onPublishedVideo={setPublishedVideo}
+          onClose={() => setPublishMode(null)}
         />
       )}
 

@@ -1,7 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Locale, TranslationKey, TranslationParams, t as translate } from '@shared/i18n';
 import { AppError, EmailRecipientsResult, PublishEvent, PublishRequest, PublishResult } from '@shared/types';
-import { PublishIpc, createPublishFlow, emailRecipients } from './publishFlow';
+import {
+  PublishFlowOptions,
+  PublishIpc,
+  PublishedVideo,
+  createPublishFlow,
+  emailRecipients,
+} from './publishFlow';
 
 const tFor = (locale: Locale) => (key: TranslationKey, params?: TranslationParams) =>
   translate(locale, key, params);
@@ -66,12 +72,17 @@ const signedInIpc = (overrides: Partial<PublishIpc> = {}) =>
     ...overrides,
   });
 
-function makeFlow(ipc: PublishIpc, sourceFile = '/audio/My Song.wav') {
+function makeFlow(
+  ipc: PublishIpc,
+  sourceFile = '/audio/My Song.wav',
+  options: Pick<PublishFlowOptions, 'publishedVideo' | 'onPublishedVideo'> = {},
+) {
   const flow = createPublishFlow({
     ipc,
     translate: () => tFor('en'),
     sourceFile,
     coverDebounceMs: 0,
+    ...options,
   });
   flow.start();
   return flow;
@@ -456,6 +467,142 @@ describe('saved recipients', () => {
 
     expect(flow.getState().savedRecipients).toEqual([]);
     expect(flow.getState().emailError).toBeNull();
+  });
+});
+
+describe('published video', () => {
+  async function publishedFlow(saved: string[] = []) {
+    const onPublishedVideo = vi.fn<(video: PublishedVideo) => void>();
+    const fake = signedInIpc({ getEmailRecipients: vi.fn(async () => recipientsOk([...saved])) });
+    const flow = makeFlow(fake.ipc, '/audio/My Song.wav', { onPublishedVideo });
+    await flush();
+    await flow.publish();
+    return { flow, onPublishedVideo, ...fake };
+  }
+
+  it('remembers the video once a publish succeeds', async () => {
+    const { onPublishedVideo } = await publishedFlow();
+
+    expect(onPublishedVideo).toHaveBeenCalledTimes(1);
+    expect(onPublishedVideo.mock.lastCall?.[0]).toEqual<PublishedVideo>({
+      videoId: 'vid-1',
+      url: 'https://youtu.be/vid-1',
+      title: 'My Song',
+      privacyStatus: 'unlisted',
+      emailSubject: null,
+      emailBody: null,
+      sentTo: [],
+    });
+  });
+
+  it('records who got the link and the message used, then unchecks them for the next send', async () => {
+    const { flow, onPublishedVideo } = await publishedFlow(['a@b.co', 'c@d.co']);
+    flow.toggleEmail();
+    await flush();
+
+    flow.toggleSavedRecipient('c@d.co');
+    flow.setEmailSubject('New mix');
+    flow.setEmailTo('x@y.co');
+    await flow.sendEmail();
+
+    expect(onPublishedVideo.mock.lastCall?.[0]).toMatchObject<Partial<PublishedVideo>>({
+      emailSubject: 'New mix',
+      emailBody: expect.stringContaining('https://youtu.be/vid-1'),
+      sentTo: ['a@b.co', 'x@y.co'],
+    });
+    const state = flow.getState();
+    expect(state.emailTo).toBe('');
+    // c@d.co was left out on purpose, so it stays unchecked too
+    expect(emailRecipients(state)).toEqual([]);
+  });
+
+  it('adds a later send to the earlier recipients', async () => {
+    const { flow, ipc, onPublishedVideo } = await publishedFlow(['a@b.co', 'c@d.co']);
+    flow.toggleEmail();
+    await flush();
+    flow.toggleSavedRecipient('c@d.co');
+    await flow.sendEmail();
+
+    flow.toggleSavedRecipient('c@d.co');
+    await flow.sendEmail();
+
+    expect(ipc.sendEmail).toHaveBeenLastCalledWith(expect.objectContaining({ to: ['c@d.co'] }));
+
+    expect(onPublishedVideo.mock.lastCall?.[0].sentTo).toEqual(['a@b.co', 'c@d.co']);
+  });
+
+  it('does not record recipients when the send fails', async () => {
+    const onPublishedVideo = vi.fn<(video: PublishedVideo) => void>();
+    const { ipc } = signedInIpc({
+      sendEmail: vi.fn(async () => ({
+        status: 'error' as const,
+        error: { code: 'EmailSendError' as const, message: 'nope' },
+      })),
+    });
+    const flow = makeFlow(ipc, '/audio/My Song.wav', { onPublishedVideo });
+    await flush();
+    await flow.publish();
+    flow.toggleEmail();
+    flow.setEmailTo('a@b.co');
+    await flow.sendEmail();
+
+    expect(onPublishedVideo).toHaveBeenCalledTimes(1);
+    expect(flow.getState().emailTo).toBe('a@b.co');
+  });
+
+  const earlierVideo: PublishedVideo = {
+    videoId: 'vid-0',
+    url: 'https://youtu.be/vid-0',
+    title: 'Sunday Service',
+    privacyStatus: 'private',
+    emailSubject: 'Listen',
+    emailBody: 'Here it is: https://youtu.be/vid-0',
+    sentTo: ['A@B.co', 'x@y.co'],
+  };
+
+  it('reopens an earlier video on the done screen with its email ready to send again', async () => {
+    const { ipc } = signedInIpc({ getEmailRecipients: vi.fn(async () => recipientsOk(['a@b.co', 'c@d.co'])) });
+    const flow = makeFlow(ipc, '/audio/Other.wav', { publishedVideo: earlierVideo });
+    await flush();
+
+    const state = flow.getState();
+    expect(state.phase).toBe('done');
+    expect(state.result).toMatchObject({ videoId: 'vid-0', url: 'https://youtu.be/vid-0' });
+    expect(state.form).toMatchObject({ title: 'Sunday Service', privacyStatus: 'private' });
+    expect(state.emailOpen).toBe(true);
+    expect(state.emailSubject).toBe('Listen');
+    expect(state.emailBody).toBe('Here it is: https://youtu.be/vid-0');
+    expect(state.emailTo).toBe('');
+    expect(state.sentTo).toEqual(['A@B.co', 'x@y.co']);
+    expect(emailRecipients(state)).toEqual(['c@d.co']);
+    expect(ipc.composeCoverPreview).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the default message for a video never emailed', async () => {
+    const { ipc } = signedInIpc();
+    const flow = makeFlow(ipc, '/audio/Other.wav', {
+      publishedVideo: { ...earlierVideo, emailSubject: null, emailBody: null, sentTo: [] },
+    });
+    await flush();
+
+    expect(flow.getState().emailSubject).toBe('Sunday Service');
+    expect(flow.getState().emailBody).toContain('https://youtu.be/vid-0');
+  });
+
+  it('keeps the earlier recipients when the reopened video is emailed again', async () => {
+    const onPublishedVideo = vi.fn<(video: PublishedVideo) => void>();
+    const { ipc } = signedInIpc();
+    const flow = makeFlow(ipc, '/audio/Other.wav', { publishedVideo: earlierVideo, onPublishedVideo });
+    await flush();
+
+    flow.setEmailTo('forgot@me.co');
+    await flow.sendEmail();
+
+    expect(ipc.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: ['forgot@me.co'] }));
+    expect(onPublishedVideo.mock.lastCall?.[0]).toEqual({
+      ...earlierVideo,
+      sentTo: ['A@B.co', 'x@y.co', 'forgot@me.co'],
+    });
   });
 });
 

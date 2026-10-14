@@ -33,3 +33,7 @@ _Avoid_: upload, share, export-to-YouTube
 **Cover Image**:
 The static image combined with the audio to form the video that gets published. Composed by scaling/cropping a chosen image (or a bundled default base) to 1280×720 and compositing the video title and the app logo onto it.
 _Avoid_: thumbnail, artwork
+
+**Published Video**:
+The YouTube video produced by the most recent successful publish, together with who its link has already been emailed to. Forgotten when the app quits, another clip is opened, or a new publish replaces it.
+_Avoid_: publication, upload, result
