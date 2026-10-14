@@ -48,6 +48,20 @@ jobs:
           fi
       - run: npm run test:audio
       - run: npm run build
+      # electron-builder uploads in parallel; with no release yet, each upload can
+      # create its own draft. Creating the draft first gives them one target.
+      - name: Create the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            flags=(--draft --verify-tag --title "${GITHUB_REF_NAME#v}" --notes "")
+            if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+              flags+=(--prerelease)
+            fi
+            gh release create "$GITHUB_REF_NAME" "${flags[@]}"
+          fi
       - name: Package and publish
         run: npx electron-builder --win --x64 --publish onTag
         env:

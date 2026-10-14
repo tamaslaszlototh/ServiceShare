@@ -40,8 +40,8 @@ need a valid signature there.
 ## 7.4 Auto-update (electron-updater + GitHub Releases)
 
 - `electron-updater` with the **GitHub** provider (repo is public → no end-user token).
-- Configure `publish` in electron-builder config; builder emits `latest.yml` (or `beta.yml` /
-  `alpha.yml` for pre-releases). **Set `owner` and `repo` explicitly** in the `publish` config to defend
+- Configure `publish` in electron-builder config; builder emits `latest.yml`; pre-release
+  versions are published as GitHub pre-releases. **Set `owner` and `repo` explicitly** in the `publish` config to defend
   against repo-rename squatters.
 - App: `autoUpdater.checkForUpdatesAndNotify()` on launch; download shows progress (see `05` §5.5);
   Windows installs on quit.
@@ -61,7 +61,8 @@ need a valid signature there.
     `electron-builder --win --x64 --publish onTag`.
   - Secrets: none beyond the built-in `GITHUB_TOKEN` (`contents: write`), passed as `GH_TOKEN`.
   - Flow: bump `package.json` `version` in a commit, tag it `v<version>`, push the tag. CI creates
-    a **draft** release with the installer and update metadata; the maintainer runs the smoke
+    a **draft** release (pre-release for `-alpha`/`-beta` versions), then electron-builder uploads
+    the installer and update metadata into it; the maintainer runs the smoke
     checklist (`docs/release.md`) and publishes it. Updaters only see published releases.
 - `publishConfig`: explicit `repository` + owner/repo (see above).
 

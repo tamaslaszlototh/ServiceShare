@@ -17,14 +17,15 @@ Installed apps check GitHub Releases on launch and install updates on quit.
 3. The `release` job in `.github/workflows/build.yml` runs on a Windows runner:
    - it checks that the tag matches `package.json`;
    - it runs the unit and audio tests;
+   - it creates a **draft** GitHub Release for the tag, marked as a pre-release when the version
+     has a `-beta.N` / `-alpha.N` suffix;
    - it builds and uploads `ServiceShare-Setup-<version>.exe`, its `.blockmap` and the update
-     metadata (`latest.yml`, or `beta.yml` / `alpha.yml` for pre-releases) to a **draft** GitHub
-     Release.
+     metadata (`latest.yml`) to that draft.
 
    No secrets are needed: the job uses the built-in `GITHUB_TOKEN`.
 4. Run the smoke checklist below against the installer attached to the draft.
-5. Publish the draft on GitHub. For a `-beta.N` / `-alpha.N` version, tick **Set as a
-   pre-release**. Installed apps only see published releases.
+5. Publish the draft on GitHub. Installed apps only see published releases. Apps running a
+   pre-release also pick up newer pre-releases; apps on a stable version only see stable ones.
 
 If the job fails, fix the problem and delete the tag (`git push --delete origin v0.2.0`, then
 `git tag -d v0.2.0`). Delete any draft it left behind and tag again.
