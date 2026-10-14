@@ -23,13 +23,12 @@ import {
   toPublishRequest,
   uploadPercent,
 } from './publish';
+import { normalizeRecipients, parseRecipients } from '@shared/recipients';
 import {
   canSendEmail,
   defaultEmailBody,
   defaultEmailSubject,
   emailErrorAction,
-  normalizeRecipients,
-  parseRecipients,
   recipientValidationError,
 } from './email';
 

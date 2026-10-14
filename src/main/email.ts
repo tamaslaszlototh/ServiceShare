@@ -9,6 +9,7 @@ import {
 } from './errors';
 import { MimeMessage, base64UrlEncode, buildMime } from './mime';
 import { UploadHttp, apiErrorReason, isRetriableStatus, nodeUploadHttp } from './upload';
+import { isRecipientValid, normalizeRecipients } from '../shared/recipients';
 
 export const GMAIL_SEND_URL = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send';
 
@@ -31,29 +32,6 @@ export interface EmailSendPayload {
 export type EmailParseResult =
   | { status: 'ok'; payload: EmailSendPayload }
   | { status: 'error'; error: IpcError };
-
-const EMAIL_PATTERN = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
-
-function isValidEmail(address: string): boolean {
-  return EMAIL_PATTERN.test(address);
-}
-
-export function normalizeRecipients(recipients: string[]): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const entry of recipients) {
-    const trimmed = entry.trim();
-    if (trimmed.length === 0) {
-      continue;
-    }
-    const key = trimmed.toLowerCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      result.push(trimmed);
-    }
-  }
-  return result;
-}
 
 function malformedRequest(): EmailParseResult {
   return {
@@ -80,7 +58,7 @@ export function parseEmailSendRequest(request: unknown): EmailParseResult {
   if (normalized.length === 0) {
     return { status: 'error', error: new NoRecipientsError() };
   }
-  const invalid = normalized.filter((address) => !isValidEmail(address));
+  const invalid = normalized.filter((address) => !isRecipientValid(address));
   if (invalid.length > 0) {
     return { status: 'error', error: new InvalidRecipientError(invalid.join(', ')) };
   }

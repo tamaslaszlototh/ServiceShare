@@ -6,12 +6,7 @@ import {
   defaultEmailBody,
   defaultEmailSubject,
   emailErrorAction,
-  isRecipientValid,
-  normalizeRecipient,
-  normalizeRecipients,
-  parseRecipients,
   recipientValidationError,
-  validateRecipients,
 } from './email';
 
 const tFor = (locale: Locale) => (key: TranslationKey, params?: TranslationParams) =>
@@ -27,26 +22,6 @@ describe('defaultEmailBody', () => {
   it('pre-fills a greeting plus the video URL', () => {
     expect(defaultEmailBody('https://youtu.be/abc', tFor('en'))).toBe('Hello!\n\nhttps://youtu.be/abc');
     expect(defaultEmailBody('https://youtu.be/abc', tFor('hu'))).toBe('Helló!\n\nhttps://youtu.be/abc');
-  });
-});
-
-describe('normalizeRecipient', () => {
-  it('trims surrounding whitespace from pasted addresses', () => {
-    expect(normalizeRecipient('  a@b.co ')).toBe('a@b.co');
-  });
-});
-
-describe('isRecipientValid', () => {
-  it('accepts plainly formatted addresses', () => {
-    expect(isRecipientValid('a@b.co')).toBe(true);
-    expect(isRecipientValid('first.last+tag@sub.example.co')).toBe(true);
-  });
-
-  it('rejects malformed or empty addresses', () => {
-    expect(isRecipientValid('')).toBe(false);
-    expect(isRecipientValid('nope')).toBe(false);
-    expect(isRecipientValid('a@b')).toBe(false);
-    expect(isRecipientValid('a b@c.co')).toBe(false);
   });
 });
 
@@ -73,33 +48,6 @@ describe('canSendEmail', () => {
 
   it('still allows sending when at least one of several recipients is valid', () => {
     expect(canSendEmail('subject', 'body', ['a@b.co', 'bad'])).toBe(true);
-  });
-});
-
-describe('parseRecipients', () => {
-  it('splits on commas, semicolons and newlines and trims each address', () => {
-    expect(parseRecipients(' a@b.co , c@d.co; e@f.co\ng@h.co ')).toEqual([
-      'a@b.co',
-      'c@d.co',
-      'e@f.co',
-      'g@h.co',
-    ]);
-  });
-
-  it('returns an empty list for blank input', () => {
-    expect(parseRecipients('   ')).toEqual([]);
-  });
-});
-
-describe('normalizeRecipients', () => {
-  it('trims, filters empty and collapses case-insensitively', () => {
-    expect(normalizeRecipients([' a@b.co ', 'A@B.CO', ' ', 'c@d.co'])).toEqual(['a@b.co', 'c@d.co']);
-  });
-});
-
-describe('validateRecipients', () => {
-  it('validates and normalizes recipients', () => {
-    expect(validateRecipients([' a@b.co ', 'bad', 'A@B.CO'])).toEqual(['a@b.co']);
   });
 });
 

@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, Mock } from 'vitest';
 import { UploadHttpRequest } from './upload';
-import {
-  GMAIL_SEND_URL,
-  emailDepsIn,
-  normalizeRecipients,
-  parseEmailSendRequest,
-  sendEmail,
-} from './email';
+import { GMAIL_SEND_URL, emailDepsIn, parseEmailSendRequest, sendEmail } from './email';
 import { base64UrlEncode } from './mime';
 import { AuthRevokedError } from './errors';
 
@@ -165,12 +159,6 @@ describe('parseEmailSendRequest', () => {
       status: 'error',
       error: { code: 'InvalidRecipient', details: 'bad' },
     });
-  });
-});
-
-describe('normalizeRecipients', () => {
-  it('trims, filters empty and collapses case-insensitively', () => {
-    expect(normalizeRecipients([' a@b.co ', 'A@B.CO', ' ', 'c@d.co'])).toEqual(['a@b.co', 'c@d.co']);
   });
 });
 
