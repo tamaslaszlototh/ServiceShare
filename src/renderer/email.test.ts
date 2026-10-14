@@ -8,6 +8,10 @@ import {
   emailErrorAction,
   isRecipientValid,
   normalizeRecipient,
+  normalizeRecipients,
+  parseRecipients,
+  recipientValidationError,
+  validateRecipients,
 } from './email';
 
 const tFor = (locale: Locale) => (key: TranslationKey, params?: TranslationParams) =>
@@ -61,6 +65,59 @@ describe('canSendEmail', () => {
 
   it('blocks malformed recipients', () => {
     expect(canSendEmail('subject', 'body', ['not-an-address'])).toBe(false);
+  });
+
+  it('accepts and validates multiple recipients with trimming and de-duplication', () => {
+    expect(canSendEmail('subject', 'body', ['a@b.co', ' a@b.co ', 'c@d.co'])).toBe(true);
+  });
+
+  it('still allows sending when at least one of several recipients is valid', () => {
+    expect(canSendEmail('subject', 'body', ['a@b.co', 'bad'])).toBe(true);
+  });
+});
+
+describe('parseRecipients', () => {
+  it('splits on commas, semicolons and newlines and trims each address', () => {
+    expect(parseRecipients(' a@b.co , c@d.co; e@f.co\ng@h.co ')).toEqual([
+      'a@b.co',
+      'c@d.co',
+      'e@f.co',
+      'g@h.co',
+    ]);
+  });
+
+  it('returns an empty list for blank input', () => {
+    expect(parseRecipients('   ')).toEqual([]);
+  });
+});
+
+describe('normalizeRecipients', () => {
+  it('trims, filters empty and collapses case-insensitively', () => {
+    expect(normalizeRecipients([' a@b.co ', 'A@B.CO', ' ', 'c@d.co'])).toEqual(['a@b.co', 'c@d.co']);
+  });
+});
+
+describe('validateRecipients', () => {
+  it('validates and normalizes recipients', () => {
+    expect(validateRecipients([' a@b.co ', 'bad', 'A@B.CO'])).toEqual(['a@b.co']);
+  });
+});
+
+describe('recipientValidationError', () => {
+  it('reports NoRecipients when nothing valid was typed', () => {
+    expect(recipientValidationError([])).toMatchObject({ code: 'NoRecipients' });
+    expect(recipientValidationError(['  '])).toMatchObject({ code: 'NoRecipients' });
+  });
+
+  it('reports InvalidRecipient with the offending addresses', () => {
+    expect(recipientValidationError(['a@b.co', 'bad', 'nope'])).toMatchObject({
+      code: 'InvalidRecipient',
+      details: 'bad, nope',
+    });
+  });
+
+  it('accepts multiple recipients including duplicates and surrounding spaces', () => {
+    expect(recipientValidationError([' a@b.co ', 'A@B.CO', 'c@d.co'])).toBeNull();
   });
 });
 

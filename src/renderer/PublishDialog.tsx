@@ -23,7 +23,15 @@ import {
   toPublishRequest,
   uploadPercent,
 } from './publish';
-import { canSendEmail, defaultEmailBody, defaultEmailSubject, emailErrorAction, normalizeRecipient } from './email';
+import {
+  canSendEmail,
+  defaultEmailBody,
+  defaultEmailSubject,
+  emailErrorAction,
+  normalizeRecipients,
+  parseRecipients,
+  recipientValidationError,
+} from './email';
 
 const UNVERIFIED_NOTE_KEY = 'serviceshare.unverifiedNoteDismissed';
 const COVER_DEBOUNCE_MS = 200;
@@ -365,13 +373,19 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
 
   const sendEmailMessage = async () => {
     if (!result) return;
-    const to = normalizeRecipient(emailTo);
-    if (!canSendEmail(emailSubject, emailBody, [to])) return;
+    const recipients = normalizeRecipients(parseRecipients(emailTo));
+    const validationError = recipientValidationError(recipients);
+    if (validationError) {
+      setEmailSent(false);
+      setEmailError(validationError);
+      return;
+    }
+    if (!canSendEmail(emailSubject, emailBody, recipients)) return;
     setEmailSending(true);
     setEmailError(null);
     setEmailSent(false);
     try {
-      const outcome = await window.api.sendEmail({ to: [to], subject: emailSubject, body: emailBody });
+      const outcome = await window.api.sendEmail({ to: recipients, subject: emailSubject, body: emailBody });
       if (outcome.status === 'error') {
         setEmailError(outcome.error);
         if (outcome.error.code === 'AuthRevoked' || outcome.error.code === 'TokenStorageError') {
@@ -502,7 +516,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                     <button
                       className="btn primary"
                       type="button"
-                      disabled={!canSendEmail(emailSubject, emailBody, [emailTo]) || emailSending}
+                      disabled={!canSendEmail(emailSubject, emailBody, parseRecipients(emailTo)) || emailSending}
                       onClick={() => void sendEmailMessage()}
                     >
                       {emailSending ? t('publish.emailSending') : t('publish.emailSend')}

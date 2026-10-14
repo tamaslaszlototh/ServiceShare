@@ -20,6 +20,8 @@ export const ERROR_CODES: ErrorCode[] = [
   'CoverUnavailable',
   'EmailSendError',
   'InternalError',
+  'NoRecipients',
+  'InvalidRecipient',
 ];
 
 export function isErrorCode(value: unknown): value is ErrorCode {

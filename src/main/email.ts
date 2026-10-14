@@ -1,4 +1,12 @@
-import { AuthRevokedError, EmailSendError, IpcError, NetworkError, QuotaExceededError } from './errors';
+import {
+  AuthRevokedError,
+  EmailSendError,
+  IpcError,
+  InvalidRecipientError,
+  NetworkError,
+  NoRecipientsError,
+  QuotaExceededError,
+} from './errors';
 import { MimeMessage, base64UrlEncode, buildMime } from './mime';
 import { UploadHttp, apiErrorReason, isRetriableStatus, nodeUploadHttp } from './upload';
 
@@ -20,24 +28,63 @@ export interface EmailSendPayload {
   body: string;
 }
 
-export function parseEmailSendRequest(request: unknown): EmailSendPayload | null {
+export type EmailParseResult =
+  | { status: 'ok'; payload: EmailSendPayload }
+  | { status: 'error'; error: IpcError };
+
+const EMAIL_PATTERN = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+
+function isValidEmail(address: string): boolean {
+  return EMAIL_PATTERN.test(address);
+}
+
+export function normalizeRecipients(recipients: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const entry of recipients) {
+    const trimmed = entry.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    const key = trimmed.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(trimmed);
+    }
+  }
+  return result;
+}
+
+function malformedRequest(): EmailParseResult {
+  return {
+    status: 'error',
+    error: new IpcError('InternalError', 'sendEmail expects { to, subject, body }'),
+  };
+}
+
+export function parseEmailSendRequest(request: unknown): EmailParseResult {
   if (typeof request !== 'object' || request === null) {
-    return null;
+    return malformedRequest();
   }
   const { to, subject, body } = request as { to?: unknown; subject?: unknown; body?: unknown };
-  if (!Array.isArray(to) || to.length === 0) {
-    return null;
-  }
-  if (!to.every((entry) => typeof entry === 'string' && entry.trim().length > 0)) {
-    return null;
+  if (!Array.isArray(to) || !to.every((entry) => typeof entry === 'string')) {
+    return malformedRequest();
   }
   if (typeof subject !== 'string' || subject.trim().length === 0) {
-    return null;
+    return malformedRequest();
   }
   if (typeof body !== 'string' || body.trim().length === 0) {
-    return null;
+    return malformedRequest();
   }
-  return { to: to.map((entry) => entry.trim()), subject, body };
+  const normalized = normalizeRecipients(to as string[]);
+  if (normalized.length === 0) {
+    return { status: 'error', error: new NoRecipientsError() };
+  }
+  const invalid = normalized.filter((address) => !isValidEmail(address));
+  if (invalid.length > 0) {
+    return { status: 'error', error: new InvalidRecipientError(invalid.join(', ')) };
+  }
+  return { status: 'ok', payload: { to: normalized, subject, body } };
 }
 
 export function classifyEmailStatus(status: number, body: string): IpcError {

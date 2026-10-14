@@ -173,7 +173,7 @@ const en = {
   'publish.emailPanel': 'Send the video link by email',
   'publish.emailFrom': 'From',
   'publish.emailTo': 'To',
-  'publish.emailToHint': 'e.g. name@example.com',
+  'publish.emailToHint': 'e.g. name@example.com, other@example.com',
   'publish.emailSubject': 'Subject',
   'publish.emailMessage': 'Message',
   'publish.emailSend': 'Send',
@@ -216,6 +216,8 @@ const en = {
   'error.code.CoverUnavailable': 'Cover preview is not available',
   'error.code.EmailSendError': 'The email could not be sent',
   'error.code.InternalError': 'An internal error occurred',
+  'error.code.NoRecipients': 'No valid recipients provided',
+  'error.code.InvalidRecipient': 'Invalid email address',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -387,7 +389,7 @@ const hu: Record<TranslationKey, string> = {
   'publish.emailPanel': 'A videó linkjének küldése e-mailben',
   'publish.emailFrom': 'Feladó',
   'publish.emailTo': 'Címzett',
-  'publish.emailToHint': 'pl. nev@example.com',
+  'publish.emailToHint': 'pl. nev@example.com, masik@example.com',
   'publish.emailSubject': 'Tárgy',
   'publish.emailMessage': 'Üzenet',
   'publish.emailSend': 'Küldés',
@@ -430,6 +432,8 @@ const hu: Record<TranslationKey, string> = {
   'error.code.CoverUnavailable': 'A borító előnézete nem érhető el',
   'error.code.EmailSendError': 'Az e-mailt nem sikerült elküldeni',
   'error.code.InternalError': 'Belső hiba történt',
+  'error.code.NoRecipients': 'Nincs érvényes címzett',
+  'error.code.InvalidRecipient': 'Érvénytelen e-mail cím',
 };
 
 export const dictionaries: Record<Locale, Record<TranslationKey, string>> = { en, hu };

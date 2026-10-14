@@ -523,17 +523,14 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle('sendEmail', async (_e, req: unknown): Promise<EmailSendResult> => {
-    const payload = parseEmailSendRequest(req);
-    if (!payload) {
-      return {
-        status: 'error',
-        error: new IpcError('InternalError', 'sendEmail expects { to, subject, body }').toAppError(),
-      };
+    const parsed = parseEmailSendRequest(req);
+    if (parsed.status === 'error') {
+      return { status: 'error', error: toAppError(parsed.error) };
     }
     try {
       const accessToken = await youtubeService.getAccessToken();
       const from = youtubeService.getAccount()?.email ?? undefined;
-      await sendEmail({ accessToken, message: { ...payload, from } }, emailDepsIn());
+      await sendEmail({ accessToken, message: { ...parsed.payload, from } }, emailDepsIn());
       return { status: 'ok' };
     } catch (e) {
       return errorResult(e, 'EmailSendError');

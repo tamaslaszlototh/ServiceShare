@@ -1,5 +1,5 @@
 import { Translator } from '@shared/i18n';
-import { ErrorCode } from '@shared/types';
+import { AppError, ErrorCode } from '@shared/types';
 import { ErrorAction, errorAction } from './errors';
 
 export const GMAIL_LIMITS_URL = 'https://support.google.com/mail/answer/14257';
@@ -22,12 +22,58 @@ export function isRecipientValid(address: string): boolean {
   return EMAIL_PATTERN.test(address.trim());
 }
 
+export function parseRecipients(input: string): string[] {
+  if (input.trim().length === 0) {
+    return [];
+  }
+  return input
+    .split(/[,;\n]+/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+export function normalizeRecipients(recipients: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const entry of recipients) {
+    const trimmed = entry.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    const key = trimmed.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(trimmed);
+    }
+  }
+  return result;
+}
+
+export function validateRecipients(recipients: string[]): string[] {
+  return normalizeRecipients(recipients).filter((entry) => isRecipientValid(entry));
+}
+
 export function canSendEmail(subject: string, body: string, recipients: string[]): boolean {
-  const to = recipients.map((entry) => entry.trim()).filter((entry) => entry.length > 0);
-  if (subject.trim().length === 0 || body.trim().length === 0 || to.length === 0) {
+  if (subject.trim().length === 0 || body.trim().length === 0) {
     return false;
   }
-  return to.every(isRecipientValid);
+  return validateRecipients(recipients).length > 0;
+}
+
+export function recipientValidationError(recipients: string[]): AppError | null {
+  const normalized = normalizeRecipients(recipients);
+  if (normalized.length === 0) {
+    return { code: 'NoRecipients', message: 'No valid recipients provided' };
+  }
+  const invalid = normalized.filter((address) => !isRecipientValid(address));
+  if (invalid.length > 0) {
+    return {
+      code: 'InvalidRecipient',
+      message: `Invalid email address: ${invalid.join(', ')}`,
+      details: invalid.join(', '),
+    };
+  }
+  return null;
 }
 
 export function emailErrorAction(code: ErrorCode, t: Translator): ErrorAction | null {

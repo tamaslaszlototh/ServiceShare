@@ -116,6 +116,18 @@ export class EmailSendError extends IpcError {
   }
 }
 
+export class NoRecipientsError extends IpcError {
+  constructor(details?: string) {
+    super('NoRecipients', 'No valid recipients provided', details);
+  }
+}
+
+export class InvalidRecipientError extends IpcError {
+  constructor(details?: string) {
+    super('InvalidRecipient', 'Invalid email address', details);
+  }
+}
+
 export function toAppError(error: unknown, fallbackCode: ErrorCode = 'EngineError'): AppError {
   if (error instanceof IpcError) {
     return redactAppError(error.toAppError());

@@ -16,7 +16,9 @@ export type ErrorCode =
   | 'PublishInProgress'
   | 'CoverUnavailable'
   | 'EmailSendError'
-  | 'InternalError';
+  | 'InternalError'
+  | 'NoRecipients'
+  | 'InvalidRecipient';
 
 export type ErrorParams = Record<string, string | number>;
 

@@ -23,6 +23,8 @@ const ERROR_KEYS: Record<ErrorCode, TranslationKey> = {
   CoverUnavailable: 'error.code.CoverUnavailable',
   EmailSendError: 'error.code.EmailSendError',
   InternalError: 'error.code.InternalError',
+  NoRecipients: 'error.code.NoRecipients',
+  InvalidRecipient: 'error.code.InvalidRecipient',
 };
 
 export function errorMessage(error: AppError, t?: Translator): string {

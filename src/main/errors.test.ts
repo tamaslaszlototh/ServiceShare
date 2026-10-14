@@ -21,11 +21,15 @@ const DOCUMENTED_CODES: Record<ErrorCode, true> = {
   CoverUnavailable: true,
   InternalError: true,
   EmailSendError: true,
+  NoRecipients: true,
+  InvalidRecipient: true,
 };
 import {
   AuthRevokedError,
   EmailSendError,
+  InvalidRecipientError,
   NetworkError,
+  NoRecipientsError,
   PermissionError,
   TooLongError,
   UnverifiedProjectError,
@@ -41,6 +45,8 @@ describe('catalogue error classes', () => {
     expect(new NetworkError().code).toBe('NetworkError');
     expect(new AuthRevokedError().code).toBe('AuthRevoked');
     expect(new EmailSendError().code).toBe('EmailSendError');
+    expect(new NoRecipientsError().code).toBe('NoRecipients');
+    expect(new InvalidRecipientError().code).toBe('InvalidRecipient');
   });
 
   it('exposes a structured AppError envelope', () => {

@@ -3,6 +3,7 @@ import { UploadHttpRequest } from './upload';
 import {
   GMAIL_SEND_URL,
   emailDepsIn,
+  normalizeRecipients,
   parseEmailSendRequest,
   sendEmail,
 } from './email';
@@ -118,20 +119,58 @@ describe('sendEmail', () => {
 describe('parseEmailSendRequest', () => {
   it('accepts a well-formed message', () => {
     expect(parseEmailSendRequest({ to: ['a@b.co'], subject: 's', body: 'b' })).toEqual({
-      to: ['a@b.co'],
-      subject: 's',
-      body: 'b',
+      status: 'ok',
+      payload: { to: ['a@b.co'], subject: 's', body: 'b' },
     });
   });
 
-  it('rejects malformed payloads', () => {
-    expect(parseEmailSendRequest(null)).toBeNull();
-    expect(parseEmailSendRequest('send')).toBeNull();
-    expect(parseEmailSendRequest({ to: [], subject: 's', body: 'b' })).toBeNull();
-    expect(parseEmailSendRequest({ to: ['a@b.co'], subject: '', body: 'b' })).toBeNull();
-    expect(parseEmailSendRequest({ to: ['a@b.co'], subject: 's' })).toBeNull();
-    expect(parseEmailSendRequest({ to: ['a@b.co', 42], subject: 's', body: 'b' })).toBeNull();
-    expect(parseEmailSendRequest({ to: 'a@b.co', subject: 's', body: 'b' })).toBeNull();
+  it('trims and deduplicates recipients case-insensitively', () => {
+    expect(parseEmailSendRequest({ to: [' a@b.co ', 'A@B.CO', 'c@d.co'], subject: 's', body: 'b' })).toEqual({
+      status: 'ok',
+      payload: { to: ['a@b.co', 'c@d.co'], subject: 's', body: 'b' },
+    });
+  });
+
+  it('rejects structural problems as an internal error', () => {
+    const malformed = [
+      null,
+      'send',
+      { to: ['a@b.co'], subject: '', body: 'b' },
+      { to: ['a@b.co'], subject: 's' },
+      { to: ['a@b.co', 42], subject: 's', body: 'b' },
+      { to: 'a@b.co', subject: 's', body: 'b' },
+    ];
+    for (const request of malformed) {
+      expect(parseEmailSendRequest(request)).toMatchObject({ status: 'error', error: { code: 'InternalError' } });
+    }
+  });
+
+  it('reports an empty recipient list as NoRecipients', () => {
+    expect(parseEmailSendRequest({ to: [], subject: 's', body: 'b' })).toMatchObject({
+      status: 'error',
+      error: { code: 'NoRecipients' },
+    });
+    expect(parseEmailSendRequest({ to: ['  '], subject: 's', body: 'b' })).toMatchObject({
+      status: 'error',
+      error: { code: 'NoRecipients' },
+    });
+  });
+
+  it('reports malformed addresses as InvalidRecipient and never sends them', () => {
+    expect(parseEmailSendRequest({ to: ['bad', 'also-bad'], subject: 's', body: 'b' })).toMatchObject({
+      status: 'error',
+      error: { code: 'InvalidRecipient', details: 'bad, also-bad' },
+    });
+    expect(parseEmailSendRequest({ to: ['a@b.co', 'bad'], subject: 's', body: 'b' })).toMatchObject({
+      status: 'error',
+      error: { code: 'InvalidRecipient', details: 'bad' },
+    });
+  });
+});
+
+describe('normalizeRecipients', () => {
+  it('trims, filters empty and collapses case-insensitively', () => {
+    expect(normalizeRecipients([' a@b.co ', 'A@B.CO', ' ', 'c@d.co'])).toEqual(['a@b.co', 'c@d.co']);
   });
 });
 
