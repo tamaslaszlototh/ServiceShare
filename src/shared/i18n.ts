@@ -1,3 +1,10 @@
+import {
+  ERROR_CATALOGUE,
+  ERROR_CODES,
+  type ErrorCodeTranslationKey,
+  translationKeyFor,
+} from './error-catalogue';
+
 export type Locale = 'hu' | 'en';
 
 export type TranslationParams = Record<string, string | number>;
@@ -198,33 +205,23 @@ const en = {
   'error.action.verify': 'Verify your account',
   'error.boundary': 'Something went wrong.',
   'error.dismiss': 'Dismiss',
-  'error.code.FormatError': 'Only PCM WAV files are supported',
-  'error.code.CorruptFile': 'The file appears to be corrupt or truncated',
-  'error.code.PermissionError': 'Cannot access the file: {path}',
-  'error.code.DiskFull': 'Not enough disk space to write the file',
-  'error.code.EngineError': 'The audio engine encountered an error',
-  'error.code.RenderError': 'Rendering failed',
-  'error.code.NetworkError': 'Network connection lost',
-  'error.code.QuotaExceeded': 'YouTube upload quota exhausted for today',
-  'error.code.AuthRevoked': 'Authentication was revoked or is invalid',
-  'error.code.UploadExpired': 'The upload session expired',
-  'error.code.TooLong': 'Videos longer than 15 minutes may require a verified account',
-  'error.code.UnverifiedProject': 'The Google project is not verified for YouTube uploads',
-  'error.code.TokenStorageError': 'Failed to access secure token storage',
-  'error.code.NoClip': 'No clip loaded',
-  'error.code.PublishInProgress': 'A publish is already in progress',
-  'error.code.CoverUnavailable': 'Cover preview is not available',
-  'error.code.EmailSendError': 'The email could not be sent',
-  'error.code.InternalError': 'An internal error occurred',
-  'error.code.NoRecipients': 'No valid recipients provided',
-  'error.code.InvalidRecipient': 'Invalid email address',
 } as const;
 
-export type TranslationKey = keyof typeof en;
+type BaseTranslationKey = keyof typeof en;
+
+function errorDictionary(locale: Locale): Record<ErrorCodeTranslationKey, string> {
+  return Object.fromEntries(
+    ERROR_CODES.map((code) => [translationKeyFor(code), ERROR_CATALOGUE[code][locale]]),
+  ) as Record<ErrorCodeTranslationKey, string>;
+}
+
+const enAll = { ...en, ...errorDictionary('en') };
+
+export type TranslationKey = keyof typeof enAll;
 
 export type Translator = (key: TranslationKey, params?: TranslationParams) => string;
 
-const hu: Record<TranslationKey, string> = {
+const hu: Record<BaseTranslationKey, string> = {
   'header.noFile': 'Nincs fájl',
   'header.currentFile': 'Aktuális fájl: {name}',
   'header.open': 'Megnyitás',
@@ -414,29 +411,14 @@ const hu: Record<TranslationKey, string> = {
   'error.action.verify': 'Fiók hitelesítése',
   'error.boundary': 'Valami hiba történt.',
   'error.dismiss': 'Bezárás',
-  'error.code.FormatError': 'Csak PCM WAV fájlok támogatottak',
-  'error.code.CorruptFile': 'A fájl sérültnek vagy csonkoltnak tűnik',
-  'error.code.PermissionError': 'Nem sikerült hozzáférni a fájlhoz: {path}',
-  'error.code.DiskFull': 'Nincs elég lemezterület a fájl írásához',
-  'error.code.EngineError': 'Hiba történt a hangmotornál',
-  'error.code.RenderError': 'A renderelés nem sikerült',
-  'error.code.NetworkError': 'A hálózati kapcsolat megszakadt',
-  'error.code.QuotaExceeded': 'A YouTube feltöltési kvóta ma kimerült',
-  'error.code.AuthRevoked': 'A hitelesítés érvényét vesztette',
-  'error.code.UploadExpired': 'A feltöltési munkamenet lejárt',
-  'error.code.TooLong': '15 percnél hosszabb videókhoz hitelesített fiók szükséges',
-  'error.code.UnverifiedProject': 'A Google-projekt nincs hitelesítve YouTube feltöltésekhez',
-  'error.code.TokenStorageError': 'Nem sikerült elérni a biztonságos token-tárolót',
-  'error.code.NoClip': 'Nincs betöltött klip',
-  'error.code.PublishInProgress': 'Egy közzététel már folyamatban van',
-  'error.code.CoverUnavailable': 'A borító előnézete nem érhető el',
-  'error.code.EmailSendError': 'Az e-mailt nem sikerült elküldeni',
-  'error.code.InternalError': 'Belső hiba történt',
-  'error.code.NoRecipients': 'Nincs érvényes címzett',
-  'error.code.InvalidRecipient': 'Érvénytelen e-mail cím',
 };
 
-export const dictionaries: Record<Locale, Record<TranslationKey, string>> = { en, hu };
+const huAll = { ...hu, ...errorDictionary('hu') };
+
+export const dictionaries: Record<Locale, Record<TranslationKey, string>> = {
+  en: enAll,
+  hu: huAll,
+};
 
 const PLACEHOLDER = /\{(\w+)\}/g;
 
