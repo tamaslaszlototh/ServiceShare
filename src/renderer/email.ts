@@ -1,6 +1,6 @@
 import { Translator } from '@shared/i18n';
 import { AppError, ErrorCode } from '@shared/types';
-import { isRecipientValid, normalizeRecipients, validateRecipients } from '@shared/recipients';
+import { classifyRecipients, validateRecipients } from '@shared/recipients';
 import { ErrorAction, errorAction } from './errors';
 
 export const GMAIL_LIMITS_URL = 'https://support.google.com/mail/answer/14257';
@@ -21,11 +21,10 @@ export function canSendEmail(subject: string, body: string, recipients: string[]
 }
 
 export function recipientValidationError(recipients: string[]): AppError | null {
-  const normalized = normalizeRecipients(recipients);
-  if (normalized.length === 0) {
+  const { valid, invalid } = classifyRecipients(recipients);
+  if (valid.length === 0 && invalid.length === 0) {
     return { code: 'NoRecipients', message: 'No valid recipients provided' };
   }
-  const invalid = normalized.filter((address) => !isRecipientValid(address));
   if (invalid.length > 0) {
     return {
       code: 'InvalidRecipient',

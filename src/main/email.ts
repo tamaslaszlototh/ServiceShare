@@ -9,7 +9,7 @@ import {
 } from './errors';
 import { MimeMessage, base64UrlEncode, buildMime } from './mime';
 import { UploadHttp, apiErrorReason, isRetriableStatus, nodeUploadHttp } from './upload';
-import { isRecipientValid, normalizeRecipients } from '../shared/recipients';
+import { classifyRecipients } from '../shared/recipients';
 
 export const GMAIL_SEND_URL = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send';
 
@@ -54,15 +54,14 @@ export function parseEmailSendRequest(request: unknown): EmailParseResult {
   if (typeof body !== 'string' || body.trim().length === 0) {
     return malformedRequest();
   }
-  const normalized = normalizeRecipients(to as string[]);
-  if (normalized.length === 0) {
+  const { valid, invalid } = classifyRecipients(to as string[]);
+  if (valid.length === 0 && invalid.length === 0) {
     return { status: 'error', error: new NoRecipientsError() };
   }
-  const invalid = normalized.filter((address) => !isRecipientValid(address));
   if (invalid.length > 0) {
     return { status: 'error', error: new InvalidRecipientError(invalid.join(', ')) };
   }
-  return { status: 'ok', payload: { to: normalized, subject, body } };
+  return { status: 'ok', payload: { to: valid, subject, body } };
 }
 
 export function classifyEmailStatus(status: number, body: string): IpcError {

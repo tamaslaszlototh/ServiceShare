@@ -31,6 +31,24 @@ export function normalizeRecipients(recipients: string[]): string[] {
   return result;
 }
 
+export interface RecipientClassification {
+  valid: string[];
+  invalid: string[];
+}
+
+export function classifyRecipients(recipients: string[]): RecipientClassification {
+  const valid: string[] = [];
+  const invalid: string[] = [];
+  for (const address of normalizeRecipients(recipients)) {
+    if (isRecipientValid(address)) {
+      valid.push(address);
+    } else {
+      invalid.push(address);
+    }
+  }
+  return { valid, invalid };
+}
+
 export function validateRecipients(recipients: string[]): string[] {
-  return normalizeRecipients(recipients).filter((entry) => isRecipientValid(entry));
+  return classifyRecipients(recipients).valid;
 }

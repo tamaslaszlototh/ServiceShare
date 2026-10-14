@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { isRecipientValid, normalizeRecipients, parseRecipients, validateRecipients } from './recipients';
+import {
+  classifyRecipients,
+  isRecipientValid,
+  normalizeRecipients,
+  parseRecipients,
+  validateRecipients,
+} from './recipients';
 
 describe('isRecipientValid', () => {
   it('accepts plainly formatted addresses', () => {
@@ -42,6 +48,19 @@ describe('normalizeRecipients', () => {
   });
 });
 
+describe('classifyRecipients', () => {
+  it('splits normalized addresses into valid and invalid', () => {
+    expect(classifyRecipients([' a@b.co ', 'bad', 'A@B.CO', 'nope'])).toEqual({
+      valid: ['a@b.co'],
+      invalid: ['bad', 'nope'],
+    });
+  });
+
+  it('reports an empty classification for blank input', () => {
+    expect(classifyRecipients(['  ', ''])).toEqual({ valid: [], invalid: [] });
+  });
+});
+
 describe('validateRecipients', () => {
   it('validates and normalizes recipients', () => {
     expect(validateRecipients([' a@b.co ', 'bad', 'A@B.CO'])).toEqual(['a@b.co']);
@@ -49,16 +68,18 @@ describe('validateRecipients', () => {
 });
 
 describe('parse → normalize → validate agreement', () => {
-  it('lets the form and the send request reach the same normalized set', () => {
-    const typed = ' a@b.co , C@d.co; a@B.CO\nbad ';
-    const fromForm = normalizeRecipients(parseRecipients(typed));
-    const fromSendRequest = normalizeRecipients(fromForm);
-    expect(fromForm).toEqual(['a@b.co', 'C@d.co', 'bad']);
-    expect(fromSendRequest).toEqual(fromForm);
+  const typed = ' a@b.co , C@d.co; a@B.CO\nbad ';
+
+  it('reaches the same normalized set whether the form splits a string or receives a list', () => {
+    const listed = [' a@b.co ', 'C@d.co', 'a@B.CO', 'bad'];
+    expect(normalizeRecipients(parseRecipients(typed))).toEqual(['a@b.co', 'C@d.co', 'bad']);
+    expect(normalizeRecipients(listed)).toEqual(['a@b.co', 'C@d.co', 'bad']);
   });
 
-  it('uses one validity rule for filtering and for the check', () => {
-    const normalized = normalizeRecipients([' a@b.co ', 'bad', 'C@d.co']);
-    expect(validateRecipients(normalized)).toEqual(normalized.filter(isRecipientValid));
+  it('classifies the parsed input into the valid and invalid sets both sides act on', () => {
+    expect(classifyRecipients(parseRecipients(typed))).toEqual({
+      valid: ['a@b.co', 'C@d.co'],
+      invalid: ['bad'],
+    });
   });
 });
