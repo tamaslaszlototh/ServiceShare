@@ -107,6 +107,11 @@ export const ERROR_CATALOGUE = {
     hu: 'Az e-mailt nem sikerült elküldeni',
     action: { kind: 'retry', labelKey: 'error.action.retry' },
   }),
+  UpdateError: defineErrorCode({
+    en: 'The app could not be updated',
+    hu: 'Nem sikerült frissíteni az alkalmazást',
+    action: { kind: 'retry', labelKey: 'error.action.retry' },
+  }),
   InternalError: defineErrorCode({
     en: 'An internal error occurred',
     hu: 'Belső hiba történt',

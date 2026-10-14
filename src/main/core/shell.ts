@@ -76,6 +76,7 @@ export function applicationMenu(t: Translator, platform: NodeJS.Platform): MenuE
       label: APP_NAME,
       submenu: [
         { role: 'about', label: t('menu.app.about') },
+        { label: t('menu.app.checkForUpdates'), command: 'checkForUpdates' },
         { type: 'separator' },
         { role: 'services', label: t('menu.app.services') },
         { type: 'separator' },
@@ -93,7 +94,11 @@ export function applicationMenu(t: Translator, platform: NodeJS.Platform): MenuE
   if (!isMac) {
     template.push({
       label: t('menu.help'),
-      submenu: [{ role: 'about', label: t('menu.app.about') }],
+      submenu: [
+        { label: t('menu.app.checkForUpdates'), command: 'checkForUpdates' },
+        { type: 'separator' },
+        { role: 'about', label: t('menu.app.about') },
+      ],
     });
   }
 

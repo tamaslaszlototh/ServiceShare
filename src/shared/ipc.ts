@@ -23,6 +23,7 @@ import type {
   PublishEvent,
   PublishRequest,
   PublishResult,
+  UpdateStatus,
   VoidResult,
 } from './types';
 
@@ -69,6 +70,8 @@ export const IPC_CHANNELS = {
     sendEmail: 'sendEmail',
     copyText: 'copyText',
     checkForUpdates: 'checkForUpdates',
+    getUpdateStatus: 'getUpdateStatus',
+    installUpdate: 'installUpdate',
   },
   send: {
     cancelPublish: 'cancelPublish',
@@ -77,6 +80,7 @@ export const IPC_CHANNELS = {
     exportProgress: 'exportProgress',
     publishProgress: 'publishProgress',
     menuCommand: 'menuCommand',
+    updateStatus: 'updateStatus',
   },
 } as const;
 
@@ -109,6 +113,8 @@ export interface IpcInvokeContract {
   sendEmail: { args: [req: EmailSendRequest]; result: EmailSendResult };
   copyText: { args: [text: string]; result: VoidResult };
   checkForUpdates: { args: []; result: void };
+  getUpdateStatus: { args: []; result: UpdateStatus };
+  installUpdate: { args: []; result: void };
 }
 
 /** Fire-and-forget renderer → main channels. */
@@ -121,6 +127,7 @@ export interface IpcEventContract {
   exportProgress: ExportProgress;
   publishProgress: PublishEvent;
   menuCommand: MenuCommand;
+  updateStatus: UpdateStatus;
 }
 
 export type InvokeChannel = keyof IpcInvokeContract;

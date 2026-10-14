@@ -65,7 +65,20 @@ export interface ExportOptions {
 
 export type ExportFormat = 'wav' | 'mp3';
 
-export type MenuCommand = 'open' | 'export';
+export type MenuCommand = 'open' | 'export' | 'checkForUpdates';
+
+/**
+ * Where the app's auto-update stands. `manual` marks a cycle the user started
+ * ("Check for updates…"); only those report "up to date", "unsupported" and errors.
+ */
+export type UpdateStatus =
+  | { state: 'idle' }
+  | { state: 'checking'; manual: boolean }
+  | { state: 'upToDate'; manual: boolean; version: string }
+  | { state: 'unsupported'; manual: boolean }
+  | { state: 'downloading'; version: string; percent: number }
+  | { state: 'ready'; version: string }
+  | { state: 'error'; manual: boolean; error: AppError };
 
 export interface ExportProgress {
   percent: number;

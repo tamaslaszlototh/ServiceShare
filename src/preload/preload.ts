@@ -62,11 +62,14 @@ const api: IpcApi = {
   sendEmail: invoke('sendEmail'),
   copyText: invoke('copyText'),
   checkForUpdates: invoke('checkForUpdates'),
+  getUpdateStatus: invoke('getUpdateStatus'),
+  installUpdate: invoke('installUpdate'),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   cancelPublish: send('cancelPublish'),
   onExportProgress: (cb) => subscribe('exportProgress', cb),
   onPublishProgress: (cb) => subscribe('publishProgress', cb),
   onMenuCommand: (cb) => subscribe('menuCommand', cb),
+  onUpdateStatus: (cb) => subscribe('updateStatus', cb),
 };
 
 contextBridge.exposeInMainWorld('api', api);

@@ -10,6 +10,7 @@
 - Runtime FFmpeg resolution in the main process (`src/main/audio/ffmpeg.ts`): extraResources → ffmpeg-static/ffprobe-static dev fallback → PATH, with `-version` probing and caching.
 - WAV open/probe (`src/main/audio/probe.ts`): `ffprobe` JSON → validate `pcm_s16le`/`pcm_s24le`; typed errors live in `src/main/core/errors.ts`; `openFile` returns a typed `OpenResult` (ok/cancelled/error).
 - Cover compositing (`src/main/publishing/cover.ts`): pure `compileCover`/`escapeDrawtext` seam → `CoverService`; bundled assets (default base, logo, OFL font) under `assets/`, resolved by `src/main/publishing/assets.ts` (resources → dev fallback).
+- Auto-update (`src/main/updater/updater.ts`): `UpdateService` drives electron-updater's `autoUpdater` through a narrow `UpdaterPort`; status reaches the renderer via the `updateStatus` event. Unpackaged builds report `unsupported` (electron-updater skips the check). Publish config lives in `package.json` `build`.
 
 ## Build / test / typecheck
 

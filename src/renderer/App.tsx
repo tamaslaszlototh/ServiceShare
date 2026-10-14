@@ -5,6 +5,7 @@ import { ExportDialog } from './export/ExportDialog';
 import { PublishDialog } from './publishing/PublishDialog';
 import { PublishedVideo } from './publishing/publishFlow';
 import { ErrorBanner } from './errors/ErrorBanner';
+import { UpdateIndicator } from './updates/UpdateIndicator';
 import { normalizeError } from '@shared/apperror';
 import { resolveLocale } from '@shared/i18n';
 import { formatDecimal } from '@shared/format';
@@ -264,6 +265,8 @@ export function App() {
         void menuHandlers.current.open();
       } else if (command === 'export') {
         menuHandlers.current.export();
+      } else if (command === 'checkForUpdates') {
+        void window.api.checkForUpdates();
       }
     });
   }, []);
@@ -285,6 +288,7 @@ export function App() {
           {clip ? baseName(clip.filePath) : t('header.noFile')}
         </span>
         <span className="spacer" />
+        <UpdateIndicator />
         <select
           className="language"
           aria-label={t('language.label')}

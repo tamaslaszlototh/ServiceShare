@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, dialog, protocol, shell, clipboard } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { createReadStream, existsSync } from 'fs';
 import { mkdir, mkdtemp, rm, stat, copyFile, readFile, writeFile } from 'fs/promises';
 import { Readable } from 'stream';
@@ -21,6 +22,7 @@ import { emit, handle, onSend } from './ipc';
 import { logError, logInfo } from './core/log';
 import { CUSTOM_LOGO_FILE, LogoStore } from './publishing/logo';
 import { RECIPIENTS_FILE, RecipientStore } from './email/recipientStore';
+import { UpdateService } from './updater/updater';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
 import { MenuEntry, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './core/shell';
 import { ClipInfo, EmailRecipientsResult, ExportFormat } from '@shared/types';
@@ -234,6 +236,15 @@ app.whenReady().then(async () => {
   );
   await youtubeService.initialize().catch((e) => logError('youtube', 'INIT', e));
   const win = createWindow();
+  const updateService = new UpdateService(autoUpdater, {
+    currentVersion: app.getVersion(),
+    onStatus: (status) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        emit(window.webContents, 'updateStatus', status);
+      }
+    },
+    log: (code, detail) => (code === 'ERROR' ? logError('updater', code, detail) : logInfo('updater', code, detail)),
+  });
   installMenu();
 
   handle('setLocale', (_e, locale) => {
@@ -243,6 +254,7 @@ app.whenReady().then(async () => {
 
   win.webContents.once('did-finish-load', () => {
     ffmpegResolver.resolve().catch((e) => logError('ffmpeg', 'RESOLVE', e));
+    void updateService.check(false);
   });
 
   handle('openFile', async (_e, filePath) => {
@@ -536,7 +548,13 @@ app.whenReady().then(async () => {
   });
 
   handle('checkForUpdates', async () => {
-    logInfo('updater', 'CHECK');
+    await updateService.check(true);
+  });
+
+  handle('getUpdateStatus', () => updateService.status);
+
+  handle('installUpdate', () => {
+    updateService.install();
   });
 });
 

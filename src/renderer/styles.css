@@ -213,6 +213,32 @@ a:focus-visible {
   border-color: var(--accent2);
 }
 
+.app-header .update-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.app-header .update-indicator .progress {
+  display: block;
+  width: 80px;
+  margin-bottom: 0;
+}
+
+.app-header .update-indicator .progress-fill {
+  display: block;
+}
+
+.app-header .update-indicator .dismiss {
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 2px 8px;
+  line-height: 1;
+}
+
 .toolbar {
   display: flex;
   align-items: center;

@@ -64,6 +64,17 @@ describe('applicationMenu', () => {
     expect(commands).toEqual(expect.arrayContaining(['open', 'export']));
   });
 
+  it('offers "Check for updates…" exactly once on every platform', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      const items = collect(applicationMenu(tFor('en'), platform)).filter(
+        (entry) => entry.command === 'checkForUpdates',
+      );
+      expect(items).toHaveLength(1);
+      expect(items[0].label).toBe('Check for Updates…');
+    }
+    expect(labels(applicationMenu(tFor('hu'), 'darwin'))).toContain('Frissítések keresése…');
+  });
+
   it('installs a quit role on every platform exactly once', () => {
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       const quits = collect(applicationMenu(tFor('en'), platform)).filter((entry) => entry.role === 'quit');

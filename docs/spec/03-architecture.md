@@ -98,7 +98,8 @@ undo(); redo();
 applyEdit(op: EditOperation): Promise<EditResult>   // append one edit-list entry
 concatenate(): Promise<EditResult>                  // pick + probe a second WAV, then append
 play(): Promise<void>; pause(); stop(position?): Promise<void>
-checkForUpdates(): Promise<UpdateInfo>
+checkForUpdates(): Promise<void>                    // status streams via the updateStatus event
+getUpdateStatus(): Promise<UpdateStatus>; installUpdate(): Promise<void>
 ```
 
 `Pushable<T>` = stream of typed progress/error events ending in a terminal result; e.g. publish
