@@ -13,10 +13,31 @@
   --accent2: #4aa8ff;
   --warn: #ffb454;
   --err: #ff5d5d;
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* thin dark scrollbars instead of the wide light system default */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 html,
