@@ -14,6 +14,9 @@ ServiceShare is distributed for **Windows x64 only**; macOS is a development pla
   the host only.
 - `npm run dist:mac` → an unsigned `release/mac-<arch>/ServiceShare.app` for local testing.
 
+The app icon is `build/icon.png` (512×512; source `build/icon.svg`). electron-builder turns it into the
+Windows `.ico` (16–256 px) and the macOS `.icns`.
+
 Every package ships `LICENSE`, the FFmpeg license notes (`licenses/`), the bundled cover assets
 (`assets/`) and the FFmpeg/ffprobe binaries at the resources root. An `afterPack` hook
 (`scripts/packaging/after-pack.cjs`) fails the build if a bundled binary cannot run on the

@@ -60,6 +60,14 @@ describe('electron-builder packaging config', () => {
     expect(pkg.repository.url).toContain(about.credits.split(' ')[1].replace('https://', ''));
   });
 
+  it('has an app icon electron-builder can turn into a full Windows .ico', () => {
+    const png = readFileSync(path.join(root, build.directories.buildResources, 'icon.png'));
+    const width = png.readUInt32BE(16);
+    const height = png.readUInt32BE(20);
+    expect(width).toBe(height);
+    expect(width).toBeGreaterThanOrEqual(256);
+  });
+
   it('checks the FFmpeg binaries match the packaged architecture', () => {
     expect(build.afterPack).toBe('scripts/packaging/after-pack.cjs');
   });
