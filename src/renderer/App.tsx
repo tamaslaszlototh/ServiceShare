@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppError, ClipInfo, Document, EditOperation, EditResult, PeakData, Selection } from '@shared/types';
+import { AppError, ClipInfo, Document, EditOperation, EditResult, FadeKind, PeakData, Selection } from '@shared/types';
 import { Timeline } from './Timeline';
 import { ExportDialog } from './ExportDialog';
 import { PublishDialog } from './PublishDialog';
@@ -167,7 +167,7 @@ export function App() {
     applyEditResult(await window.api.applyEdit(op), isStructural(op));
   };
 
-  const applyFade = async (kind: 'fadeIn' | 'fadeOut') => {
+  const applyFade = async (kind: FadeKind) => {
     applyEditResult(await window.api.toggleFade(kind, clampFadeSeconds(fadeSeconds)), false);
   };
 

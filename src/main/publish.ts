@@ -6,7 +6,7 @@ import { parseLoudnormJson } from './preview';
 import { CoverAssets } from './assets';
 import { CoverRequest, CoverService, COVER_HEIGHT, COVER_WIDTH, coverDepsIn } from './cover';
 import { ffmpegResolver } from './ffmpeg';
-import { RenderError, toAppError } from './errors';
+import { RenderError, errorResult, toAppError } from './errors';
 import { sanitizeText } from './sanitize';
 import { RunOptions, runFfmpeg } from './runner';
 import {
@@ -254,7 +254,7 @@ export class PublishService {
 
   private fail(error: AppError, emit: (event: PublishEvent) => void): PublishResult {
     emit({ kind: 'error', error });
-    return { status: 'error', error };
+    return errorResult(error);
   }
 }
 

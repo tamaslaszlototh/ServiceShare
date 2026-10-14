@@ -1,72 +1,69 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import {
-  CoverPreviewRequest,
-  EditOperation,
-  EmailSendRequest,
-  ExportFormat,
-  ExportProgress,
+  EventChannel,
+  IPC_CHANNELS,
   IpcApi,
-  MenuCommand,
-  ProgressEvent,
-  PublishEvent,
-  PublishRequest,
-} from '@shared/types';
+  IpcEventContract,
+  IpcInvokeContract,
+  IpcSendContract,
+  InvokeChannel,
+  SendChannel,
+} from '../shared/ipc';
+
+function invoke<K extends InvokeChannel>(
+  channel: K,
+): (...args: IpcInvokeContract[K]['args']) => Promise<IpcInvokeContract[K]['result']> {
+  return (...args) => ipcRenderer.invoke(IPC_CHANNELS.invoke[channel], ...args);
+}
+
+function send<K extends SendChannel>(
+  channel: K,
+): (...args: IpcSendContract[K]['args']) => void {
+  return (...args) => ipcRenderer.send(IPC_CHANNELS.send[channel], ...args);
+}
+
+function subscribe<K extends EventChannel>(
+  channel: K,
+  cb: (event: IpcEventContract[K]) => void,
+): () => void {
+  const listener = (_event: unknown, payload: IpcEventContract[K]) => cb(payload);
+  const wire = IPC_CHANNELS.events[channel];
+  ipcRenderer.on(wire, listener);
+  return () => {
+    ipcRenderer.removeListener(wire, listener);
+  };
+}
 
 const api: IpcApi = {
-  openFile: (filePath?: string) => ipcRenderer.invoke('openFile', filePath),
-  getPeaks: () => ipcRenderer.invoke('getPeaks'),
-  getPreview: () => ipcRenderer.invoke('getPreview'),
+  setLocale: invoke('setLocale'),
+  openFile: invoke('openFile'),
+  getPeaks: invoke('getPeaks'),
+  getPreview: invoke('getPreview'),
+  getDocument: invoke('getDocument'),
+  applyEdit: invoke('applyEdit'),
+  toggleFade: invoke('toggleFade'),
+  toggleNormalize: invoke('toggleNormalize'),
+  concatenate: invoke('concatenate'),
+  undo: invoke('undo'),
+  redo: invoke('redo'),
+  checkEngine: invoke('checkEngine'),
+  exportAudio: invoke('exportAudio'),
+  publish: invoke('publish'),
+  composeCoverPreview: invoke('composeCoverPreview'),
+  getDefaultLogo: invoke('getDefaultLogo'),
+  chooseDefaultLogo: invoke('chooseDefaultLogo'),
+  clearDefaultLogo: invoke('clearDefaultLogo'),
+  getAccount: invoke('getAccount'),
+  signIn: invoke('signIn'),
+  signOut: invoke('signOut'),
+  sendEmail: invoke('sendEmail'),
+  copyText: invoke('copyText'),
+  checkForUpdates: invoke('checkForUpdates'),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
-  getDocument: () => ipcRenderer.invoke('getDocument'),
-  applyEdit: (op: EditOperation) => ipcRenderer.invoke('applyEdit', op),
-  toggleFade: (kind, seconds) => ipcRenderer.invoke('toggleFade', kind, seconds),
-  toggleNormalize: () => ipcRenderer.invoke('toggleNormalize'),
-  concatenate: () => ipcRenderer.invoke('concatenate'),
-  undo: () => ipcRenderer.invoke('undo'),
-  redo: () => ipcRenderer.invoke('redo'),
-  checkEngine: () => ipcRenderer.invoke('checkEngine'),
-  exportAudio: (format: ExportFormat) => ipcRenderer.invoke('exportAudio', format),
-  onExportProgress: (cb: (e: ExportProgress) => void) => {
-    const listener = (_e: unknown, event: ExportProgress) => cb(event);
-    ipcRenderer.on('exportProgress', listener);
-    return () => {
-      ipcRenderer.removeListener('exportProgress', listener);
-    };
-  },
-  publish: (req: PublishRequest) => ipcRenderer.invoke('publish', req),
-  cancelPublish: () => ipcRenderer.send('cancelPublish'),
-  onPublishProgress: (cb: (e: PublishEvent) => void) => {
-    const listener = (_e: unknown, event: PublishEvent) => cb(event);
-    ipcRenderer.on('publishProgress', listener);
-    return () => {
-      ipcRenderer.removeListener('publishProgress', listener);
-    };
-  },
-  composeCoverPreview: (req: CoverPreviewRequest) => ipcRenderer.invoke('composeCoverPreview', req),
-  getAccount: () => ipcRenderer.invoke('getAccount'),
-  signIn: () => ipcRenderer.invoke('signIn'),
-  signOut: () => ipcRenderer.invoke('signOut'),
-  sendEmail: (req: EmailSendRequest) => ipcRenderer.invoke('sendEmail', req),
-  getDefaultLogo: () => ipcRenderer.invoke('getDefaultLogo'),
-  chooseDefaultLogo: () => ipcRenderer.invoke('chooseDefaultLogo'),
-  clearDefaultLogo: () => ipcRenderer.invoke('clearDefaultLogo'),
-  copyText: (text: string) => ipcRenderer.invoke('copyText', text),
-  checkForUpdates: () => ipcRenderer.invoke('checkForUpdates'),
-  setLocale: (locale: string) => ipcRenderer.invoke('setLocale', locale),
-  onMenuCommand: (cb: (command: MenuCommand) => void) => {
-    const listener = (_e: unknown, command: MenuCommand) => cb(command);
-    ipcRenderer.on('menuCommand', listener);
-    return () => {
-      ipcRenderer.removeListener('menuCommand', listener);
-    };
-  },
-  onProgress: (cb: (e: ProgressEvent) => void) => {
-    const listener = (_e: any, event: ProgressEvent) => cb(event);
-    ipcRenderer.on('progress', listener);
-    return () => {
-      ipcRenderer.removeListener('progress', listener);
-    };
-  },
+  cancelPublish: send('cancelPublish'),
+  onExportProgress: (cb) => subscribe('exportProgress', cb),
+  onPublishProgress: (cb) => subscribe('publishProgress', cb),
+  onMenuCommand: (cb) => subscribe('menuCommand', cb),
 };
 
 contextBridge.exposeInMainWorld('api', api);

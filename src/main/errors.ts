@@ -1,4 +1,5 @@
-import { AppError, ErrorCode } from '@shared/types';
+import type { AppError, ErrorCode } from '@shared/types';
+import type { AppErrorResult } from '@shared/ipc';
 import { normalizeError } from '../shared/apperror';
 import { redactAppError } from '../shared/redact';
 import { TOO_LONG_MESSAGE } from '../shared/limits';
@@ -110,6 +111,12 @@ export class UnverifiedProjectError extends IpcError {
   }
 }
 
+export class NoClipError extends IpcError {
+  constructor() {
+    super('NoClip', 'No clip loaded');
+  }
+}
+
 export class EmailSendError extends IpcError {
   constructor(message = 'Sending the email failed', details?: string) {
     super('EmailSendError', message, details);
@@ -133,4 +140,11 @@ export function toAppError(error: unknown, fallbackCode: ErrorCode = 'EngineErro
     return redactAppError(error.toAppError());
   }
   return normalizeError(error, fallbackCode);
+}
+
+export function errorResult(
+  error: unknown,
+  fallbackCode: ErrorCode = 'EngineError',
+): AppErrorResult {
+  return { status: 'error', error: toAppError(error, fallbackCode) };
 }

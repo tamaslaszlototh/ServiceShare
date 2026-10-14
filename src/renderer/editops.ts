@@ -1,4 +1,4 @@
-import { EditOperation, Selection } from '@shared/types';
+import { EditOperation, FadeKind, Selection } from '@shared/types';
 
 export const FADE_MIN_SECONDS = 0.5;
 export const FADE_MAX_SECONDS = 10;
@@ -60,7 +60,7 @@ export function isStructural(op: EditOperation): boolean {
 
 export function activeFadeSeconds(
   editList: readonly EditOperation[],
-  kind: 'fadeIn' | 'fadeOut',
+  kind: FadeKind,
 ): number | null {
   for (let i = editList.length - 1; i >= 0; i--) {
     const op = editList[i];

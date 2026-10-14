@@ -1,4 +1,5 @@
 import type { ErrorCode } from './error-catalogue';
+import type { AppErrorResult } from './ipc';
 
 export type { ErrorCode } from './error-catalogue';
 
@@ -34,6 +35,8 @@ export interface PeakData {
   buckets: PeakBucket[][];
 }
 
+export type FadeKind = 'fadeIn' | 'fadeOut';
+
 export type EditOperation =
   | { kind: 'trim'; start: number; end: number }
   | { kind: 'cutRegion'; start: number; end: number }
@@ -55,11 +58,6 @@ export interface Document extends EditListSnapshot {
   sourceFile: string | null;
 }
 
-export type ProgressEvent =
-  | { stage: 'rendering' | 'cover' | 'upload'; percent?: number }
-  | { stage: 'done' }
-  | { kind: 'error'; error: AppError };
-
 export interface ExportOptions {
   format: ExportFormat;
   outputPath: string;
@@ -76,7 +74,7 @@ export interface ExportProgress {
 export type ExportResult =
   | { status: 'ok'; outputPath: string }
   | { status: 'cancelled' }
-  | { status: 'error'; error: AppError };
+  | AppErrorResult;
 
 export type PrivacyStatus = 'unlisted' | 'private' | 'public';
 
@@ -94,9 +92,7 @@ export interface CoverPreviewRequest {
   coverImagePath?: string;
 }
 
-export type CoverPreviewResult =
-  | { status: 'ok'; url: string }
-  | { status: 'error'; error: AppError };
+export type CoverPreviewResult = { status: 'ok'; url: string } | AppErrorResult;
 
 export type PublishEvent =
   | { stage: 'cover' }
@@ -109,29 +105,29 @@ export type PublishEvent =
 export type PublishResult =
   | { status: 'ok'; videoId: string; url: string; warning?: AppError }
   | { status: 'cancelled' }
-  | { status: 'error'; error: AppError };
+  | AppErrorResult;
 
 export type OpenResult =
   | { status: 'ok'; clip: ClipInfo }
   | { status: 'cancelled' }
-  | { status: 'error'; error: AppError };
+  | AppErrorResult;
 
 export type PeaksResult =
   | { status: 'ok'; peaks: PeakData }
   | { status: 'none' }
-  | { status: 'error'; error: AppError };
+  | AppErrorResult;
 
 export type PreviewResult =
   | { status: 'ok'; url: string }
   | { status: 'none' }
-  | { status: 'error'; error: AppError };
+  | AppErrorResult;
 
 export type EditResult =
   | { status: 'ok'; document: Document }
   | { status: 'cancelled' }
-  | { status: 'error'; error: AppError };
+  | AppErrorResult;
 
-export type VoidResult = { status: 'ok' } | { status: 'error'; error: AppError };
+export type VoidResult = { status: 'ok' } | AppErrorResult;
 
 export interface AccountInfo {
   channelId?: string;
@@ -153,11 +149,9 @@ export interface DefaultLogo {
 export type LogoResult =
   | { status: 'ok'; url: string }
   | { status: 'cancelled' }
-  | { status: 'error'; error: AppError };
+  | AppErrorResult;
 
-export type AuthResult =
-  | { status: 'ok'; account: AccountInfo | null }
-  | { status: 'error'; error: AppError };
+export type AuthResult = { status: 'ok'; account: AccountInfo | null } | AppErrorResult;
 
 export interface EmailSendRequest {
   to: string[];
@@ -165,7 +159,7 @@ export interface EmailSendRequest {
   body: string;
 }
 
-export type EmailSendResult = { status: 'ok' } | { status: 'error'; error: AppError };
+export type EmailSendResult = { status: 'ok' } | AppErrorResult;
 
 export interface AuthTokens {
   accessToken: string;
@@ -173,43 +167,4 @@ export interface AuthTokens {
   expiryDate?: number;
   scope?: string;
   tokenType?: string;
-}
-
-export type IpcApi = {
-  openFile: (filePath?: string) => Promise<OpenResult>;
-  getPeaks: () => Promise<PeaksResult>;
-  getPreview: () => Promise<PreviewResult>;
-  getPathForFile: (file: File) => string;
-  getDocument: () => Promise<Document>;
-  applyEdit: (op: EditOperation) => Promise<EditResult>;
-  toggleFade: (kind: 'fadeIn' | 'fadeOut', seconds: number) => Promise<EditResult>;
-  toggleNormalize: () => Promise<EditResult>;
-  concatenate: () => Promise<EditResult>;
-  undo: () => Promise<Document>;
-  redo: () => Promise<Document>;
-  checkEngine: () => Promise<VoidResult>;
-  exportAudio: (format: ExportFormat) => Promise<ExportResult>;
-  onExportProgress: (cb: (e: ExportProgress) => void) => () => void;
-  publish: (req: PublishRequest) => Promise<PublishResult>;
-  cancelPublish: () => void;
-  onPublishProgress: (cb: (e: PublishEvent) => void) => () => void;
-  composeCoverPreview: (req: CoverPreviewRequest) => Promise<CoverPreviewResult>;
-  getAccount: () => Promise<AccountState>;
-  signIn: () => Promise<AuthResult>;
-  signOut: () => Promise<VoidResult>;
-  sendEmail: (req: EmailSendRequest) => Promise<EmailSendResult>;
-  getDefaultLogo: () => Promise<DefaultLogo>;
-  chooseDefaultLogo: () => Promise<LogoResult>;
-  clearDefaultLogo: () => Promise<VoidResult>;
-  copyText: (text: string) => Promise<VoidResult>;
-  checkForUpdates: () => Promise<void>;
-  setLocale: (locale: string) => Promise<void>;
-  onMenuCommand: (cb: (command: MenuCommand) => void) => () => void;
-  onProgress: (cb: (e: ProgressEvent) => void) => () => void;
-};
-
-declare global {
-  interface Window {
-    api: IpcApi;
-  }
 }

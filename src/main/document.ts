@@ -1,4 +1,4 @@
-import { Document, EditOperation } from '@shared/types';
+import { Document, EditOperation, FadeKind } from '@shared/types';
 import { EditList } from '@shared/editlist';
 
 export class DocumentManager {
@@ -18,7 +18,7 @@ export class DocumentManager {
     this.edits.append(op);
   }
 
-  toggleFade(kind: 'fadeIn' | 'fadeOut', seconds: number): void {
+  toggleFade(kind: FadeKind, seconds: number): void {
     this.edits.toggle({ kind, duration: seconds });
   }
 

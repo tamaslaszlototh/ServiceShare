@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell, clipboard } from 'electron';
+import { app, BrowserWindow, Menu, dialog, protocol, shell, clipboard } from 'electron';
 import { createReadStream, existsSync } from 'fs';
 import { mkdir, mkdtemp, rm, stat, copyFile, readFile } from 'fs/promises';
 import { Readable } from 'stream';
@@ -17,34 +17,13 @@ import { YouTubeService } from './youtube';
 import { emailDepsIn, parseEmailSendRequest, sendEmail } from './email';
 import { assetResolver } from './assets';
 import { parseByteRange } from './range';
-import { IpcError, toAppError } from './errors';
+import { IpcError, NoClipError, errorResult } from './errors';
+import { emit, handle, onSend } from './ipc';
 import { logError, logInfo } from './log';
 import { CUSTOM_LOGO_FILE, LogoStore } from './logo';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
-import { MenuCommand, MenuEntry, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './shell';
-import {
-  AccountState,
-  AppError,
-  AuthResult,
-  ClipInfo,
-  CoverPreviewRequest,
-  CoverPreviewResult,
-  DefaultLogo,
-  EditOperation,
-  EditResult,
-  EmailSendResult,
-  ErrorCode,
-  ExportFormat,
-  ExportResult,
-  LogoResult,
-  OpenResult,
-  PeaksResult,
-  PreviewResult,
-  ProgressEvent,
-  PublishRequest,
-  PublishResult,
-  VoidResult,
-} from '@shared/types';
+import { MenuEntry, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './shell';
+import { ClipInfo, ExportFormat } from '@shared/types';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -78,14 +57,6 @@ function createWindow(): BrowserWindow {
   }
 
   return win;
-}
-
-function engineErrorEvent(error: unknown): ProgressEvent {
-  return { kind: 'error', error: toAppError(error, 'EngineError') };
-}
-
-function errorResult(error: unknown, fallbackCode: ErrorCode = 'EngineError'): { status: 'error'; error: AppError } {
-  return { status: 'error', error: toAppError(error, fallbackCode) };
 }
 
 const docManager = new DocumentManager();
@@ -123,16 +94,19 @@ function installMenu(): void {
 
 function toElectronTemplate(entries: MenuEntry[]): Electron.MenuItemConstructorOptions[] {
   return entries.map((entry) => {
+    const command = entry.command;
     const item: Electron.MenuItemConstructorOptions = {
       ...(entry.type === undefined ? {} : { type: entry.type }),
       ...(entry.role === undefined ? {} : { role: entry.role as Electron.MenuItemConstructorOptions['role'] }),
       ...(entry.label === undefined ? {} : { label: entry.label }),
-      ...(entry.command === undefined
+      ...(command === undefined
         ? {}
         : {
             click: () => {
               const target = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
-              target?.webContents.send('menuCommand', entry.command);
+              if (target) {
+                emit(target.webContents, 'menuCommand', command);
+              }
             },
           }),
     };
@@ -255,18 +229,16 @@ app.whenReady().then(async () => {
   const win = createWindow();
   installMenu();
 
-  ipcMain.handle('setLocale', (_e, locale: unknown) => {
+  handle('setLocale', (_e, locale) => {
     activeLocale = resolveLocale(locale);
     installMenu();
   });
 
   win.webContents.once('did-finish-load', () => {
-    ffmpegResolver
-      .resolve()
-      .catch((e) => win.webContents.send('progress', engineErrorEvent(e)));
+    ffmpegResolver.resolve().catch((e) => logError('ffmpeg', 'RESOLVE', e));
   });
 
-  ipcMain.handle('openFile', async (_e, filePath?: string): Promise<OpenResult> => {
+  handle('openFile', async (_e, filePath) => {
     const target = filePath ?? (await pickClipPath());
     if (!target) {
       return { status: 'cancelled' };
@@ -282,7 +254,7 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('getPeaks', async (): Promise<PeaksResult> => {
+  handle('getPeaks', async () => {
     if (!currentClip) {
       return { status: 'none' };
     }
@@ -307,7 +279,7 @@ app.whenReady().then(async () => {
   protocol.handle('preview', previewResponse);
   protocol.handle('cover', coverResponse);
 
-  ipcMain.handle('getPreview', async (): Promise<PreviewResult> => {
+  handle('getPreview', async () => {
     if (!currentClip || !previewService) {
       return { status: 'none' };
     }
@@ -319,11 +291,11 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('getDocument', async () => {
+  handle('getDocument', async () => {
     return docManager.getDocument();
   });
 
-  ipcMain.handle('applyEdit', async (_e, op: EditOperation): Promise<EditResult> => {
+  handle('applyEdit', async (_e, op) => {
     try {
       docManager.appendEdit(op);
       return { status: 'ok', document: docManager.getDocument() };
@@ -332,19 +304,16 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle(
-    'toggleFade',
-    async (_e, kind: 'fadeIn' | 'fadeOut', seconds: number): Promise<EditResult> => {
-      try {
-        docManager.toggleFade(kind, seconds);
-        return { status: 'ok', document: docManager.getDocument() };
-      } catch (e) {
-        return errorResult(e, 'EngineError');
-      }
-    },
-  );
+  handle('toggleFade', async (_e, kind, seconds) => {
+    try {
+      docManager.toggleFade(kind, seconds);
+      return { status: 'ok', document: docManager.getDocument() };
+    } catch (e) {
+      return errorResult(e, 'EngineError');
+    }
+  });
 
-  ipcMain.handle('toggleNormalize', async (): Promise<EditResult> => {
+  handle('toggleNormalize', async () => {
     try {
       docManager.toggleNormalize();
       return { status: 'ok', document: docManager.getDocument() };
@@ -353,7 +322,7 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('concatenate', async (): Promise<EditResult> => {
+  handle('concatenate', async () => {
     const target = await pickClipPath();
     if (!target) {
       return { status: 'cancelled' };
@@ -367,17 +336,17 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('undo', async () => {
+  handle('undo', async () => {
     docManager.undo();
     return docManager.getDocument();
   });
 
-  ipcMain.handle('redo', async () => {
+  handle('redo', async () => {
     docManager.redo();
     return docManager.getDocument();
   });
 
-  ipcMain.handle('checkEngine', async (): Promise<VoidResult> => {
+  handle('checkEngine', async () => {
     try {
       await ffmpegResolver.recheck();
       return { status: 'ok' };
@@ -386,9 +355,9 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('exportAudio', async (event, format: ExportFormat): Promise<ExportResult> => {
+  handle('exportAudio', async (event, format) => {
     if (!currentClip) {
-      return { status: 'error', error: { code: 'NoClip', message: 'No clip loaded' } };
+      return errorResult(new NoClipError());
     }
     const outputPath = await pickExportPath(format, currentClip.filePath);
     if (!outputPath) {
@@ -399,7 +368,7 @@ app.whenReady().then(async () => {
         currentClip,
         docManager.getEffectiveEditList(),
         { format, outputPath },
-        (percent) => event.sender.send('exportProgress', { percent }),
+        (percent) => emit(event.sender, 'exportProgress', { percent }),
       );
       return { status: 'ok', outputPath };
     } catch (e) {
@@ -407,15 +376,12 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('publish', async (event, req: PublishRequest): Promise<PublishResult> => {
+  handle('publish', async (event, req) => {
     if (!currentClip || !publishService) {
-      return { status: 'error', error: { code: 'NoClip', message: 'No clip loaded' } };
+      return errorResult(new NoClipError());
     }
     if (activePublish) {
-      return {
-        status: 'error',
-        error: { code: 'PublishInProgress', message: 'A publish is already in progress' },
-      };
+      return errorResult(new IpcError('PublishInProgress', 'A publish is already in progress'));
     }
     const controller = new AbortController();
     activePublish = controller;
@@ -425,7 +391,7 @@ app.whenReady().then(async () => {
         { clip: currentClip, editList: docManager.getEffectiveEditList() },
         {
           signal: controller.signal,
-          onEvent: (e) => event.sender.send('publishProgress', e),
+          onEvent: (e) => emit(event.sender, 'publishProgress', e),
         },
       );
     } finally {
@@ -433,35 +399,29 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.on('cancelPublish', () => {
+  onSend('cancelPublish', () => {
     activePublish?.abort();
   });
 
-  ipcMain.handle(
-    'composeCoverPreview',
-    async (_e, req: CoverPreviewRequest): Promise<CoverPreviewResult> => {
-      if (!coverPreviewService) {
-        return {
-          status: 'error',
-          error: { code: 'CoverUnavailable', message: 'Cover preview is not available' },
-        };
-      }
-      try {
-        const preview = await coverPreviewService.ensure(req.title, req.coverImagePath, logoKey());
-        return { status: 'ok', url: preview.url };
-      } catch (e) {
-        return errorResult(e, 'RenderError');
-      }
-    },
-  );
+  handle('composeCoverPreview', async (_e, req) => {
+    if (!coverPreviewService) {
+      return errorResult(new IpcError('CoverUnavailable', 'Cover preview is not available'));
+    }
+    try {
+      const preview = await coverPreviewService.ensure(req.title, req.coverImagePath, logoKey());
+      return { status: 'ok', url: preview.url };
+    } catch (e) {
+      return errorResult(e, 'RenderError');
+    }
+  });
 
-  ipcMain.handle('getDefaultLogo', async (): Promise<DefaultLogo> => {
+  handle('getDefaultLogo', async () => {
     const custom = logoStore?.customPath() ?? null;
     const target = custom ?? assetResolver.resolve().logo;
     return { url: await fileDataUrl(target), custom: custom !== null };
   });
 
-  ipcMain.handle('chooseDefaultLogo', async (): Promise<LogoResult> => {
+  handle('chooseDefaultLogo', async () => {
     try {
       const { title, filters } = logoDialogOptions(tr);
       const result = await dialog.showOpenDialog({ title, filters, properties: ['openFile'] });
@@ -484,7 +444,7 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('clearDefaultLogo', async (): Promise<VoidResult> => {
+  handle('clearDefaultLogo', async () => {
     try {
       await logoStore?.clear();
       assetResolver.setLogoOverride(null);
@@ -494,11 +454,11 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('getAccount', async (): Promise<AccountState> => {
+  handle('getAccount', async () => {
     return youtubeService.accountState();
   });
 
-  ipcMain.handle('signIn', async (): Promise<AuthResult> => {
+  handle('signIn', async () => {
     try {
       const account = await youtubeService.signIn();
       return { status: 'ok', account };
@@ -507,7 +467,7 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('signOut', async (): Promise<VoidResult> => {
+  handle('signOut', async () => {
     try {
       await youtubeService.signOut();
       return { status: 'ok' };
@@ -516,10 +476,10 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('sendEmail', async (_e, req: unknown): Promise<EmailSendResult> => {
+  handle('sendEmail', async (_e, req) => {
     const parsed = parseEmailSendRequest(req);
     if (parsed.status === 'error') {
-      return { status: 'error', error: toAppError(parsed.error) };
+      return errorResult(parsed.error);
     }
     try {
       const accessToken = await youtubeService.getAccessToken();
@@ -531,15 +491,15 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle('copyText', async (_e, text: unknown): Promise<VoidResult> => {
+  handle('copyText', async (_e, text) => {
     if (typeof text !== 'string') {
-      return { status: 'error', error: new IpcError('InternalError', 'copyText expects a string').toAppError() };
+      return errorResult(new IpcError('InternalError', 'copyText expects a string'));
     }
     clipboard.writeText(text);
     return { status: 'ok' };
   });
 
-  ipcMain.handle('checkForUpdates', async () => {
+  handle('checkForUpdates', async () => {
     logInfo('updater', 'CHECK');
   });
 });

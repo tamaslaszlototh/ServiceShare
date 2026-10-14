@@ -105,6 +105,13 @@ checkForUpdates(): Promise<UpdateInfo>
 streams `{stage: 'cover'|'render'|'upload'|'done', percent?: number}` then a `{kind:'ok', videoId}`
 or `{kind:'err', code}`. All errors cross IPC as the structured codes from `02` §2.9.
 
+The surface above is realised as a single **IPC contract** in `src/shared/ipc.ts`: it declares each
+channel's wire name (`IPC_CHANNELS`), its request/response payloads (`IpcInvokeContract`,
+`IpcSendContract`, `IpcEventContract`) and the shared error envelope (`AppErrorResult`). The preload
+adapter (`src/preload/preload.ts`) and the main-process handlers (via `src/main/ipc.ts`) both read
+their channel names and payload types from that contract, so a channel is named once and the two
+ends cannot drift apart. Failed results are built by one helper (`errorResult` in `src/main/errors.ts`).
+
 ## 3.7 Concurrency & temp lifecycle
 
 - One render at a time (single FFmpeg decode/encode); concurrent requests queue.
