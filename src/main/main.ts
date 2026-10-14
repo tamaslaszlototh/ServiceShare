@@ -14,6 +14,7 @@ import { PublishService, publishDepsIn } from './publish';
 import { CoverService, coverDepsIn } from './cover';
 import { CoverPreviewService } from './coverPreview';
 import { YouTubeService } from './youtube';
+import { emailDepsIn, parseEmailSendRequest, sendEmail } from './email';
 import { assetResolver } from './assets';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
@@ -31,6 +32,7 @@ import {
   DefaultLogo,
   EditOperation,
   EditResult,
+  EmailSendResult,
   ErrorCode,
   ExportFormat,
   ExportResult,
@@ -517,6 +519,24 @@ app.whenReady().then(async () => {
       return { status: 'ok' };
     } catch (e) {
       return errorResult(e, 'AuthRevoked');
+    }
+  });
+
+  ipcMain.handle('sendEmail', async (_e, req: unknown): Promise<EmailSendResult> => {
+    const payload = parseEmailSendRequest(req);
+    if (!payload) {
+      return {
+        status: 'error',
+        error: new IpcError('InternalError', 'sendEmail expects { to, subject, body }').toAppError(),
+      };
+    }
+    try {
+      const accessToken = await youtubeService.getAccessToken();
+      const from = youtubeService.getAccount()?.email ?? undefined;
+      await sendEmail({ accessToken, message: { ...payload, from } }, emailDepsIn());
+      return { status: 'ok' };
+    } catch (e) {
+      return errorResult(e, 'EmailSendError');
     }
   });
 

@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import {
   CoverPreviewRequest,
   EditOperation,
+  EmailSendRequest,
   ExportFormat,
   ExportProgress,
   IpcApi,
@@ -45,6 +46,7 @@ const api: IpcApi = {
   getAccount: () => ipcRenderer.invoke('getAccount'),
   signIn: () => ipcRenderer.invoke('signIn'),
   signOut: () => ipcRenderer.invoke('signOut'),
+  sendEmail: (req: EmailSendRequest) => ipcRenderer.invoke('sendEmail', req),
   getDefaultLogo: () => ipcRenderer.invoke('getDefaultLogo'),
   chooseDefaultLogo: () => ipcRenderer.invoke('chooseDefaultLogo'),
   clearDefaultLogo: () => ipcRenderer.invoke('clearDefaultLogo'),

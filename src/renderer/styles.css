@@ -647,6 +647,61 @@ a:focus-visible {
   font-size: 13px;
 }
 
+.done-email-row {
+  display: flex;
+}
+
+.email-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.email-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.email-panel input,
+.email-panel textarea {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.email-panel input:focus,
+.email-panel textarea:focus {
+  outline: none;
+  border-color: var(--accent2);
+}
+
+.email-panel textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.email-from {
+  margin: 0;
+  font-size: 12px;
+}
+
+.email-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ---------- empty state ---------- */
 
 .empty {

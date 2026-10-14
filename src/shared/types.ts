@@ -15,6 +15,7 @@ export type ErrorCode =
   | 'NoClip'
   | 'PublishInProgress'
   | 'CoverUnavailable'
+  | 'EmailSendError'
   | 'InternalError';
 
 export type ErrorParams = Record<string, string | number>;
@@ -151,6 +152,7 @@ export interface AccountInfo {
 export interface AccountState {
   signedIn: boolean;
   account?: AccountInfo | null;
+  canSendEmail: boolean;
 }
 
 export interface DefaultLogo {
@@ -166,6 +168,14 @@ export type LogoResult =
 export type AuthResult =
   | { status: 'ok'; account: AccountInfo | null }
   | { status: 'error'; error: AppError };
+
+export interface EmailSendRequest {
+  to: string[];
+  subject: string;
+  body: string;
+}
+
+export type EmailSendResult = { status: 'ok' } | { status: 'error'; error: AppError };
 
 export interface AuthTokens {
   accessToken: string;
@@ -197,6 +207,7 @@ export type IpcApi = {
   getAccount: () => Promise<AccountState>;
   signIn: () => Promise<AuthResult>;
   signOut: () => Promise<VoidResult>;
+  sendEmail: (req: EmailSendRequest) => Promise<EmailSendResult>;
   getDefaultLogo: () => Promise<DefaultLogo>;
   chooseDefaultLogo: () => Promise<LogoResult>;
   clearDefaultLogo: () => Promise<VoidResult>;

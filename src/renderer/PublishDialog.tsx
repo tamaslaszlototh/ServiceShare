@@ -23,6 +23,7 @@ import {
   toPublishRequest,
   uploadPercent,
 } from './publish';
+import { canSendEmail, defaultEmailBody, defaultEmailSubject, emailErrorAction, normalizeRecipient } from './email';
 
 const UNVERIFIED_NOTE_KEY = 'serviceshare.unverifiedNoteDismissed';
 const COVER_DEBOUNCE_MS = 200;
@@ -60,6 +61,14 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [accountReady, setAccountReady] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const [hasEmailScope, setHasEmailScope] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState<AppError | null>(null);
   const [title, setTitle] = useState(() => defaultTitle(sourceFile));
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
@@ -140,6 +149,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         if (cancelled) return;
         setSignedIn(state.signedIn);
         setAccount(state.account ?? null);
+        setHasEmailScope(state.canSendEmail);
       })
       .catch(() => {
         if (!cancelled) setSignedIn(false);
@@ -219,12 +229,20 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
       const auth = await window.api.signIn();
       if (auth.status === 'error') {
         setError(auth.error);
+        setEmailError(auth.error);
         return;
       }
       setSignedIn(true);
       setAccount(auth.account);
+      const state = await window.api.getAccount().catch(() => null);
+      if (state) {
+        setHasEmailScope(state.canSendEmail);
+      }
+      setEmailError(null);
     } catch (e) {
-      setError(normalizeError(e, 'AuthRevoked'));
+      const failure = normalizeError(e, 'AuthRevoked');
+      setError(failure);
+      setEmailError(failure);
     } finally {
       setSigningIn(false);
     }
@@ -331,6 +349,46 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
     }
   };
 
+  const toggleEmailPanel = () => {
+    if (emailOpen) {
+      setEmailOpen(false);
+      return;
+    }
+    if (!result) return;
+    setEmailSubject(defaultEmailSubject(title));
+    setEmailBody(defaultEmailBody(result.url, t));
+    setEmailTo('');
+    setEmailSent(false);
+    setEmailError(null);
+    setEmailOpen(true);
+  };
+
+  const sendEmailMessage = async () => {
+    if (!result) return;
+    const to = normalizeRecipient(emailTo);
+    if (!canSendEmail(emailSubject, emailBody, [to])) return;
+    setEmailSending(true);
+    setEmailError(null);
+    setEmailSent(false);
+    try {
+      const outcome = await window.api.sendEmail({ to: [to], subject: emailSubject, body: emailBody });
+      if (outcome.status === 'error') {
+        setEmailError(outcome.error);
+        if (outcome.error.code === 'AuthRevoked' || outcome.error.code === 'TokenStorageError') {
+          setSignedIn(false);
+          setAccount(null);
+          setHasEmailScope(false);
+        }
+        return;
+      }
+      setEmailSent(true);
+    } catch (e) {
+      setEmailError(normalizeError(e, 'EmailSendError'));
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
   const dismissUnverified = () => {
     setShowUnverified(false);
     try {
@@ -376,6 +434,92 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 {copied ? t('publish.copied') : t('publish.copyLink')}
               </button>
             </div>
+            <div className="done-email-row">
+              <button
+                className="btn ghost"
+                type="button"
+                aria-expanded={emailOpen}
+                aria-controls="email-panel"
+                onClick={toggleEmailPanel}
+              >
+                {t('publish.sendEmail')}
+              </button>
+            </div>
+            {emailOpen && (
+              <div className="email-panel" id="email-panel" role="group" aria-label={t('publish.emailPanel')}>
+                {privacyStatus === 'private' && (
+                  <div className="warning">
+                    <span>{t('publish.emailPrivateNote')}</span>
+                  </div>
+                )}
+                <p className="email-from muted">
+                  {t('publish.emailFrom')}: {account?.email ?? accountLabel(account, t)}
+                </p>
+                <label>
+                  {t('publish.emailSubject')}
+                  <input
+                    aria-label={t('publish.emailSubject')}
+                    value={emailSubject}
+                    onChange={(event) => setEmailSubject(event.target.value)}
+                  />
+                </label>
+                <label>
+                  {t('publish.emailTo')}
+                  <input
+                    aria-label={t('publish.emailTo')}
+                    value={emailTo}
+                    placeholder={t('publish.emailToHint')}
+                    onChange={(event) => setEmailTo(event.target.value)}
+                  />
+                </label>
+                <label>
+                  {t('publish.emailMessage')}
+                  <textarea
+                    aria-label={t('publish.emailMessage')}
+                    value={emailBody}
+                    onChange={(event) => setEmailBody(event.target.value)}
+                  />
+                </label>
+                {signedIn && !hasEmailScope && <p className="muted">{t('publish.emailScopeNote')}</p>}
+                {emailError && (
+                  <ErrorBanner
+                    className="modal-error"
+                    error={emailError}
+                    action={emailErrorAction(emailError.code, t)}
+                    onRetry={() => void sendEmailMessage()}
+                    onSignIn={() => void signIn()}
+                    onDismiss={() => setEmailError(null)}
+                  />
+                )}
+                {emailSent && (
+                  <p className="notice" role="status">
+                    {t('publish.emailSent')}
+                  </p>
+                )}
+                <div className="email-actions">
+                  <span className="spacer" />
+                  {signedIn && hasEmailScope ? (
+                    <button
+                      className="btn primary"
+                      type="button"
+                      disabled={!canSendEmail(emailSubject, emailBody, [emailTo]) || emailSending}
+                      onClick={() => void sendEmailMessage()}
+                    >
+                      {emailSending ? t('publish.emailSending') : t('publish.emailSend')}
+                    </button>
+                  ) : (
+                    <button
+                      className="btn primary"
+                      type="button"
+                      disabled={signingIn}
+                      onClick={() => void signIn()}
+                    >
+                      {signingIn ? t('publish.waitingGoogle') : t('publish.signIn')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             {result.warning && (
               <div className="warning">
                 <span>{t('publish.doneSub')}</span>

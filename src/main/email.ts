@@ -1,0 +1,96 @@
+import { AuthRevokedError, EmailSendError, IpcError, NetworkError, QuotaExceededError } from './errors';
+import { MimeMessage, base64UrlEncode, buildMime } from './mime';
+import { UploadHttp, apiErrorReason, isRetriableStatus, nodeUploadHttp } from './upload';
+
+export const GMAIL_SEND_URL = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send';
+
+export interface SendEmailOptions {
+  accessToken: string;
+  message: MimeMessage;
+}
+
+export interface EmailDeps {
+  http: UploadHttp;
+  sendUrl?: string;
+}
+
+export interface EmailSendPayload {
+  to: string[];
+  subject: string;
+  body: string;
+}
+
+export function parseEmailSendRequest(request: unknown): EmailSendPayload | null {
+  if (typeof request !== 'object' || request === null) {
+    return null;
+  }
+  const { to, subject, body } = request as { to?: unknown; subject?: unknown; body?: unknown };
+  if (!Array.isArray(to) || to.length === 0) {
+    return null;
+  }
+  if (!to.every((entry) => typeof entry === 'string' && entry.trim().length > 0)) {
+    return null;
+  }
+  if (typeof subject !== 'string' || subject.trim().length === 0) {
+    return null;
+  }
+  if (typeof body !== 'string' || body.trim().length === 0) {
+    return null;
+  }
+  return { to: to.map((entry) => entry.trim()), subject, body };
+}
+
+export function classifyEmailStatus(status: number, body: string): IpcError {
+  if (status === 401) {
+    return new AuthRevokedError(body);
+  }
+  if (status === 429) {
+    return new QuotaExceededError(body);
+  }
+  if (status === 403) {
+    const reason = apiErrorReason(body) ?? '';
+    if (/quota|rate|limit/i.test(`${reason} ${body}`)) {
+      return new QuotaExceededError(body);
+    }
+    return new EmailSendError('Gmail refused to send the message', body);
+  }
+  if (isRetriableStatus(status)) {
+    return new NetworkError(`Email send failed with status ${status}`, body);
+  }
+  return new EmailSendError(`Email send failed with status ${status}`, body);
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export async function sendEmail(options: SendEmailOptions, deps: EmailDeps): Promise<void> {
+  const raw = base64UrlEncode(buildMime(options.message));
+
+  let response;
+  try {
+    response = await deps.http({
+      url: deps.sendUrl ?? GMAIL_SEND_URL,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${options.accessToken}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: JSON.stringify({ raw }),
+    });
+  } catch (error) {
+    if (error instanceof IpcError) {
+      throw error;
+    }
+    throw new NetworkError('The email request failed', messageOf(error));
+  }
+
+  if (response.status >= 200 && response.status < 300) {
+    return;
+  }
+  throw classifyEmailStatus(response.status, response.text);
+}
+
+export function emailDepsIn(): EmailDeps {
+  return { http: nodeUploadHttp };
+}

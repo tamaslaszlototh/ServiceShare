@@ -82,6 +82,18 @@ describe('errorAction', () => {
     expect(errorAction('NetworkError')).toMatchObject({ kind: 'retry' });
     expect(errorAction('RenderError')).toMatchObject({ kind: 'retry' });
     expect(errorAction('UploadExpired')).toMatchObject({ kind: 'retry' });
+    expect(errorAction('EmailSendError')).toMatchObject({ kind: 'retry' });
+  });
+
+  it('localizes the email send failure in both languages', () => {
+    expect(errorMessage({ code: 'EmailSendError', message: 'send failed' }, tFor('en'))).toBe(
+      'The email could not be sent',
+    );
+    expect(errorMessage({ code: 'EmailSendError', message: 'send failed' }, tFor('hu'))).toBe(
+      'Az e-mailt nem sikerült elküldeni',
+    );
+    expect(errorAction('EmailSendError', tFor('en'))?.label).toBe('Retry');
+    expect(errorAction('EmailSendError', tFor('hu'))?.label).toBe('Újra');
   });
 
   it('routes revoked auth back to sign-in', () => {

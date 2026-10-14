@@ -168,6 +168,21 @@ const en = {
   'publish.openVideo': 'Open video',
   'publish.doneHeading': 'Published to YouTube',
   'publish.doneSub': 'The processed video has been uploaded.',
+  'publish.emailDefaultBody': 'Hello!\n\n{url}',
+  'publish.sendEmail': 'Send email',
+  'publish.emailPanel': 'Send the video link by email',
+  'publish.emailFrom': 'From',
+  'publish.emailTo': 'To',
+  'publish.emailToHint': 'e.g. name@example.com',
+  'publish.emailSubject': 'Subject',
+  'publish.emailMessage': 'Message',
+  'publish.emailSend': 'Send',
+  'publish.emailSending': 'Sending…',
+  'publish.emailSent': 'Email sent.',
+  'publish.emailPrivateNote':
+    'This video is private — recipients may not be able to open the link.',
+  'publish.emailScopeNote':
+    'Sending email needs a one-time Google sign-in to add the mail permission.',
   'publish.tryAgain': 'Try again',
   'publish.back': 'Back',
   'publish.stage.cover': 'Composing cover…',
@@ -199,6 +214,7 @@ const en = {
   'error.code.NoClip': 'No clip loaded',
   'error.code.PublishInProgress': 'A publish is already in progress',
   'error.code.CoverUnavailable': 'Cover preview is not available',
+  'error.code.EmailSendError': 'The email could not be sent',
   'error.code.InternalError': 'An internal error occurred',
 } as const;
 
@@ -366,6 +382,21 @@ const hu: Record<TranslationKey, string> = {
   'publish.openVideo': 'Videó megnyitása',
   'publish.doneHeading': 'Közzétéve a YouTube-on',
   'publish.doneSub': 'A feldolgozott videó feltöltve.',
+  'publish.emailDefaultBody': 'Helló!\n\n{url}',
+  'publish.sendEmail': 'E-mail küldése',
+  'publish.emailPanel': 'A videó linkjének küldése e-mailben',
+  'publish.emailFrom': 'Feladó',
+  'publish.emailTo': 'Címzett',
+  'publish.emailToHint': 'pl. nev@example.com',
+  'publish.emailSubject': 'Tárgy',
+  'publish.emailMessage': 'Üzenet',
+  'publish.emailSend': 'Küldés',
+  'publish.emailSending': 'Küldés…',
+  'publish.emailSent': 'Az e-mail elküldve.',
+  'publish.emailPrivateNote':
+    'Ez a videó privát — a címzettek lehet, hogy nem tudják megnyitni a linket.',
+  'publish.emailScopeNote':
+    'Az e-mail küldéséhez egyszeri Google-bejelentkezés szükséges az engedély hozzáadásához.',
   'publish.tryAgain': 'Próbálja újra',
   'publish.back': 'Vissza',
   'publish.stage.cover': 'Borító összeállítása…',
@@ -397,6 +428,7 @@ const hu: Record<TranslationKey, string> = {
   'error.code.NoClip': 'Nincs betöltött klip',
   'error.code.PublishInProgress': 'Egy közzététel már folyamatban van',
   'error.code.CoverUnavailable': 'A borító előnézete nem érhető el',
+  'error.code.EmailSendError': 'Az e-mailt nem sikerült elküldeni',
   'error.code.InternalError': 'Belső hiba történt',
 };
 

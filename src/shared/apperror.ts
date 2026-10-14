@@ -18,6 +18,7 @@ export const ERROR_CODES: ErrorCode[] = [
   'NoClip',
   'PublishInProgress',
   'CoverUnavailable',
+  'EmailSendError',
   'InternalError',
 ];
 

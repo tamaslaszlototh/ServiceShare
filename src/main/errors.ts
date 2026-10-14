@@ -110,6 +110,12 @@ export class UnverifiedProjectError extends IpcError {
   }
 }
 
+export class EmailSendError extends IpcError {
+  constructor(message = 'Sending the email failed', details?: string) {
+    super('EmailSendError', message, details);
+  }
+}
+
 export function toAppError(error: unknown, fallbackCode: ErrorCode = 'EngineError'): AppError {
   if (error instanceof IpcError) {
     return redactAppError(error.toAppError());

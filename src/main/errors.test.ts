@@ -20,9 +20,11 @@ const DOCUMENTED_CODES: Record<ErrorCode, true> = {
   PublishInProgress: true,
   CoverUnavailable: true,
   InternalError: true,
+  EmailSendError: true,
 };
 import {
   AuthRevokedError,
+  EmailSendError,
   NetworkError,
   PermissionError,
   TooLongError,
@@ -38,6 +40,7 @@ describe('catalogue error classes', () => {
     expect(new UploadExpiredError().code).toBe('UploadExpired');
     expect(new NetworkError().code).toBe('NetworkError');
     expect(new AuthRevokedError().code).toBe('AuthRevoked');
+    expect(new EmailSendError().code).toBe('EmailSendError');
   });
 
   it('exposes a structured AppError envelope', () => {

@@ -21,6 +21,7 @@ const ERROR_KEYS: Record<ErrorCode, TranslationKey> = {
   NoClip: 'error.code.NoClip',
   PublishInProgress: 'error.code.PublishInProgress',
   CoverUnavailable: 'error.code.CoverUnavailable',
+  EmailSendError: 'error.code.EmailSendError',
   InternalError: 'error.code.InternalError',
 };
 
@@ -70,6 +71,7 @@ export function errorAction(code: ErrorCode, t?: Translator): ErrorAction | null
     case 'NetworkError':
     case 'RenderError':
     case 'UploadExpired':
+    case 'EmailSendError':
       return { kind: 'retry', label: t ? t('error.action.retry') : 'Retry' };
     case 'QuotaExceeded':
       return { kind: 'link', label: t ? t('error.action.quotas') : 'About quotas', href: QUOTA_DOCS_URL };

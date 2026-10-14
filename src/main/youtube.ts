@@ -9,11 +9,21 @@ import {
 import { OAuthCredentials, loadCredentials } from './credentials';
 import { AuthRevokedError, EngineError, TokenStorageError } from './errors';
 
+export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
+
 const YOUTUBE_SCOPES = [
   'https://www.googleapis.com/auth/youtube.upload',
   'https://www.googleapis.com/auth/youtube.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
+  GMAIL_SEND_SCOPE,
 ];
+
+export function hasGmailSendScope(tokens: AuthTokens | null): boolean {
+  if (!tokens?.scope) {
+    return false;
+  }
+  return tokens.scope.split(/[\s+]+/).includes(GMAIL_SEND_SCOPE);
+}
 
 export function oauthConfig(credentials: OAuthCredentials | null): OAuthConfig | null {
   if (!credentials) {
@@ -124,7 +134,11 @@ export class YouTubeService {
           throw new AuthRevokedError('No refresh token available');
         }
         const refreshed = await refreshTokens(this.config(), this.tokens.refreshToken);
-        const newTokens = this.tokenResponseToTokens(refreshed, this.tokens.refreshToken);
+        const newTokens = this.tokenResponseToTokens(
+          refreshed,
+          this.tokens.refreshToken,
+          this.tokens.scope,
+        );
         this.tokens = newTokens;
         await storeTokens(this.tokens);
         return this.tokens;
@@ -158,7 +172,11 @@ export class YouTubeService {
         this.account = null;
       }
     }
-    return { signedIn: this.isSignedIn(), account: this.account };
+    return {
+      signedIn: this.isSignedIn(),
+      account: this.account,
+      canSendEmail: this.isSignedIn() && hasGmailSendScope(this.tokens),
+    };
   }
 
   isSignedIn(): boolean {
@@ -175,6 +193,7 @@ export class YouTubeService {
   private tokenResponseToTokens(
     response: TokenResponse,
     existingRefreshToken?: string,
+    existingScope?: string,
   ): AuthTokens {
     const expiresIn = response.expires_in ?? 3600;
     const expiryDate = Date.now() + expiresIn * 1000;
@@ -182,7 +201,7 @@ export class YouTubeService {
       accessToken: response.access_token,
       refreshToken: response.refresh_token ?? existingRefreshToken,
       expiryDate,
-      scope: response.scope,
+      scope: response.scope ?? existingScope,
       tokenType: response.token_type,
     };
   }
