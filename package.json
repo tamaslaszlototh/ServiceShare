@@ -11,14 +11,17 @@
     "build": "node scripts/build.mjs",
     "test": "vitest run",
     "test:audio": "vitest run --config vitest.audio.config.ts",
-    "gen:assets": "node scripts/gen-assets.mjs"
+    "gen:assets": "node scripts/gen-assets.mjs",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tamaslaszlototh/ServiceShare.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Tóth Tamás László",
   "bugs": {
     "url": "https://github.com/tamaslaszlototh/ServiceShare/issues"
   },
@@ -48,6 +51,38 @@
     "react-dom": "^19.2.0"
   },
   "build": {
+    "appId": "com.tamaslaszlototh.serviceshare",
+    "productName": "ServiceShare",
+    "copyright": "Copyright © 2026 Tóth Tamás László",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "!node_modules/ffmpeg-static/**",
+      "!node_modules/ffprobe-static/**"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      },
+      {
+        "from": "LICENSE",
+        "to": "LICENSE"
+      },
+      {
+        "from": "node_modules/ffmpeg-static/ffmpeg.LICENSE",
+        "to": "licenses/ffmpeg.LICENSE.md"
+      },
+      {
+        "from": "node_modules/ffmpeg-static/ffmpeg.README",
+        "to": "licenses/ffmpeg.README.md"
+      }
+    ],
+    "afterPack": "scripts/packaging/after-pack.cjs",
     "publish": [
       {
         "provider": "github",
@@ -56,8 +91,66 @@
         "releaseType": "draft"
       }
     ],
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "forceCodeSigning": false,
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg",
+          "to": "ffmpeg"
+        },
+        {
+          "from": "node_modules/ffprobe-static/bin/darwin/${arch}/ffprobe",
+          "to": "ffprobe"
+        }
+      ]
+    },
     "win": {
-      "verifyUpdateCodeSignature": false
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "verifyUpdateCodeSignature": false,
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg.exe",
+          "to": "ffmpeg.exe"
+        },
+        {
+          "from": "node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe",
+          "to": "ffprobe.exe"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "license": "LICENSE",
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
     }
   }
 }

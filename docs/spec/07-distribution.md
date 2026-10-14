@@ -26,9 +26,10 @@ Notarization is a hard requirement for distribution since macOS 10.15; auto-upda
 2. **Developer ID Application** certificate; **Hardened Runtime** enabled (electron-builder
    default for standard builds).
 3. Sign with `CSC_LINK` (`.p12`) + `CSC_KEY_PASSWORD`; **`forceCodeSigning: true`** so a missing
-   identity fails the build instead of shipping unsigned.
+   identity fails the build instead of shipping unsigned. The config defaults it to `false` so local
+   and pre-certificate builds stay unsigned; release builds pass `-c.mac.forceCodeSigning=true`.
 4. **Notarize** with `notarytool` + `stapler` (Xcode 14+; `altool` is retired). Authenticate with
-   an **App Store Connect API key** (`APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_KEY_ISSUER`)
+   an **App Store Connect API key** (`APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`)
    — recommended over app-specific passwords.
 5. Notarization runs <1 h normally; ~75/day cap.
 

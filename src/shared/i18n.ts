@@ -120,6 +120,8 @@ const en = {
   'menu.window.front': 'Bring All to Front',
   'menu.help': 'Help',
   'menu.app.checkForUpdates': 'Check for Updates…',
+  'about.credits':
+    'Free software licensed under the GNU GPL-3.0. Includes FFmpeg, licensed under the GPL. Source code: {url}',
   'update.checking': 'Checking for updates…',
   'update.upToDate': "You're up to date ({version})",
   'update.unsupported': 'Updates are only available in installed builds',
@@ -338,6 +340,8 @@ const hu: Record<BaseTranslationKey, string> = {
   'menu.window.front': 'Mindent előrehoz',
   'menu.help': 'Súgó',
   'menu.app.checkForUpdates': 'Frissítések keresése…',
+  'about.credits':
+    'Szabad szoftver a GNU GPL-3.0 licenc alatt. Tartalmazza az FFmpeget (GPL licenc). Forráskód: {url}',
   'update.checking': 'Frissítések keresése…',
   'update.upToDate': 'A program naprakész ({version})',
   'update.unsupported': 'Frissítés csak telepített változatban érhető el',

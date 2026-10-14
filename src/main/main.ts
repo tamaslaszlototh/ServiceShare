@@ -24,7 +24,7 @@ import { CUSTOM_LOGO_FILE, LogoStore } from './publishing/logo';
 import { RECIPIENTS_FILE, RecipientStore } from './email/recipientStore';
 import { UpdateService } from './updater/updater';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
-import { MenuEntry, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './core/shell';
+import { MenuEntry, aboutPanelOptions, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './core/shell';
 import { ClipInfo, EmailRecipientsResult, ExportFormat } from '@shared/types';
 import { editedDuration } from '../shared/duration';
 
@@ -93,6 +93,7 @@ async function fileDataUrl(filePath: string): Promise<string | null> {
 }
 
 function installMenu(): void {
+  app.setAboutPanelOptions(aboutPanelOptions(tr, app.getVersion()));
   Menu.setApplicationMenu(Menu.buildFromTemplate(toElectronTemplate(applicationMenu(tr, process.platform))));
 }
 

@@ -12,6 +12,25 @@ export interface MenuEntry {
 }
 
 const APP_NAME = 'ServiceShare';
+const COPYRIGHT = 'Copyright © 2026 Tóth Tamás László';
+// The public repo is the GPL corresponding source for every release.
+const SOURCE_URL = 'https://github.com/tamaslaszlototh/ServiceShare';
+
+export interface AboutPanelOptions {
+  applicationName: string;
+  applicationVersion: string;
+  copyright: string;
+  credits: string;
+}
+
+export function aboutPanelOptions(t: Translator, version: string): AboutPanelOptions {
+  return {
+    applicationName: APP_NAME,
+    applicationVersion: version,
+    copyright: COPYRIGHT,
+    credits: t('about.credits', { url: SOURCE_URL }),
+  };
+}
 
 export function applicationMenu(t: Translator, platform: NodeJS.Platform): MenuEntry[] {
   const isMac = platform === 'darwin';

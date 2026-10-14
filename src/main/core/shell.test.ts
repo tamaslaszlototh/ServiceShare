@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Locale, TranslationKey, TranslationParams, t as translate } from '../../shared/i18n';
 import {
+  aboutPanelOptions,
   applicationMenu,
   exportDialogOptions,
   logoDialogOptions,
@@ -104,5 +105,24 @@ describe('native dialog options', () => {
     expect(hu.title).toBe('Alapértelmezett logó kiválasztása');
     expect(hu.filters[0].extensions).toContain('png');
     expect(logoDialogOptions(tFor('en')).filters[0].extensions).toContain('jpeg');
+  });
+});
+
+describe('aboutPanelOptions', () => {
+  it('names the app, its version, and its copyright', () => {
+    const about = aboutPanelOptions(tFor('en'), '1.2.3');
+    expect(about.applicationName).toBe('ServiceShare');
+    expect(about.applicationVersion).toBe('1.2.3');
+    expect(about.copyright).toContain('Tóth Tamás László');
+  });
+
+  it('states the GPL-3.0 license and where the corresponding source lives', () => {
+    for (const locale of ['hu', 'en'] as const) {
+      const { credits } = aboutPanelOptions(tFor(locale), '1.2.3');
+      expect(credits).toContain('GPL-3.0');
+      expect(credits).toContain('FFmpeg');
+      expect(credits).toContain('https://github.com/tamaslaszlototh/ServiceShare');
+    }
+    expect(aboutPanelOptions(tFor('hu'), '1.2.3').credits).not.toBe(aboutPanelOptions(tFor('en'), '1.2.3').credits);
   });
 });
