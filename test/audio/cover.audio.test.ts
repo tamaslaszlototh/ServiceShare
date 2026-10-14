@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import * as path from 'path';
 import { CoverService } from '../../src/main/cover';
 import { CoverAssets } from '../../src/main/assets';
@@ -54,7 +54,18 @@ async function composeTo(title: string, name: string, coverImagePath?: string): 
   return output;
 }
 
+// The first drawtext render on a fresh Windows runner pays a one-off cost
+// (seconds normally, past the 60s test timeout on a slow runner), so it is
+// absorbed here instead of failing whichever test happens to run first.
+const WARM_UP_TIMEOUT_MS = 300_000;
+
 describe('cover compositing', () => {
+  beforeAll(async () => {
+    const started = Date.now();
+    await composeTo('Warm up', 'warm-up.png');
+    console.log(`cover warm-up render took ${Date.now() - started}ms`);
+  }, WARM_UP_TIMEOUT_MS);
+
   it('composes a 1280x720 cover from the bundled default base', async () => {
     const output = await composeTo('Hello world', 'default.png');
     const info = await ffprobeImage(output);
