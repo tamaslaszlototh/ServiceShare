@@ -30,10 +30,13 @@ export function parseCredentials(raw: string): OAuthCredentials | null {
   return { clientId, clientSecret: typeof clientSecret === 'string' ? clientSecret : '' };
 }
 
+const bundledResourcesPath = (process as { resourcesPath?: string }).resourcesPath ?? '';
+
 export function credentialCandidates(
   env: NodeJS.ProcessEnv = process.env,
   home: string = homedir(),
   userDataDir?: string,
+  resourcesPath: string = bundledResourcesPath,
 ): string[] {
   const paths: string[] = [];
   if (env.SERVICESHARE_CREDENTIALS) {
@@ -43,6 +46,11 @@ export function credentialCandidates(
   if (userDataDir) {
     paths.push(join(userDataDir, 'credentials.json'));
   }
+  // Release builds bundle the app's own OAuth client (written from a CI secret);
+  // any local file above overrides it.
+  if (resourcesPath) {
+    paths.push(join(resourcesPath, 'credentials.json'));
+  }
   return paths;
 }
 
@@ -50,8 +58,9 @@ export function loadCredentials(
   env: NodeJS.ProcessEnv = process.env,
   home: string = homedir(),
   userDataDir?: string,
+  resourcesPath: string = bundledResourcesPath,
 ): OAuthCredentials | null {
-  for (const path of credentialCandidates(env, home, userDataDir)) {
+  for (const path of credentialCandidates(env, home, userDataDir, resourcesPath)) {
     try {
       const parsed = parseCredentials(readFileSync(path, 'utf8'));
       if (parsed) {

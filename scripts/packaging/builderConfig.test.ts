@@ -68,6 +68,12 @@ describe('electron-builder packaging config', () => {
     expect(width).toBeGreaterThanOrEqual(256);
   });
 
+  it('bundles the OAuth credentials CI writes, but never commits them', () => {
+    expect(build.extraResources).toContainEqual({ from: 'build', to: '.', filter: ['credentials.json'] });
+    const ignored = readFileSync(path.join(root, '.gitignore'), 'utf8').split('\n');
+    expect(ignored).toContain('build/credentials.json');
+  });
+
   it('checks the FFmpeg binaries match the packaged architecture', () => {
     expect(build.afterPack).toBe('scripts/packaging/after-pack.cjs');
   });

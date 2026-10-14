@@ -52,6 +52,15 @@ describe('credentialCandidates', () => {
       '/home/u/.config/serviceshare/credentials.json',
     ]);
   });
+
+  it('falls back last to the credentials bundled with the installer', () => {
+    const paths = credentialCandidates({}, '/home/u', '/data', '/app/resources');
+    expect(paths).toEqual([
+      '/home/u/.config/serviceshare/credentials.json',
+      '/data/credentials.json',
+      '/app/resources/credentials.json',
+    ]);
+  });
 });
 
 describe('loadCredentials', () => {
@@ -65,5 +74,14 @@ describe('loadCredentials', () => {
       clientSecret: 'top-secret',
     });
     expect(loadCredentials({}, '/nonexistent')).toBeNull();
+  });
+
+  it('uses the bundled credentials when no local file exists', () => {
+    const resources = mkdtempSync(join(tmpdir(), 'ss-resources-'));
+    writeFileSync(join(resources, 'credentials.json'), INSTALLED);
+
+    expect(loadCredentials({}, '/nonexistent', undefined, resources)?.clientId).toBe(
+      '123-abc.apps.googleusercontent.com',
+    );
   });
 });

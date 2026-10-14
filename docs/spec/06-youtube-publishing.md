@@ -8,6 +8,8 @@ Decision context (wayfinder #10). Facts verified against primary Google/YouTube 
 - **Client:** Google Cloud OAuth **Desktop** client (project `serviceshare-511421`,
   `youtube.upload` + `youtube.readonly` scopes). Authorized redirect is the **loopback** URI
   `http://127.0.0.1:<ephemeral port>` (custom URI schemes are no longer supported by Google).
+  Release installers bundle this client's `credentials.json`, written from the
+  `GOOGLE_OAUTH_CREDENTIALS` CI secret (ADR 0008); a local `credentials.json` overrides it.
 - **Flow:** system browser opens `https://accounts.google.com/o/oauth2/v2/auth` with **PKCE**
   (`code_challenge`, `code_challenge_method=S256`); the callback server on loopback receives the
   code; exchange at `https://oauth2.googleapis.com/token`, `grant_type=authorization_code`.

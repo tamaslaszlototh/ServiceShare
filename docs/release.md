@@ -22,7 +22,11 @@ Installed apps check GitHub Releases on launch and install updates on quit.
    - it builds and uploads `ServiceShare-Setup-<version>.exe`, its `.blockmap` and the update
      metadata (`latest.yml`) to that draft.
 
-   No secrets are needed: the job uses the built-in `GITHUB_TOKEN`.
+   It needs one repository secret, `GOOGLE_OAUTH_CREDENTIALS`: the Google Cloud Desktop OAuth
+   client's `credentials.json`, which the job bundles into the installer so users can publish
+   without any setup. The job fails before creating a draft if it is missing. Set it once with
+   `gh secret set GOOGLE_OAUTH_CREDENTIALS < credentials.json`. Uploads use the built-in
+   `GITHUB_TOKEN`.
 4. Run the smoke checklist below against the installer attached to the draft.
 5. Publish the draft on GitHub. Installed apps only see published releases. Apps running a
    pre-release also pick up newer pre-releases; apps on a stable version only see stable ones.
@@ -43,6 +47,8 @@ Use a Windows x64 machine, ideally one that has never had ServiceShare installed
 - [ ] Make an edit and export to MP3.
 - [ ] Open the Publish dialog and check that the cover preview renders. This shows the bundled
       assets are found.
+- [ ] **Sign in with Google** opens the browser and returns signed in. This shows the bundled
+      OAuth credentials are found.
 - [ ] After publishing the release, an older installed build finds the update via **Help → Check
       for Updates…** and installs it on quit.
 

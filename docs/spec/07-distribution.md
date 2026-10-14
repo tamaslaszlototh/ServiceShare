@@ -59,7 +59,9 @@ need a valid signature there.
   - `release` job on a `windows-*` runner, triggered by pushing a tag `v*`: checks that the tag
     matches `package.json` `version`, tests, builds (unsigned), then
     `electron-builder --win --x64 --publish onTag`.
-  - Secrets: none beyond the built-in `GITHUB_TOKEN` (`contents: write`), passed as `GH_TOKEN`.
+  - Secrets: `GOOGLE_OAUTH_CREDENTIALS` (the Desktop OAuth client's `credentials.json`, bundled into
+    the installer; the job fails without it, ADR 0008) and the built-in `GITHUB_TOKEN`
+    (`contents: write`), passed as `GH_TOKEN`.
   - Flow: bump `package.json` `version` in a commit, tag it `v<version>`, push the tag. CI creates
     a **draft** release (pre-release for `-alpha`/`-beta` versions), then electron-builder uploads
     the installer and update metadata into it; the maintainer runs the smoke

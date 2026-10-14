@@ -79,6 +79,13 @@
       {
         "from": "node_modules/ffmpeg-static/ffmpeg.README",
         "to": "licenses/ffmpeg.README.md"
+      },
+      {
+        "from": "build",
+        "to": ".",
+        "filter": [
+          "credentials.json"
+        ]
       }
     ],
     "afterPack": "scripts/packaging/after-pack.cjs",

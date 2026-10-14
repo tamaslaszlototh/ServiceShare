@@ -28,6 +28,10 @@ packaged arch. x64 binaries are accepted in arm64 packages because Rosetta runs 
 Push a `v<version>` tag matching `package.json` and CI builds a draft GitHub Release. See
 [docs/release.md](docs/release.md) for the steps and the smoke checklist.
 
+The release job bundles the app's Google OAuth client into the installer from the
+`GOOGLE_OAUTH_CREDENTIALS` repository secret (ADR 0008). For local development, put a
+`credentials.json` in `~/.config/serviceshare/` or point `SERVICESHARE_CREDENTIALS` at one.
+
 Windows builds are unsigned, so users see a SmartScreen "Unknown publisher" warning on first
 install. The documented fix is an OV code-signing certificate, provided as the `WIN_CSC_LINK` /
 `WIN_CSC_KEY_PASSWORD` repository secrets; `win.verifyUpdateCodeSignature` can then be turned

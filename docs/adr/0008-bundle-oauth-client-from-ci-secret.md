@@ -1,0 +1,5 @@
+# 0008: Bundle the Google OAuth client into the installer from a CI secret
+
+Release installers ship the app's own Google Cloud **Desktop** OAuth client as `resources/credentials.json`. The release job writes the file from the `GOOGLE_OAUTH_CREDENTIALS` repository secret and fails if the secret is missing, so no installer ships unable to sign in. At runtime the bundled file is the last place the app looks: `SERVICESHARE_CREDENTIALS`, `~/.config/serviceshare/credentials.json` and `<userData>/credentials.json` all override it. That keeps local development and custom builds working.
+
+Chosen because users are non-technical Windows users who cannot create their own Google Cloud project. Google treats a desktop client's secret as non-confidential (anyone with the installer can extract it), so bundling it is the standard pattern. It stays out of the repo because the repo is public (ADR 0002). There, GitHub secret scanning could report it to Google and get it revoked, which would break sign-in for every installed copy. Committing it was rejected for that reason, and asking each user to supply their own file was rejected as impractical.

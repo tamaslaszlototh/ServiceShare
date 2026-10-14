@@ -46,6 +46,19 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME does not match package.json version ($expected)"
             exit 1
           fi
+      # The installer carries the app's Google OAuth client so users can publish
+      # without setup. It lives only in this secret, never in the public repo.
+      - name: Write the OAuth credentials
+        shell: bash
+        env:
+          GOOGLE_OAUTH_CREDENTIALS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS }}
+        run: |
+          if [ -z "$GOOGLE_OAUTH_CREDENTIALS" ]; then
+            echo "::error::The GOOGLE_OAUTH_CREDENTIALS secret is not set; the installer could not sign in to Google"
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_OAUTH_CREDENTIALS" > build/credentials.json
+          node -e "const c = require('./build/credentials.json'); if (!(c.installed ?? c.web ?? c).client_id) { throw new Error('credentials.json has no client_id'); }"
       - run: npm run test:audio
       - run: npm run build
       # electron-builder uploads in parallel; with no release yet, each upload can
