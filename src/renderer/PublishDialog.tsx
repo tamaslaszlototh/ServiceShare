@@ -1,6 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { EditOperation } from '@shared/types';
-import { parseRecipients } from '@shared/recipients';
 import { errorLabel, errorMessage } from './errors';
 import { ErrorBanner } from './ErrorBanner';
 import { useT } from './LocaleContext';
@@ -21,7 +20,7 @@ import {
   uploadPercent,
 } from './publish';
 import { canSendEmail, emailErrorAction } from './email';
-import { PublishFlow, createPublishFlow } from './publishFlow';
+import { PublishFlow, createPublishFlow, emailRecipients, isRecipientChecked } from './publishFlow';
 
 const UNVERIFIED_NOTE_KEY = 'serviceshare.unverifiedNoteDismissed';
 const IMAGE_ACCEPT = 'image/png,image/jpeg,.png,.jpg,.jpeg';
@@ -206,14 +205,50 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                     onChange={(event) => flow.setEmailSubject(event.target.value)}
                   />
                 </label>
+                {state.savedRecipients.length > 0 && (
+                  <fieldset className="email-saved">
+                    <legend>{t('publish.emailSaved')}</legend>
+                    {state.savedRecipients.map((address) => (
+                      <div className="email-saved-row" key={address}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={isRecipientChecked(state, address)}
+                            onChange={() => flow.toggleSavedRecipient(address)}
+                          />
+                          <span>{address}</span>
+                        </label>
+                        <button
+                          className="btn ghost email-forget"
+                          type="button"
+                          aria-label={t('publish.emailForget', { address })}
+                          title={t('publish.emailForget', { address })}
+                          onClick={() => void flow.forgetRecipient(address)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </fieldset>
+                )}
                 <label>
                   {t('publish.emailTo')}
-                  <input
-                    aria-label={t('publish.emailTo')}
-                    value={state.emailTo}
-                    placeholder={t('publish.emailToHint')}
-                    onChange={(event) => flow.setEmailTo(event.target.value)}
-                  />
+                  <div className="email-to-row">
+                    <input
+                      aria-label={t('publish.emailTo')}
+                      value={state.emailTo}
+                      placeholder={t('publish.emailToHint')}
+                      onChange={(event) => flow.setEmailTo(event.target.value)}
+                    />
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      disabled={state.emailTo.trim().length === 0}
+                      onClick={() => void flow.rememberRecipients()}
+                    >
+                      {t('publish.emailRemember')}
+                    </button>
+                  </div>
                 </label>
                 <label>
                   {t('publish.emailMessage')}
@@ -245,7 +280,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                     <button
                       className="btn primary"
                       type="button"
-                      disabled={!canSendEmail(state.emailSubject, state.emailBody, parseRecipients(state.emailTo)) || state.emailSending}
+                      disabled={!canSendEmail(state.emailSubject, state.emailBody, emailRecipients(state)) || state.emailSending}
                       onClick={() => void flow.sendEmail()}
                     >
                       {state.emailSending ? t('publish.emailSending') : t('publish.emailSend')}

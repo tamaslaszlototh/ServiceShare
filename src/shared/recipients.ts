@@ -14,6 +14,11 @@ export function parseRecipients(input: string): string[] {
     .filter((entry) => entry.length > 0);
 }
 
+/** The identity of an address: two addresses with the same key are the same recipient. */
+export function recipientKey(address: string): string {
+  return address.trim().toLowerCase();
+}
+
 export function normalizeRecipients(recipients: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -22,7 +27,7 @@ export function normalizeRecipients(recipients: string[]): string[] {
     if (trimmed.length === 0) {
       continue;
     }
-    const key = trimmed.toLowerCase();
+    const key = recipientKey(trimmed);
     if (!seen.has(key)) {
       seen.add(key);
       result.push(trimmed);

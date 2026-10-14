@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, dialog, protocol, shell, clipboard } from 'electron';
 import { createReadStream, existsSync } from 'fs';
-import { mkdir, mkdtemp, rm, stat, copyFile, readFile } from 'fs/promises';
+import { mkdir, mkdtemp, rm, stat, copyFile, readFile, writeFile } from 'fs/promises';
 import { Readable } from 'stream';
 import * as path from 'path';
 import { DocumentManager } from './document';
@@ -20,9 +20,10 @@ import { IpcError, NoClipError, errorResult } from './errors';
 import { emit, handle, onSend } from './ipc';
 import { logError, logInfo } from './log';
 import { CUSTOM_LOGO_FILE, LogoStore } from './logo';
+import { RECIPIENTS_FILE, RecipientStore } from './recipientStore';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
 import { MenuEntry, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './shell';
-import { ClipInfo, ExportFormat } from '@shared/types';
+import { ClipInfo, EmailRecipientsResult, ExportFormat } from '@shared/types';
 import { editedDuration } from '../shared/duration';
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -68,6 +69,7 @@ let currentClip: ClipInfo | null = null;
 const exportService = new ExportService(exportDepsIn());
 const youtubeService = new YouTubeService();
 let logoStore: LogoStore | null = null;
+let recipientStore: RecipientStore | null = null;
 
 let activeLocale: Locale = DEFAULT_LOCALE;
 
@@ -203,6 +205,11 @@ app.whenReady().then(async () => {
     removeFile: (filePath) => rm(filePath, { force: true }),
   });
   assetResolver.setLogoOverride(logoStore.customPath());
+  recipientStore = new RecipientStore({
+    filePath: path.join(app.getPath('userData'), RECIPIENTS_FILE),
+    readFile: (filePath) => readFile(filePath, 'utf8'),
+    writeFile: (filePath, data) => writeFile(filePath, data, 'utf8'),
+  });
   previewService = new PreviewService(previewDepsIn(tempRoot));
   const coverService = new CoverService(coverDepsIn(() => assetResolver.resolve()));
   coverPreviewService = new CoverPreviewService({
@@ -474,6 +481,35 @@ app.whenReady().then(async () => {
     } catch (e) {
       return errorResult(e, 'AuthRevoked');
     }
+  });
+
+  async function withRecipientStore(
+    change: (store: RecipientStore) => Promise<string[]>,
+  ): Promise<EmailRecipientsResult> {
+    if (!recipientStore) {
+      return errorResult(new IpcError('InternalError', 'Recipient storage is unavailable'));
+    }
+    try {
+      return { status: 'ok', recipients: await change(recipientStore) };
+    } catch (e) {
+      return errorResult(e, 'InternalError');
+    }
+  }
+
+  handle('getEmailRecipients', () => withRecipientStore((store) => store.list()));
+
+  handle('rememberEmailRecipient', (_e, address) => {
+    if (typeof address !== 'string') {
+      return errorResult(new IpcError('InternalError', 'rememberEmailRecipient expects a string'));
+    }
+    return withRecipientStore((store) => store.remember(address));
+  });
+
+  handle('forgetEmailRecipient', (_e, address) => {
+    if (typeof address !== 'string') {
+      return errorResult(new IpcError('InternalError', 'forgetEmailRecipient expects a string'));
+    }
+    return withRecipientStore((store) => store.forget(address));
   });
 
   handle('sendEmail', async (_e, req) => {

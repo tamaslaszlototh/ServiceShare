@@ -161,6 +161,9 @@ export interface EmailSendRequest {
 
 export type EmailSendResult = { status: 'ok' } | AppErrorResult;
 
+/** The saved recipient list after a read, remember or forget. */
+export type EmailRecipientsResult = { status: 'ok'; recipients: string[] } | AppErrorResult;
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken?: string;

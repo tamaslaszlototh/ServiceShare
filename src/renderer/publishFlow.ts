@@ -1,6 +1,6 @@
 import { Translator } from '@shared/i18n';
 import { normalizeError } from '@shared/apperror';
-import { normalizeRecipients, parseRecipients } from '@shared/recipients';
+import { classifyRecipients, normalizeRecipients, parseRecipients, recipientKey } from '@shared/recipients';
 import {
   AccountInfo,
   AccountState,
@@ -9,6 +9,7 @@ import {
   CoverPreviewRequest,
   CoverPreviewResult,
   DefaultLogo,
+  EmailRecipientsResult,
   EmailSendRequest,
   EmailSendResult,
   LogoResult,
@@ -58,6 +59,8 @@ export interface PublishFlowState {
   emailSubject: string;
   emailBody: string;
   emailTo: string;
+  savedRecipients: string[];
+  uncheckedRecipients: string[];
   emailSending: boolean;
   emailSent: boolean;
   emailError: AppError | null;
@@ -76,6 +79,9 @@ export interface PublishIpc {
   chooseDefaultLogo(): Promise<LogoResult>;
   clearDefaultLogo(): Promise<VoidResult>;
   sendEmail(req: EmailSendRequest): Promise<EmailSendResult>;
+  getEmailRecipients(): Promise<EmailRecipientsResult>;
+  rememberEmailRecipient(address: string): Promise<EmailRecipientsResult>;
+  forgetEmailRecipient(address: string): Promise<EmailRecipientsResult>;
   copyText(text: string): Promise<VoidResult>;
   getPathForFile(file: File): string;
 }
@@ -91,6 +97,9 @@ export interface PublishFlow {
   setEmailSubject(value: string): void;
   setEmailTo(value: string): void;
   setEmailBody(value: string): void;
+  toggleSavedRecipient(address: string): void;
+  rememberRecipients(): Promise<void>;
+  forgetRecipient(address: string): Promise<void>;
   signIn(): Promise<void>;
   signOut(): Promise<void>;
   chooseLogo(): Promise<void>;
@@ -109,6 +118,19 @@ export interface PublishFlowOptions {
   translate: () => Translator;
   sourceFile: string;
   coverDebounceMs?: number;
+}
+
+export function isRecipientChecked(state: PublishFlowState, address: string): boolean {
+  return !state.uncheckedRecipients.includes(recipientKey(address));
+}
+
+/**
+ * The recipients of the current send: the checked saved addresses followed by
+ * the ad-hoc ones typed into the To field, de-duplicated.
+ */
+export function emailRecipients(state: PublishFlowState): string[] {
+  const checked = state.savedRecipients.filter((address) => isRecipientChecked(state, address));
+  return normalizeRecipients([...checked, ...parseRecipients(state.emailTo)]);
 }
 
 export function createPublishFlow({
@@ -138,6 +160,8 @@ export function createPublishFlow({
     emailSubject: '',
     emailBody: '',
     emailTo: '',
+    savedRecipients: [],
+    uncheckedRecipients: [],
     emailSending: false,
     emailSent: false,
     emailError: null,
@@ -157,6 +181,7 @@ export function createPublishFlow({
   let copyTimer: ReturnType<typeof setTimeout> | null = null;
   let coverRequest = 0;
   let started = false;
+  let recipientsVersion = 0;
 
   function update(patch: Partial<PublishFlowState>): void {
     state = { ...state, ...patch };
@@ -188,6 +213,28 @@ export function createPublishFlow({
     } catch {
       // the logo preview simply stays empty
     }
+  }
+
+  async function loadSavedRecipients(): Promise<void> {
+    const version = recipientsVersion;
+    try {
+      const loaded = await ipc.getEmailRecipients();
+      // a remember/forget that finished meanwhile already holds a newer list
+      if (loaded.status === 'ok' && version === recipientsVersion) {
+        update({ savedRecipients: loaded.recipients });
+      }
+    } catch {
+      // the checklist simply stays empty; ad-hoc addresses still work
+    }
+  }
+
+  function applySavedRecipients(recipients: string[], checked: string[]): void {
+    recipientsVersion += 1;
+    const keys = new Set(checked.map(recipientKey));
+    update({
+      savedRecipients: recipients,
+      uncheckedRecipients: state.uncheckedRecipients.filter((key) => !keys.has(key)),
+    });
   }
 
   async function composeCoverPreview(): Promise<void> {
@@ -280,6 +327,53 @@ export function createPublishFlow({
     },
     setEmailBody(value) {
       update({ emailBody: value });
+    },
+    toggleSavedRecipient(address) {
+      const key = recipientKey(address);
+      const unchecked = state.uncheckedRecipients;
+      update({
+        uncheckedRecipients: unchecked.includes(key)
+          ? unchecked.filter((entry) => entry !== key)
+          : [...unchecked, key],
+      });
+    },
+
+    async rememberRecipients() {
+      const typed = parseRecipients(state.emailTo);
+      const validationError = recipientValidationError(typed);
+      if (validationError) {
+        update({ emailSent: false, emailError: validationError });
+        return;
+      }
+      update({ emailError: null });
+      // remember one at a time, showing each saved address even if a later one fails
+      for (const address of classifyRecipients(typed).valid) {
+        try {
+          const saved = await ipc.rememberEmailRecipient(address);
+          if (saved.status === 'error') {
+            update({ emailError: saved.error });
+            return;
+          }
+          applySavedRecipients(saved.recipients, [address]);
+        } catch (e) {
+          update({ emailError: normalizeError(e, 'InternalError') });
+          return;
+        }
+      }
+      update({ emailTo: '' });
+    },
+
+    async forgetRecipient(address) {
+      try {
+        const saved = await ipc.forgetEmailRecipient(address);
+        if (saved.status === 'error') {
+          update({ emailError: saved.error });
+          return;
+        }
+        applySavedRecipients(saved.recipients, [address]);
+      } catch (e) {
+        update({ emailError: normalizeError(e, 'InternalError') });
+      }
     },
 
     async signIn() {
@@ -406,16 +500,18 @@ export function createPublishFlow({
         emailSubject: defaultEmailSubject(form.title),
         emailBody: defaultEmailBody(result.url, translate()),
         emailTo: '',
+        uncheckedRecipients: [],
         emailSent: false,
         emailError: null,
         emailOpen: true,
       });
+      void loadSavedRecipients();
     },
 
     async sendEmail() {
-      const { result, emailTo, emailSubject, emailBody } = state;
+      const { result, emailSubject, emailBody } = state;
       if (!result) return;
-      const recipients = normalizeRecipients(parseRecipients(emailTo));
+      const recipients = emailRecipients(state);
       const validationError = recipientValidationError(recipients);
       if (validationError) {
         update({ emailSent: false, emailError: validationError });

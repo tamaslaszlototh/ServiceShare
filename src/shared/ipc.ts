@@ -8,6 +8,7 @@ import type {
   Document,
   EditOperation,
   EditResult,
+  EmailRecipientsResult,
   EmailSendRequest,
   EmailSendResult,
   ExportFormat,
@@ -62,6 +63,9 @@ export const IPC_CHANNELS = {
     getAccount: 'getAccount',
     signIn: 'signIn',
     signOut: 'signOut',
+    getEmailRecipients: 'getEmailRecipients',
+    rememberEmailRecipient: 'rememberEmailRecipient',
+    forgetEmailRecipient: 'forgetEmailRecipient',
     sendEmail: 'sendEmail',
     copyText: 'copyText',
     checkForUpdates: 'checkForUpdates',
@@ -99,6 +103,9 @@ export interface IpcInvokeContract {
   getAccount: { args: []; result: AccountState };
   signIn: { args: []; result: AuthResult };
   signOut: { args: []; result: VoidResult };
+  getEmailRecipients: { args: []; result: EmailRecipientsResult };
+  rememberEmailRecipient: { args: [address: string]; result: EmailRecipientsResult };
+  forgetEmailRecipient: { args: [address: string]; result: EmailRecipientsResult };
   sendEmail: { args: [req: EmailSendRequest]; result: EmailSendResult };
   copyText: { args: [text: string]; result: VoidResult };
   checkForUpdates: { args: []; result: void };

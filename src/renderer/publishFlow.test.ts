@@ -1,12 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Locale, TranslationKey, TranslationParams, t as translate } from '@shared/i18n';
-import { AppError, PublishEvent, PublishRequest, PublishResult } from '@shared/types';
-import { PublishIpc, createPublishFlow } from './publishFlow';
+import { AppError, EmailRecipientsResult, PublishEvent, PublishRequest, PublishResult } from '@shared/types';
+import { PublishIpc, createPublishFlow, emailRecipients } from './publishFlow';
 
 const tFor = (locale: Locale) => (key: TranslationKey, params?: TranslationParams) =>
   translate(locale, key, params);
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+const recipientsOk = (recipients: string[]): EmailRecipientsResult => ({ status: 'ok', recipients });
 
 function createFakeIpc(overrides: Partial<PublishIpc> = {}) {
   const progressListeners = new Set<(event: PublishEvent) => void>();
@@ -31,6 +33,9 @@ function createFakeIpc(overrides: Partial<PublishIpc> = {}) {
     chooseDefaultLogo: vi.fn(async () => ({ status: 'ok' as const, url: 'blob:logo' })),
     clearDefaultLogo: vi.fn(async () => ({ status: 'ok' as const })),
     sendEmail: vi.fn(async () => ({ status: 'ok' as const })),
+    getEmailRecipients: vi.fn(async () => recipientsOk([])),
+    rememberEmailRecipient: vi.fn(async (address: string) => recipientsOk([address.trim()])),
+    forgetEmailRecipient: vi.fn(async () => recipientsOk([])),
     copyText: vi.fn(async () => ({ status: 'ok' as const })),
     getPathForFile: vi.fn(() => '/tmp/pic.png'),
     ...overrides,
@@ -243,6 +248,214 @@ describe('email step', () => {
     expect(flow.getState().emailError).toMatchObject({ code: 'AuthRevoked' });
     expect(flow.getState().signedIn).toBe(false);
     expect(flow.getState().hasEmailScope).toBe(false);
+  });
+});
+
+describe('saved recipients', () => {
+  async function doneFlow(saved: string[], overrides: Partial<PublishIpc> = {}) {
+    let list = [...saved];
+    const fake = signedInIpc({
+      getEmailRecipients: vi.fn(async () => recipientsOk([...list])),
+      rememberEmailRecipient: vi.fn(async (address: string) => {
+        if (!list.some((entry) => entry.toLowerCase() === address.trim().toLowerCase())) {
+          list = [...list, address.trim()];
+        }
+        return recipientsOk([...list]);
+      }),
+      forgetEmailRecipient: vi.fn(async (address: string) => {
+        list = list.filter((entry) => entry.toLowerCase() !== address.toLowerCase());
+        return recipientsOk([...list]);
+      }),
+      ...overrides,
+    });
+    const flow = makeFlow(fake.ipc);
+    await flush();
+    await flow.publish();
+    return { flow, ...fake };
+  }
+
+  it('reads the saved list when the panel opens and pre-checks every entry', async () => {
+    const { flow, ipc } = await doneFlow(['a@b.co', 'c@d.co']);
+
+    flow.toggleEmail();
+    await flush();
+
+    expect(ipc.getEmailRecipients).toHaveBeenCalledTimes(1);
+    const state = flow.getState();
+    expect(state.savedRecipients).toEqual(['a@b.co', 'c@d.co']);
+    expect(emailRecipients(state)).toEqual(['a@b.co', 'c@d.co']);
+  });
+
+  it('sends to the checked saved recipients alone, in one click', async () => {
+    const { flow, ipc } = await doneFlow(['a@b.co', 'c@d.co']);
+    flow.toggleEmail();
+    await flush();
+
+    await flow.sendEmail();
+
+    expect(ipc.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: ['a@b.co', 'c@d.co'] }));
+  });
+
+  it('excludes an unchecked saved recipient from this send without forgetting it', async () => {
+    const { flow, ipc } = await doneFlow(['a@b.co', 'c@d.co']);
+    flow.toggleEmail();
+    await flush();
+
+    flow.toggleSavedRecipient('a@b.co');
+    flow.setEmailTo('x@y.co, C@D.CO');
+    await flow.sendEmail();
+
+    expect(ipc.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: ['c@d.co', 'x@y.co'] }));
+    expect(ipc.forgetEmailRecipient).not.toHaveBeenCalled();
+    expect(flow.getState().savedRecipients).toEqual(['a@b.co', 'c@d.co']);
+  });
+
+  it('re-checks an unchecked recipient on a second toggle and resets checks when reopened', async () => {
+    const { flow } = await doneFlow(['a@b.co']);
+    flow.toggleEmail();
+    await flush();
+
+    flow.toggleSavedRecipient('a@b.co');
+    expect(emailRecipients(flow.getState())).toEqual([]);
+    flow.toggleSavedRecipient('a@b.co');
+    expect(emailRecipients(flow.getState())).toEqual(['a@b.co']);
+
+    flow.toggleSavedRecipient('a@b.co');
+    flow.toggleEmail();
+    flow.toggleEmail();
+    await flush();
+    expect(emailRecipients(flow.getState())).toEqual(['a@b.co']);
+  });
+
+  it('adds and remembers the typed addresses, checks them and clears the input', async () => {
+    const { flow, ipc } = await doneFlow(['a@b.co']);
+    flow.toggleEmail();
+    await flush();
+
+    flow.setEmailTo(' x@y.co , z@w.co');
+    await flow.rememberRecipients();
+
+    expect(ipc.rememberEmailRecipient).toHaveBeenNthCalledWith(1, 'x@y.co');
+    expect(ipc.rememberEmailRecipient).toHaveBeenNthCalledWith(2, 'z@w.co');
+    const state = flow.getState();
+    expect(state.savedRecipients).toEqual(['a@b.co', 'x@y.co', 'z@w.co']);
+    expect(state.emailTo).toBe('');
+    expect(emailRecipients(state)).toEqual(['a@b.co', 'x@y.co', 'z@w.co']);
+  });
+
+  it('refuses to remember an invalid address and keeps the input', async () => {
+    const { flow, ipc } = await doneFlow([]);
+    flow.toggleEmail();
+    await flush();
+
+    flow.setEmailTo('x@y.co, nope');
+    await flow.rememberRecipients();
+
+    expect(ipc.rememberEmailRecipient).not.toHaveBeenCalled();
+    expect(flow.getState().emailError).toMatchObject({ code: 'InvalidRecipient' });
+    expect(flow.getState().emailTo).toBe('x@y.co, nope');
+  });
+
+  it('re-checks a remembered address that was unchecked', async () => {
+    const { flow } = await doneFlow(['a@b.co']);
+    flow.toggleEmail();
+    await flush();
+
+    flow.toggleSavedRecipient('a@b.co');
+    flow.setEmailTo('A@B.CO');
+    await flow.rememberRecipients();
+
+    expect(emailRecipients(flow.getState())).toEqual(['a@b.co']);
+  });
+
+  it('forgets a saved address permanently', async () => {
+    const { flow, ipc } = await doneFlow(['a@b.co', 'c@d.co']);
+    flow.toggleEmail();
+    await flush();
+
+    await flow.forgetRecipient('a@b.co');
+
+    expect(ipc.forgetEmailRecipient).toHaveBeenCalledWith('a@b.co');
+    expect(flow.getState().savedRecipients).toEqual(['c@d.co']);
+    expect(emailRecipients(flow.getState())).toEqual(['c@d.co']);
+  });
+
+  it('surfaces a failure to save the list', async () => {
+    const { flow } = await doneFlow([], {
+      rememberEmailRecipient: vi.fn(async () => ({
+        status: 'error' as const,
+        error: { code: 'DiskFull' as const, message: 'disk full' },
+      })),
+    });
+    flow.toggleEmail();
+    await flush();
+
+    flow.setEmailTo('x@y.co');
+    await flow.rememberRecipients();
+
+    expect(flow.getState().emailError).toMatchObject({ code: 'DiskFull' });
+    expect(flow.getState().emailTo).toBe('x@y.co');
+  });
+
+  it('shows the addresses already saved when a later one fails', async () => {
+    const remember = vi
+      .fn()
+      .mockResolvedValueOnce(recipientsOk(['x@y.co']))
+      .mockResolvedValueOnce({ status: 'error', error: { code: 'DiskFull', message: 'disk full' } });
+    const { flow } = await doneFlow([], { rememberEmailRecipient: remember });
+    flow.toggleEmail();
+    await flush();
+
+    flow.setEmailTo('x@y.co, z@w.co');
+    await flow.rememberRecipients();
+
+    const state = flow.getState();
+    expect(state.savedRecipients).toEqual(['x@y.co']);
+    expect(state.emailError).toMatchObject({ code: 'DiskFull' });
+    expect(state.emailTo).toBe('x@y.co, z@w.co');
+  });
+
+  it('surfaces a failure to forget an address and keeps the list', async () => {
+    const { flow } = await doneFlow(['a@b.co'], {
+      forgetEmailRecipient: vi.fn(async () => {
+        throw new Error('ipc gone');
+      }),
+    });
+    flow.toggleEmail();
+    await flush();
+
+    await flow.forgetRecipient('a@b.co');
+
+    expect(flow.getState().savedRecipients).toEqual(['a@b.co']);
+    expect(flow.getState().emailError).toMatchObject({ code: 'InternalError' });
+  });
+
+  it('does not let a slow initial read overwrite a newer change', async () => {
+    const read = deferred<EmailRecipientsResult>();
+    const { flow } = await doneFlow([], { getEmailRecipients: vi.fn(() => read.promise) });
+    flow.toggleEmail();
+
+    flow.setEmailTo('x@y.co');
+    await flow.rememberRecipients();
+    read.resolve(recipientsOk([]));
+    await flush();
+
+    expect(flow.getState().savedRecipients).toEqual(['x@y.co']);
+  });
+
+  it('opens with an empty checklist when the saved list cannot be read', async () => {
+    const { flow } = await doneFlow([], {
+      getEmailRecipients: vi.fn(async () => ({
+        status: 'error' as const,
+        error: { code: 'InternalError' as const, message: 'nope' },
+      })),
+    });
+
+    flow.toggleEmail();
+    await flush();
+
+    expect(flow.getState().savedRecipients).toEqual([]);
+    expect(flow.getState().emailError).toBeNull();
   });
 });
 

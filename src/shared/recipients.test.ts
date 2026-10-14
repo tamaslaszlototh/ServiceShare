@@ -3,6 +3,7 @@ import {
   classifyRecipients,
   isRecipientValid,
   normalizeRecipients,
+  recipientKey,
   parseRecipients,
   validateRecipients,
 } from './recipients';
@@ -81,5 +82,11 @@ describe('parse → normalize → validate agreement', () => {
       valid: ['a@b.co', 'C@d.co'],
       invalid: ['bad'],
     });
+  });
+});
+
+describe('recipientKey', () => {
+  it('identifies an address by its trimmed, lower-cased form', () => {
+    expect(recipientKey('  Name@Example.COM ')).toBe('name@example.com');
   });
 });
