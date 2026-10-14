@@ -1,24 +1,6 @@
-export type ErrorCode =
-  | 'FormatError'
-  | 'CorruptFile'
-  | 'PermissionError'
-  | 'DiskFull'
-  | 'EngineError'
-  | 'RenderError'
-  | 'NetworkError'
-  | 'QuotaExceeded'
-  | 'AuthRevoked'
-  | 'UploadExpired'
-  | 'TooLong'
-  | 'UnverifiedProject'
-  | 'TokenStorageError'
-  | 'NoClip'
-  | 'PublishInProgress'
-  | 'CoverUnavailable'
-  | 'EmailSendError'
-  | 'InternalError'
-  | 'NoRecipients'
-  | 'InvalidRecipient';
+import type { ErrorCode } from './error-catalogue';
+
+export type { ErrorCode } from './error-catalogue';
 
 export type ErrorParams = Record<string, string | number>;
 

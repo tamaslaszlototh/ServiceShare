@@ -1,31 +1,11 @@
 import { AppError, ErrorCode } from './types';
+import { ERROR_CODES } from './error-catalogue';
 import { redactAppError } from './redact';
 
-export const ERROR_CODES: ErrorCode[] = [
-  'FormatError',
-  'CorruptFile',
-  'PermissionError',
-  'DiskFull',
-  'EngineError',
-  'RenderError',
-  'NetworkError',
-  'QuotaExceeded',
-  'AuthRevoked',
-  'UploadExpired',
-  'TooLong',
-  'UnverifiedProject',
-  'TokenStorageError',
-  'NoClip',
-  'PublishInProgress',
-  'CoverUnavailable',
-  'EmailSendError',
-  'InternalError',
-  'NoRecipients',
-  'InvalidRecipient',
-];
+export { ERROR_CODES } from './error-catalogue';
 
 export function isErrorCode(value: unknown): value is ErrorCode {
-  return typeof value === 'string' && (ERROR_CODES as string[]).includes(value);
+  return typeof value === 'string' && (ERROR_CODES as readonly string[]).includes(value);
 }
 
 export function isAppError(value: unknown): value is AppError {
