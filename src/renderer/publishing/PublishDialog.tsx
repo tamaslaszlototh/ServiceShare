@@ -1,8 +1,8 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { EditOperation } from '@shared/types';
-import { errorLabel, errorMessage } from './errors';
-import { ErrorBanner } from './ErrorBanner';
-import { useT } from './LocaleContext';
+import { errorLabel, errorMessage } from '../errors/errors';
+import { ErrorBanner } from '../errors/ErrorBanner';
+import { useT } from '../i18n/LocaleContext';
 import {
   PUBLISH_DESCRIPTION_MAX,
   PUBLISH_TAGS_MAX_CHARS,

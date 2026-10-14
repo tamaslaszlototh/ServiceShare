@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { PeakData } from '@shared/types';
-import { useT } from './LocaleContext';
+import { useT } from '../i18n/LocaleContext';
 import { channelLabel } from './labels';
 
 function drawPeaks(

@@ -1,7 +1,7 @@
 import { Component, ReactNode } from 'react';
 import { normalizeError } from '@shared/apperror';
 import { ErrorBanner } from './ErrorBanner';
-import { useT } from './LocaleContext';
+import { useT } from '../i18n/LocaleContext';
 
 interface ErrorBoundaryProps {
   children: ReactNode;

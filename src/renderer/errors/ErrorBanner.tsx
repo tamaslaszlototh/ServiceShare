@@ -1,6 +1,6 @@
 import { AppError } from '@shared/types';
 import { ErrorAction, errorAction, localizedErrorLabel } from './errors';
-import { useT } from './LocaleContext';
+import { useT } from '../i18n/LocaleContext';
 
 export interface ErrorBannerProps {
   error: AppError;

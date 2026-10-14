@@ -2,7 +2,7 @@ import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
 import { PeakData, Selection } from '@shared/types';
 import { Ruler } from './Ruler';
 import { Waveform } from './Waveform';
-import { useLocale } from './LocaleContext';
+import { useLocale } from '../i18n/LocaleContext';
 import {
   KEYBOARD_STEP_SECONDS,
   cursorAt,

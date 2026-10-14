@@ -1,7 +1,7 @@
 import { Translator } from '@shared/i18n';
 import { AppError, ErrorCode } from '@shared/types';
 import { classifyRecipients, validateRecipients } from '@shared/recipients';
-import { ErrorAction, errorAction } from './errors';
+import { ErrorAction, errorAction } from '../errors/errors';
 
 export const GMAIL_LIMITS_URL = 'https://support.google.com/mail/answer/14257';
 

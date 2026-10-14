@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppError, ClipInfo, Document, EditOperation, EditResult, FadeKind, PeakData, Selection } from '@shared/types';
-import { Timeline } from './Timeline';
-import { ExportDialog } from './ExportDialog';
-import { PublishDialog } from './PublishDialog';
-import { PublishedVideo } from './publishFlow';
-import { ErrorBanner } from './ErrorBanner';
+import { Timeline } from './editor/Timeline';
+import { ExportDialog } from './export/ExportDialog';
+import { PublishDialog } from './publishing/PublishDialog';
+import { PublishedVideo } from './publishing/publishFlow';
+import { ErrorBanner } from './errors/ErrorBanner';
 import { normalizeError } from '@shared/apperror';
 import { resolveLocale } from '@shared/i18n';
 import { formatDecimal } from '@shared/format';
-import { useLocale } from './LocaleContext';
-import { editedDuration, removedSourceRanges } from './timelineRanges';
-import { formatSelectionRange, formatTime, selectionLength } from './selection';
-import { channelLabel } from './labels';
-import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
+import { useLocale } from './i18n/LocaleContext';
+import { editedDuration, removedSourceRanges } from './editor/timelineRanges';
+import { formatSelectionRange, formatTime, selectionLength } from './editor/selection';
+import { channelLabel } from './editor/labels';
+import { HistoryAction, resolveHistoryShortcut } from './editor/shortcuts';
 import {
   FADE_DEFAULT_SECONDS,
   FADE_MAX_SECONDS,
@@ -28,7 +28,7 @@ import {
   hasSelection,
   isStructural,
   trimOp,
-} from './editops';
+} from './editor/editops';
 
 export function App() {
   const { locale, setLocale, t } = useLocale();

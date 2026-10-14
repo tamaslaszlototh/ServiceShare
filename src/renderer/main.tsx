@@ -1,11 +1,11 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import { ErrorBoundary } from './ErrorBoundary';
-import { ErrorPreview } from './ErrorPreview';
-import { GlobalErrorBanner } from './GlobalErrorBanner';
-import { createErrorBus, installGlobalErrorHandlers } from './globalErrors';
-import { LocaleProvider } from './LocaleContext';
+import { ErrorBoundary } from './errors/ErrorBoundary';
+import { ErrorPreview } from './errors/ErrorPreview';
+import { GlobalErrorBanner } from './errors/GlobalErrorBanner';
+import { createErrorBus, installGlobalErrorHandlers } from './errors/globalErrors';
+import { LocaleProvider } from './i18n/LocaleContext';
 import './styles.css';
 
 const root = document.getElementById('root');

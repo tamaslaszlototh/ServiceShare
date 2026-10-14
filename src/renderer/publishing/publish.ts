@@ -1,7 +1,7 @@
 import { Translator } from '@shared/i18n';
 import { AccountInfo, AppError, ErrorCode, PrivacyStatus, PublishEvent, PublishRequest } from '@shared/types';
 import { LONG_VIDEO_SECONDS, TOO_LONG_MESSAGE } from '@shared/limits';
-import { ErrorAction, errorAction } from './errors';
+import { ErrorAction, errorAction } from '../errors/errors';
 
 export { editedDuration } from '@shared/duration';
 export { LONG_VIDEO_SECONDS };

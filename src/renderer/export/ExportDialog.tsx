@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppError, ExportFormat } from '@shared/types';
-import { ErrorBanner } from './ErrorBanner';
+import { ErrorBanner } from '../errors/ErrorBanner';
 import { normalizeError } from '@shared/apperror';
-import { useT } from './LocaleContext';
+import { useT } from '../i18n/LocaleContext';
 
 interface ExportDialogProps {
   onClose: () => void;
