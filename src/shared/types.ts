@@ -76,6 +76,8 @@ export interface ExportOptions {
 
 export type ExportFormat = 'wav' | 'mp3';
 
+export type MenuCommand = 'open' | 'export';
+
 export interface ExportProgress {
   percent: number;
 }
@@ -187,6 +189,8 @@ export type IpcApi = {
   signOut: () => Promise<VoidResult>;
   copyText: (text: string) => Promise<VoidResult>;
   checkForUpdates: () => Promise<void>;
+  setLocale: (locale: string) => Promise<void>;
+  onMenuCommand: (cb: (command: MenuCommand) => void) => () => void;
   onProgress: (cb: (e: ProgressEvent) => void) => () => void;
 };
 

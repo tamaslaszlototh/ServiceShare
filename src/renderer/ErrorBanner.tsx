@@ -65,7 +65,7 @@ export function ErrorBanner({
         </button>
       )}
       {onDismiss && (
-        <button className="dismiss" type="button" aria-label="Dismiss" onClick={onDismiss}>
+        <button className="dismiss" type="button" aria-label={t('error.dismiss')} onClick={onDismiss}>
           ×
         </button>
       )}

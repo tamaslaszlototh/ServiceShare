@@ -24,6 +24,7 @@ const DOCUMENTED_CODES: Record<ErrorCode, true> = {
 import {
   AuthRevokedError,
   NetworkError,
+  PermissionError,
   TooLongError,
   UnverifiedProjectError,
   UploadExpiredError,
@@ -43,6 +44,13 @@ describe('catalogue error classes', () => {
     expect(new TooLongError('12 min').toAppError()).toMatchObject({
       code: 'TooLong',
       details: '12 min',
+    });
+  });
+
+  it('carries the offending path as a parameter on permission errors', () => {
+    expect(new PermissionError('/locked/a.wav').toAppError()).toMatchObject({
+      code: 'PermissionError',
+      params: { path: '/locked/a.wav' },
     });
   });
 });

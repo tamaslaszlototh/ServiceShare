@@ -1,6 +1,45 @@
 import { describe, it, expect } from 'vitest';
+import { Locale, TranslationKey, TranslationParams, t as translate } from '@shared/i18n';
 import { normalizeError } from '@shared/apperror';
-import { errorAction, errorLabel } from './errors';
+import { errorAction, errorLabel, errorMessage, localizedErrorLabel } from './errors';
+
+const tFor = (locale: Locale) => (key: TranslationKey, params?: TranslationParams) =>
+  translate(locale, key, params);
+
+describe('errorMessage', () => {
+  it('renders the catalogue message in the active language', () => {
+    expect(errorMessage({ code: 'DiskFull', message: 'no space' }, tFor('en'))).toBe(
+      'Not enough disk space to write the file',
+    );
+    expect(errorMessage({ code: 'DiskFull', message: 'no space' }, tFor('hu'))).toBe(
+      'Nincs elég lemezterület a fájl írásához',
+    );
+  });
+
+  it('interpolates the file path into permission errors', () => {
+    const error = { code: 'PermissionError' as const, message: 'Cannot read file: /a.wav', params: { path: '/a.wav' } };
+    expect(errorMessage(error, tFor('en'))).toBe('Cannot access the file: /a.wav');
+    expect(errorMessage(error, tFor('hu'))).toBe('Nem sikerült hozzáférni a fájlhoz: /a.wav');
+  });
+
+  it('drops the path segment when the error carries no path', () => {
+    const error = { code: 'PermissionError' as const, message: 'Cannot access the file' };
+    expect(errorMessage(error, tFor('en'))).toBe('Cannot access the file');
+    expect(errorMessage(error, tFor('hu'))).toBe('Nem sikerült hozzáférni a fájlhoz');
+  });
+
+  it('falls back to the English message without a translator', () => {
+    expect(errorMessage({ code: 'NoClip', message: 'No clip loaded' })).toBe('No clip loaded');
+  });
+});
+
+describe('localizedErrorLabel', () => {
+  it('keeps the stable code tag next to the localized message', () => {
+    expect(localizedErrorLabel({ code: 'NoClip', message: 'No clip loaded' }, tFor('hu'))).toBe(
+      'NoClip: Nincs betöltött klip',
+    );
+  });
+});
 
 describe('errorLabel', () => {
   it('prefixes the code when the message does not already include it', () => {
@@ -55,6 +94,13 @@ describe('errorAction', () => {
     expect(errorAction('QuotaExceeded')?.href).toContain('http');
     expect(errorAction('UnverifiedProject')).toMatchObject({ kind: 'link' });
     expect(errorAction('TooLong')).toMatchObject({ kind: 'link' });
+  });
+
+  it('labels actions in the active language', () => {
+    expect(errorAction('EngineError', tFor('en'))?.label).toBe('Re-check FFmpeg');
+    expect(errorAction('EngineError', tFor('hu'))?.label).toBe('FFmpeg újraellenőrzése');
+    expect(errorAction('NetworkError', tFor('hu'))?.label).toBe('Újra');
+    expect(errorAction('AuthRevoked', tFor('hu'))?.label).toBe('Újra bejelentkezés');
   });
 
   it('has no action for purely informational failures', () => {

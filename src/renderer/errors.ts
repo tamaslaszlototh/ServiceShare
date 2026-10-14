@@ -28,12 +28,19 @@ export function errorMessage(error: AppError, t?: Translator): string {
   const key = ERROR_KEYS[error.code];
   if (t) {
     try {
-      return interpolate(t(key), error.params);
+      return fillMissingParams(t(key), error.params);
     } catch {
       // fall through to default
     }
   }
   return error.message;
+}
+
+const MISSING_PARAM = /\s*\{(\w+)\}/g;
+
+function fillMissingParams(template: string, params: AppError['params']): string {
+  const interpolated = interpolate(template, params);
+  return interpolated.replace(MISSING_PARAM, '').replace(/:\s*$/, '').trim();
 }
 
 export function errorLabel(error: AppError): string {

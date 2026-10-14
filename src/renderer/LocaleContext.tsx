@@ -39,6 +39,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  useEffect(() => {
+    void window.api?.setLocale(locale);
+  }, [locale]);
+
   const t = useCallback<Translator>((key, params) => translate(locale, key, params), [locale]);
 
   const value = useMemo<LocaleContextValue>(() => ({ locale, setLocale, t }), [locale, t]);

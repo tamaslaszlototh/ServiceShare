@@ -1,6 +1,7 @@
 import { Component, ReactNode } from 'react';
 import { normalizeError } from '@shared/apperror';
 import { ErrorBanner } from './ErrorBanner';
+import { useT } from './LocaleContext';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -8,6 +9,11 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
   error: ReturnType<typeof normalizeError> | null;
+}
+
+function BoundaryError({ error, onDismiss }: { error: ReturnType<typeof normalizeError>; onDismiss: () => void }) {
+  const t = useT();
+  return <ErrorBanner error={error} heading={t('error.boundary')} onDismiss={onDismiss} />;
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -19,13 +25,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render(): ReactNode {
     if (this.state.error) {
+      const error = this.state.error;
       return (
         <div className="app-fallback">
-          <ErrorBanner
-            error={this.state.error}
-            heading="Something went wrong."
-            onDismiss={() => this.setState({ error: null })}
-          />
+          <BoundaryError error={error} onDismiss={() => this.setState({ error: null })} />
         </div>
       );
     }

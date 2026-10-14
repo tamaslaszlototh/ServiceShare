@@ -94,7 +94,7 @@ export function ExportDialog({ onClose, onExported }: ExportDialogProps) {
           </span>
           <span className="spacer" />
           <button className="btn ghost" onClick={onClose} disabled={exporting}>
-            {t('dialog.export.cancel')}
+            {t('dialog.cancel')}
           </button>
           <button className="btn primary" onClick={() => void run()} disabled={exporting}>
             {t('dialog.export.export')}

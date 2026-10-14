@@ -1,11 +1,10 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { AccountInfo, AppError, EditOperation, PublishEvent, PublishResult } from '@shared/types';
-import { errorLabel } from './errors';
+import { errorLabel, errorMessage } from './errors';
 import { normalizeError } from '@shared/apperror';
 import { ErrorBanner } from './ErrorBanner';
 import { useT } from './LocaleContext';
 import {
-  PRIVACY_OPTIONS,
   PUBLISH_DESCRIPTION_MAX,
   PUBLISH_TAGS_MAX_CHARS,
   PUBLISH_TITLE_MAX,
@@ -16,6 +15,7 @@ import {
   durationWarning,
   editedDuration,
   parseTags,
+  privacyOptions,
   publishErrorAction,
   stageLabel,
   tagsCharCount,
@@ -85,7 +85,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
   const warning = durationWarning(editedDuration(sourceDuration, editList));
   const tagsOverLimit = tagsCharCount(parseTags(tags)) > PUBLISH_TAGS_MAX_CHARS;
   const percent = stage ? uploadPercent(stage) : null;
-  const action = phase === 'failed' && error ? publishErrorAction(error.code) : null;
+  const action = phase === 'failed' && error ? publishErrorAction(error.code, t) : null;
 
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
@@ -163,7 +163,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
         setCancelling(false);
       }
     });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -315,7 +315,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
             <div className="done-link-row">
               <input
                 className="done-url"
-                aria-label="Video URL"
+                aria-label={t('publish.videoUrl')}
                 readOnly
                 value={result.url}
                 onFocus={(event) => event.currentTarget.select()}
@@ -340,23 +340,23 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
           <form onSubmit={onSubmit}>
             <div className="publish-account">
               {!accountReady ? (
-                <span className="muted">Checking account…</span>
+                <span className="muted">{t('publish.checkingAccount')}</span>
               ) : signedIn ? (
                 <>
-                  <span className="account-chip">{accountLabel(account)}</span>
+                  <span className="account-chip">{accountLabel(account, t)}</span>
                   <button className="btn ghost" type="button" onClick={() => void signOut()} disabled={publishing}>
                     {t('publish.signOut')}
                   </button>
                 </>
               ) : (
                 <button className="btn primary" type="button" onClick={() => void signIn()} disabled={signingIn || publishing}>
-                  {signingIn ? 'Waiting for Google…' : t('publish.signIn')}
+                  {signingIn ? t('publish.waitingGoogle') : t('publish.signIn')}
                 </button>
               )}
             </div>
 
             <div className="cover-preview">
-              {coverUrl ? <img src={coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">Updating preview…</span>}
+              {coverUrl ? <img src={coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">{t('publish.updatingPreview')}</span>}
             </div>
             <div className="cover-actions">
               <button className="btn ghost" type="button" disabled={publishing} onClick={() => coverInputRef.current?.click()}>
@@ -388,11 +388,11 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                   onChange={(event) => setTitle(event.target.value)}
                 />
               </label>
-              {titleMissing(title) && <span className="muted">A title is required.</span>}
+              {titleMissing(title) && <span className="muted">{t('publish.titleRequired')}</span>}
               <label>
-                Description
+                {t('publish.description')}
                 <textarea
-                  aria-label="Video description"
+                  aria-label={t('publish.description')}
                   value={description}
                   maxLength={PUBLISH_DESCRIPTION_MAX}
                   disabled={publishing}
@@ -400,25 +400,25 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 />
               </label>
               <label>
-                Tags
+                {t('publish.tags')}
                 <input
-                  aria-label="Tags, separated by commas"
+                  aria-label={t('publish.tagsHint')}
                   value={tags}
-                  placeholder="comma separated"
+                  placeholder={t('publish.tagsHint')}
                   disabled={publishing}
                   onChange={(event) => setTags(event.target.value)}
                 />
               </label>
-              {tagsOverLimit && <span className="muted">Tags are limited to 500 characters; extras will be dropped.</span>}
+              {tagsOverLimit && <span className="muted">{t('publish.tagsOverLimit')}</span>}
               <label>
-                Privacy
+                {t('publish.privacy')}
                 <select
-                  aria-label="Privacy"
+                  aria-label={t('publish.privacy')}
                   value={privacyStatus}
                   disabled={publishing}
                   onChange={(event) => setPrivacyStatus(event.target.value as PublishForm['privacyStatus'])}
                 >
-                  {PRIVACY_OPTIONS.map((option) => (
+                  {privacyOptions(t).map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -426,9 +426,9 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                 </select>
               </label>
               <div className="thumb-row">
-                <span className="muted">Thumbnail</span>
+                <span className="muted">{t('publish.thumbnail')}</span>
                 <button className="btn ghost" type="button" disabled={publishing} onClick={() => thumbInputRef.current?.click()}>
-                  Choose…
+                  {t('publish.thumbnailChoose')}
                 </button>
                 <button
                   className="btn ghost"
@@ -436,9 +436,9 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                   disabled={publishing || !thumbnailPath}
                   onClick={() => setThumbnailPath(null)}
                 >
-                  Remove
+                  {t('publish.thumbnailClear')}
                 </button>
-                <span className="muted">{thumbnailPath ? fileName(thumbnailPath) : 'Uses the composed cover'}</span>
+                <span className="muted">{thumbnailPath ? fileName(thumbnailPath) : t('publish.usesCover')}</span>
                 <input
                   ref={thumbInputRef}
                   type="file"
@@ -449,7 +449,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
               </div>
             </div>
 
-            {warning && <div className="warning">{warning.message}</div>}
+            {warning && <div className="warning">{errorMessage(warning, t)}</div>}
             {showUnverified && (
               <div className="warning">
                 <span>{t('publish.unverifiedNote')}</span>
@@ -468,12 +468,12 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={percent ?? 0}
-                  aria-label={stage ? stageLabel(stage) : t('publish.startingPublish')}
+                  aria-label={stage ? stageLabel(stage, t) : t('publish.startingPublish')}
                 >
                   <div className="progress-fill" style={{ width: `${percent ?? 8}%` }} />
                 </div>
                 <p className="muted">
-                  {cancelling ? t('publish.cancelling') : stage ? stageLabel(stage) : t('publish.starting')}
+                  {cancelling ? t('publish.cancelling') : stage ? stageLabel(stage, t) : t('publish.starting')}
                 </p>
               </>
             )}
@@ -504,15 +504,15 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                     window.api.cancelPublish();
                   }}
                 >
-                  {cancelling ? 'Cancelling…' : 'Cancel'}
+                  {cancelling ? t('publish.cancelling') : t('dialog.cancel')}
                 </button>
               ) : (
                 <button className="btn ghost" type="button" onClick={onClose}>
-                  Close
+                  {t('publish.close')}
                 </button>
               )}
               <button className="btn primary" type="submit" disabled={!canPublish(title, signedIn) || publishing || signingIn}>
-                Publish to YouTube
+                {t('publish.publish')}
               </button>
             </div>
           </form>

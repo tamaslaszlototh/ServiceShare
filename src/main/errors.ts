@@ -6,16 +6,23 @@ import { TOO_LONG_MESSAGE } from '../shared/limits';
 export class IpcError extends Error implements AppError {
   readonly code: ErrorCode;
   readonly details?: string;
+  readonly params?: AppError['params'];
 
-  constructor(code: ErrorCode, message: string, details?: string) {
+  constructor(code: ErrorCode, message: string, details?: string, params?: AppError['params']) {
     super(message);
     this.name = code;
     this.code = code;
     this.details = details;
+    this.params = params;
   }
 
   toAppError(): AppError {
-    return { code: this.code, message: this.message, details: this.details };
+    return {
+      code: this.code,
+      message: this.message,
+      ...(this.details === undefined ? {} : { details: this.details }),
+      ...(this.params === undefined ? {} : { params: this.params }),
+    };
   }
 }
 
@@ -53,7 +60,7 @@ export class CorruptFileError extends IpcError {
 
 export class PermissionError extends IpcError {
   constructor(filePath: string, details?: string) {
-    super('PermissionError', `Cannot read file: ${filePath}`, details);
+    super('PermissionError', `Cannot read file: ${filePath}`, details, { path: filePath });
   }
 }
 

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, protocol, shell, clipboard } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell, clipboard } from 'electron';
 import { createReadStream } from 'fs';
 import { mkdir, mkdtemp, rm, stat } from 'fs/promises';
 import { Readable } from 'stream';
@@ -18,6 +18,8 @@ import { assetResolver } from './assets';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
 import { logError, logInfo } from './log';
+import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '@shared/i18n';
+import { MenuCommand, MenuEntry, applicationMenu, exportDialogOptions, openDialogOptions } from './shell';
 import {
   AccountState,
   AppError,
@@ -90,18 +92,43 @@ let currentClip: ClipInfo | null = null;
 const exportService = new ExportService(exportDepsIn());
 const youtubeService = new YouTubeService();
 
-const EXPORT_DIALOGS: Record<ExportFormat, { name: string; extension: string }> = {
-  wav: { name: 'WAV audio', extension: 'wav' },
-  mp3: { name: 'MP3 audio', extension: 'mp3' },
-};
+let activeLocale: Locale = DEFAULT_LOCALE;
+
+const tr: Translator = (key, params) => translate(activeLocale, key, params);
+
+function installMenu(): void {
+  Menu.setApplicationMenu(Menu.buildFromTemplate(toElectronTemplate(applicationMenu(tr, process.platform))));
+}
+
+function toElectronTemplate(entries: MenuEntry[]): Electron.MenuItemConstructorOptions[] {
+  return entries.map((entry) => {
+    const item: Electron.MenuItemConstructorOptions = {
+      ...(entry.type === undefined ? {} : { type: entry.type }),
+      ...(entry.role === undefined ? {} : { role: entry.role as Electron.MenuItemConstructorOptions['role'] }),
+      ...(entry.label === undefined ? {} : { label: entry.label }),
+      ...(entry.command === undefined
+        ? {}
+        : {
+            click: () => {
+              const target = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+              target?.webContents.send('menuCommand', entry.command);
+            },
+          }),
+    };
+    if (entry.submenu) {
+      item.submenu = toElectronTemplate(entry.submenu);
+    }
+    return item;
+  });
+}
 
 async function pickExportPath(format: ExportFormat, sourceFile: string): Promise<string | null> {
-  const { name, extension } = EXPORT_DIALOGS[format];
+  const { title, filters, extension } = exportDialogOptions(tr, format);
   const defaultName = `${path.parse(sourceFile).name}.${extension}`;
   const result = await dialog.showSaveDialog({
-    title: 'Export edited audio',
+    title,
     defaultPath: defaultName,
-    filters: [{ name, extensions: [extension] }],
+    filters,
   });
   if (result.canceled || !result.filePath) {
     return null;
@@ -160,8 +187,10 @@ async function coverResponse(request: Request): Promise<Response> {
 }
 
 async function pickClipPath(): Promise<string | null> {
+  const { title, filters } = openDialogOptions(tr);
   const result = await dialog.showOpenDialog({
-    filters: [{ name: 'WAV Files', extensions: ['wav', 'wave'] }],
+    title,
+    filters,
     properties: ['openFile'],
   });
   if (result.canceled || result.filePaths.length === 0) {
@@ -196,6 +225,12 @@ app.whenReady().then(async () => {
   );
   await youtubeService.initialize().catch((e) => logError('youtube', 'INIT', e));
   const win = createWindow();
+  installMenu();
+
+  ipcMain.handle('setLocale', (_e, locale: unknown) => {
+    activeLocale = resolveLocale(locale);
+    installMenu();
+  });
 
   win.webContents.once('did-finish-load', () => {
     ffmpegResolver

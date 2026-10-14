@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { Locale, TranslationKey, TranslationParams, t as translate } from '@shared/i18n';
 import { PublishEvent } from '@shared/types';
+import { privacyOptions } from './publish';
 import {
   LONG_VIDEO_SECONDS,
   PUBLISH_TAGS_MAX_CHARS,
@@ -18,6 +20,9 @@ import {
   toPublishRequest,
   uploadPercent,
 } from './publish';
+
+const tFor = (locale: Locale) => (key: TranslationKey, params?: TranslationParams) =>
+  translate(locale, key, params);
 
 describe('defaultTitle', () => {
   it('uses the file stem as the title', () => {
@@ -83,9 +88,21 @@ describe('durationWarning', () => {
 
 describe('accountLabel', () => {
   it('prefers the channel title, then email, then a generic chip', () => {
-    expect(accountLabel({ channelTitle: 'Studio' })).toBe('Studio');
-    expect(accountLabel({ email: 'a@b.co' })).toBe('a@b.co');
-    expect(accountLabel(null)).toBe('Signed in');
+    expect(accountLabel({ channelTitle: 'Studio' }, tFor('en'))).toBe('Studio');
+    expect(accountLabel({ email: 'a@b.co' }, tFor('en'))).toBe('a@b.co');
+    expect(accountLabel(null, tFor('en'))).toBe('Signed in');
+    expect(accountLabel(null, tFor('hu'))).toBe('Bejelentkezve');
+  });
+});
+
+describe('privacyOptions', () => {
+  it('labels visibility in the active language', () => {
+    expect(privacyOptions(tFor('en')).map((option) => option.label)).toEqual(['Unlisted', 'Private', 'Public']);
+    expect(privacyOptions(tFor('hu')).map((option) => option.label)).toEqual([
+      'Nem listázott',
+      'Privát',
+      'Nyilvános',
+    ]);
   });
 });
 
@@ -112,11 +129,17 @@ describe('toPublishRequest', () => {
 });
 
 describe('stageLabel / uploadPercent', () => {
-  it('renders a human label per stage', () => {
-    expect(stageLabel({ stage: 'cover' })).toMatch(/cover/i);
-    expect(stageLabel({ stage: 'render' })).toMatch(/render/i);
-    expect(stageLabel({ stage: 'upload', percent: 42.4 })).toBe('Uploading… 42%');
-    expect(stageLabel({ stage: 'done', videoId: 'v', url: 'u' })).toMatch(/publish/i);
+  it('renders a human label per stage in the active language', () => {
+    expect(stageLabel({ stage: 'cover' }, tFor('en'))).toBe('Composing cover…');
+    expect(stageLabel({ stage: 'cover' }, tFor('hu'))).toBe('Borító összeállítása…');
+    expect(stageLabel({ stage: 'render' }, tFor('hu'))).toBe('Videó renderelése…');
+    expect(stageLabel({ stage: 'upload', percent: 42.4 }, tFor('en'))).toBe('Uploading… 42%');
+    expect(stageLabel({ stage: 'upload', percent: 42.4 }, tFor('hu'))).toBe('Feltöltés… 42%');
+    expect(stageLabel({ stage: 'done', videoId: 'v', url: 'u' }, tFor('en'))).toBe('Published to YouTube');
+    expect(stageLabel({ stage: 'cancelled' }, tFor('hu'))).toBe('A közzététel megszakadt');
+    expect(stageLabel({ kind: 'error', error: { code: 'QuotaExceeded', message: 'x' } }, tFor('en'))).toBe(
+      'Publish failed (QuotaExceeded)',
+    );
   });
 
   it('exposes the upload percent for the progress bar', () => {
@@ -128,16 +151,17 @@ describe('stageLabel / uploadPercent', () => {
 
 describe('publishErrorAction', () => {
   it('links quota errors to the quota docs', () => {
-    const action = publishErrorAction('QuotaExceeded');
+    const action = publishErrorAction('QuotaExceeded', tFor('en'));
     expect(action.kind).toBe('link');
     expect(action.href).toContain('http');
   });
 
   it('routes revoked auth back to sign-in', () => {
-    expect(publishErrorAction('AuthRevoked').kind).toBe('signin');
+    expect(publishErrorAction('AuthRevoked', tFor('en')).kind).toBe('signin');
   });
 
-  it('offers a retry for transient failures', () => {
-    expect(publishErrorAction('NetworkError')).toMatchObject({ kind: 'retry', label: 'Retry' });
+  it('offers a retry for transient failures in the active language', () => {
+    expect(publishErrorAction('NetworkError', tFor('en'))).toMatchObject({ kind: 'retry', label: 'Retry' });
+    expect(publishErrorAction('FormatError', tFor('hu'))).toMatchObject({ kind: 'retry', label: 'Újra' });
   });
 });

@@ -1,3 +1,4 @@
+import { Translator } from '@shared/i18n';
 import { AccountInfo, AppError, EditOperation, ErrorCode, PrivacyStatus, PublishEvent, PublishRequest } from '@shared/types';
 import { LONG_VIDEO_SECONDS, TOO_LONG_MESSAGE } from '@shared/limits';
 import { ErrorAction, errorAction } from './errors';
@@ -8,11 +9,13 @@ export const PUBLISH_TITLE_MAX = 100;
 export const PUBLISH_DESCRIPTION_MAX = 5000;
 export const PUBLISH_TAGS_MAX_CHARS = 500;
 
-export const PRIVACY_OPTIONS: { value: PrivacyStatus; label: string }[] = [
-  { value: 'unlisted', label: 'Unlisted' },
-  { value: 'private', label: 'Private' },
-  { value: 'public', label: 'Public' },
-];
+export function privacyOptions(t: Translator): { value: PrivacyStatus; label: string }[] {
+  return [
+    { value: 'unlisted', label: t('publish.privacyUnlisted') },
+    { value: 'private', label: t('publish.privacyPrivate') },
+    { value: 'public', label: t('publish.privacyPublic') },
+  ];
+}
 
 export interface PublishForm {
   title: string;
@@ -59,8 +62,8 @@ export function clampTags(tags: string[], max = PUBLISH_TAGS_MAX_CHARS): string[
   return kept;
 }
 
-export function accountLabel(account: AccountInfo | null | undefined): string {
-  return account?.channelTitle || account?.email || 'Signed in';
+export function accountLabel(account: AccountInfo | null | undefined, t: Translator): string {
+  return account?.channelTitle || account?.email || t('publish.accountSignedIn');
 }
 
 export function editedDuration(sourceDuration: number, editList: EditOperation[]): number {
@@ -84,21 +87,21 @@ export function durationWarning(durationSeconds: number): AppError | null {
   return null;
 }
 
-export function stageLabel(event: PublishEvent): string {
+export function stageLabel(event: PublishEvent, t: Translator): string {
   if ('kind' in event) {
-    return `Publish failed (${event.error.code})`;
+    return t('publish.stage.failed', { code: event.error.code });
   }
   switch (event.stage) {
     case 'cover':
-      return 'Composing cover…';
+      return t('publish.stage.cover');
     case 'render':
-      return 'Rendering video…';
+      return t('publish.stage.render');
     case 'upload':
-      return `Uploading… ${Math.round(event.percent)}%`;
+      return t('publish.stage.upload', { percent: Math.round(event.percent) });
     case 'done':
-      return 'Published to YouTube';
+      return t('publish.stage.done');
     case 'cancelled':
-      return 'Publish cancelled';
+      return t('publish.cancelled');
   }
 }
 
@@ -106,8 +109,8 @@ export function uploadPercent(event: PublishEvent): number | null {
   return 'stage' in event && event.stage === 'upload' ? event.percent : null;
 }
 
-export function publishErrorAction(code: ErrorCode): ErrorAction {
-  return errorAction(code) ?? { kind: 'retry', label: 'Retry' };
+export function publishErrorAction(code: ErrorCode, t: Translator): ErrorAction {
+  return errorAction(code, t) ?? { kind: 'retry', label: t('publish.error.retry') };
 }
 
 export function toPublishRequest(form: PublishForm): PublishRequest {

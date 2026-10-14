@@ -5,6 +5,7 @@ import {
   ExportFormat,
   ExportProgress,
   IpcApi,
+  MenuCommand,
   ProgressEvent,
   PublishEvent,
   PublishRequest,
@@ -46,6 +47,14 @@ const api: IpcApi = {
   signOut: () => ipcRenderer.invoke('signOut'),
   copyText: (text: string) => ipcRenderer.invoke('copyText', text),
   checkForUpdates: () => ipcRenderer.invoke('checkForUpdates'),
+  setLocale: (locale: string) => ipcRenderer.invoke('setLocale', locale),
+  onMenuCommand: (cb: (command: MenuCommand) => void) => {
+    const listener = (_e: unknown, command: MenuCommand) => cb(command);
+    ipcRenderer.on('menuCommand', listener);
+    return () => {
+      ipcRenderer.removeListener('menuCommand', listener);
+    };
+  },
   onProgress: (cb: (e: ProgressEvent) => void) => {
     const listener = (_e: any, event: ProgressEvent) => cb(event);
     ipcRenderer.on('progress', listener);

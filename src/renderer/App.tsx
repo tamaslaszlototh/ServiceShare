@@ -237,6 +237,27 @@ export function App() {
     }
   };
 
+  const handleExport = () => {
+    if (!clip) {
+      return;
+    }
+    setExportedPath(null);
+    setExportOpen(true);
+  };
+
+  const menuHandlers = useRef({ open: handleOpen, export: handleExport });
+  menuHandlers.current = { open: handleOpen, export: handleExport };
+
+  useEffect(() => {
+    return window.api.onMenuCommand((command) => {
+      if (command === 'open') {
+        void menuHandlers.current.open();
+      } else if (command === 'export') {
+        menuHandlers.current.export();
+      }
+    });
+  }, []);
+
   const handleDrop = async (event: React.DragEvent) => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
@@ -269,10 +290,7 @@ export function App() {
         <button
           className="btn ghost"
           disabled={!clip}
-          onClick={() => {
-            setExportedPath(null);
-            setExportOpen(true);
-          }}
+          onClick={handleExport}
         >
           {t('header.export')}
         </button>
@@ -360,7 +378,7 @@ export function App() {
               onChange={(e) => setFadeSeconds(clampFadeSeconds(parseFloat(e.target.value)))}
               style={{ width: '4.5em' }}
             />
-            s
+            {t('toolbar.secondsUnit')}
           </label>
           <button
             className={`btn chip${fadeInSeconds !== null ? ' active' : ''}`}
@@ -397,7 +415,7 @@ export function App() {
               onChange={(e) => setGainDb(clampGainDb(parseFloat(e.target.value)))}
               style={{ width: '4em' }}
             />
-            dB
+            {t('toolbar.decibelUnit')}
           </label>
           <button
             className="btn chip"
