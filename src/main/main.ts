@@ -18,7 +18,7 @@ import { assetResolver } from './assets';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
 import { logError, logInfo } from './log';
-import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '@shared/i18n';
+import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
 import { MenuCommand, MenuEntry, applicationMenu, exportDialogOptions, openDialogOptions } from './shell';
 import {
   AccountState,
