@@ -12,7 +12,6 @@ import { editedDuration, removedSourceRanges } from './timelineRanges';
 import { formatSelectionRange, formatTime, selectionLength } from './selection';
 import { channelLabel } from './labels';
 import { HistoryAction, resolveHistoryShortcut } from './shortcuts';
-import { canRedo, canUndo, redoCount, undoCount } from '@shared/history';
 import {
   FADE_DEFAULT_SECONDS,
   FADE_MAX_SECONDS,
@@ -35,8 +34,14 @@ export function App() {
   const [clip, setClip] = useState<ClipInfo | null>(null);
   const [peaks, setPeaks] = useState<PeakData | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [document, setDocument] = useState<Document>({ sourceFile: null, editList: [], historyIndex: 0 });
-  const effectiveEditList = document.editList.slice(0, document.historyIndex);
+  const [document, setDocument] = useState<Document>({
+    sourceFile: null,
+    effectiveEditList: [],
+    canUndo: false,
+    canRedo: false,
+    undoCount: 0,
+    redoCount: 0,
+  });
   const [error, setError] = useState<AppError | null>(null);
   const [playing, setPlaying] = useState(false);
   const [rendering, setRendering] = useState(false);
@@ -179,13 +184,14 @@ export function App() {
     : playing
       ? t('status.playing')
       : t('status.ready');
-  const fadeInSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeIn');
-  const fadeOutSeconds = activeFadeSeconds(document.editList, document.historyIndex, 'fadeOut');
-  const normalizeActive = activeNormalize(document.editList, document.historyIndex);
-  const timelineDuration = clip ? editedDuration(clip.duration, effectiveEditList) : 0;
+  const fadeInSeconds = activeFadeSeconds(document.effectiveEditList, 'fadeIn');
+  const fadeOutSeconds = activeFadeSeconds(document.effectiveEditList, 'fadeOut');
+  const normalizeActive = activeNormalize(document.effectiveEditList);
+  const timelineDuration = clip ? editedDuration(clip.duration, document.effectiveEditList) : 0;
   const removedSeconds = clip
-    ? removedSourceRanges(clip.duration, effectiveEditList).reduce((sum, range) => sum + (range.end - range.start), 0)
+    ? removedSourceRanges(clip.duration, document.effectiveEditList).reduce((sum, range) => sum + (range.end - range.start), 0)
     : 0;
+  const hasHistory = document.undoCount + document.redoCount > 0;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -228,8 +234,7 @@ export function App() {
     }
   };
 
-  const confirmReplace = () =>
-    document.editList.length === 0 || window.confirm(t('dialog.discardEdits'));
+  const confirmReplace = () => !hasHistory || window.confirm(t('dialog.discardEdits'));
 
   const handleOpen = async () => {
     if (confirmReplace()) {
@@ -313,7 +318,7 @@ export function App() {
         <PublishDialog
           sourceFile={clip.filePath}
           sourceDuration={clip.duration}
-          editList={effectiveEditList}
+          editList={document.effectiveEditList}
           onClose={() => setPublishOpen(false)}
         />
       )}
@@ -326,7 +331,7 @@ export function App() {
           aria-label={t('toolbar.undo')}
           title={t('toolbar.undo')}
           onClick={() => applyHistory('undo')}
-          disabled={!canUndo(document)}
+          disabled={!document.canUndo}
         >
           ↶
         </button>
@@ -335,7 +340,7 @@ export function App() {
           aria-label={t('toolbar.redo')}
           title={t('toolbar.redo')}
           onClick={() => applyHistory('redo')}
-          disabled={!canRedo(document)}
+          disabled={!document.canRedo}
         >
           ↷
         </button>
@@ -547,7 +552,7 @@ export function App() {
       <footer className="status">
         {clip ? (
           <>
-            <span>{t('status.undoRedo', { undo: undoCount(document), redo: redoCount(document) })}</span>
+            <span>{t('status.undoRedo', { undo: document.undoCount, redo: document.redoCount })}</span>
             {exportedPath && (
               <span className="notice">{t('notice.exported', { path: exportedPath })}</span>
             )}

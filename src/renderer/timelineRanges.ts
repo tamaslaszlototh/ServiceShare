@@ -49,7 +49,7 @@ function removeSegments(segments: Segment[], start: number, end: number): Segmen
   return kept;
 }
 
-function toSegments(sourceDuration: number, editList: EditOperation[]): Segment[] {
+function toSegments(sourceDuration: number, editList: readonly EditOperation[]): Segment[] {
   let segments: Segment[] = [{ srcStart: 0, length: sourceDuration }];
   for (const op of editList) {
     switch (op.kind) {
@@ -86,7 +86,7 @@ function mergeRanges(ranges: Range[]): Range[] {
   return merged;
 }
 
-export function keptSourceRanges(sourceDuration: number, editList: EditOperation[]): Range[] {
+export function keptSourceRanges(sourceDuration: number, editList: readonly EditOperation[]): Range[] {
   if (!(sourceDuration > 0)) {
     return [];
   }
@@ -96,7 +96,7 @@ export function keptSourceRanges(sourceDuration: number, editList: EditOperation
   return mergeRanges(kept);
 }
 
-export function removedSourceRanges(sourceDuration: number, editList: EditOperation[]): Range[] {
+export function removedSourceRanges(sourceDuration: number, editList: readonly EditOperation[]): Range[] {
   if (!(sourceDuration > 0)) {
     return [];
   }
@@ -114,7 +114,7 @@ export function removedSourceRanges(sourceDuration: number, editList: EditOperat
   return removed;
 }
 
-export function editedDuration(sourceDuration: number, editList: EditOperation[]): number {
+export function editedDuration(sourceDuration: number, editList: readonly EditOperation[]): number {
   return toSegments(sourceDuration, editList).reduce((total, segment) => total + segment.length, 0);
 }
 

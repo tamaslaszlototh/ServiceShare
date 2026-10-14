@@ -43,10 +43,16 @@ export type EditOperation =
   | { kind: 'normalize' }
   | { kind: 'concatenate'; file: string; duration: number };
 
-export interface Document {
+export interface EditListSnapshot {
+  readonly effectiveEditList: readonly EditOperation[];
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
+  readonly undoCount: number;
+  readonly redoCount: number;
+}
+
+export interface Document extends EditListSnapshot {
   sourceFile: string | null;
-  editList: EditOperation[];
-  historyIndex: number;
 }
 
 export type ProgressEvent =

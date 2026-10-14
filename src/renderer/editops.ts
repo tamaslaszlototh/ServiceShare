@@ -59,11 +59,10 @@ export function isStructural(op: EditOperation): boolean {
 }
 
 export function activeFadeSeconds(
-  editList: EditOperation[],
-  historyIndex: number,
+  editList: readonly EditOperation[],
   kind: 'fadeIn' | 'fadeOut',
 ): number | null {
-  for (let i = Math.min(historyIndex, editList.length) - 1; i >= 0; i--) {
+  for (let i = editList.length - 1; i >= 0; i--) {
     const op = editList[i];
     if (op.kind === kind) {
       return op.duration;
@@ -72,6 +71,6 @@ export function activeFadeSeconds(
   return null;
 }
 
-export function activeNormalize(editList: EditOperation[], historyIndex: number): boolean {
-  return editList.slice(0, Math.min(historyIndex, editList.length)).some((op) => op.kind === 'normalize');
+export function activeNormalize(editList: readonly EditOperation[]): boolean {
+  return editList.some((op) => op.kind === 'normalize');
 }

@@ -89,33 +89,24 @@ describe('isStructural', () => {
 describe('activeFadeSeconds', () => {
   const editList = [fadeInOp(2), gainOp(3), fadeInOp(4), fadeOutOp(1.5)];
 
-  it('returns the latest active fade duration of the requested kind', () => {
-    expect(activeFadeSeconds(editList, editList.length, 'fadeIn')).toBe(4);
-    expect(activeFadeSeconds(editList, editList.length, 'fadeOut')).toBe(1.5);
+  it('returns the latest fade duration of the requested kind', () => {
+    expect(activeFadeSeconds(editList, 'fadeIn')).toBe(4);
+    expect(activeFadeSeconds(editList, 'fadeOut')).toBe(1.5);
   });
 
-  it('ignores fades beyond the history cursor', () => {
-    expect(activeFadeSeconds(editList, 1, 'fadeIn')).toBe(2);
-    expect(activeFadeSeconds(editList, 1, 'fadeOut')).toBeNull();
-  });
-
-  it('returns null when no active fade of that kind exists', () => {
-    expect(activeFadeSeconds([gainOp(3)], 1, 'fadeIn')).toBeNull();
-    expect(activeFadeSeconds([], 0, 'fadeOut')).toBeNull();
+  it('returns null when no fade of that kind exists', () => {
+    expect(activeFadeSeconds([gainOp(3)], 'fadeIn')).toBeNull();
+    expect(activeFadeSeconds([], 'fadeOut')).toBeNull();
   });
 });
 
 describe('activeNormalize', () => {
-  it('is true when a normalize op is inside the history cursor', () => {
-    expect(activeNormalize([gainOp(3), normalizeOp()], 2)).toBe(true);
-  });
-
-  it('ignores normalize ops beyond the history cursor', () => {
-    expect(activeNormalize([gainOp(3), normalizeOp()], 1)).toBe(false);
+  it('is true when a normalize op is present', () => {
+    expect(activeNormalize([gainOp(3), normalizeOp()])).toBe(true);
   });
 
   it('is false when no normalize op is present', () => {
-    expect(activeNormalize([gainOp(3)], 1)).toBe(false);
-    expect(activeNormalize([], 0)).toBe(false);
+    expect(activeNormalize([gainOp(3)])).toBe(false);
+    expect(activeNormalize([])).toBe(false);
   });
 });

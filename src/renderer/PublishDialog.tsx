@@ -39,7 +39,7 @@ const IMAGE_ACCEPT = 'image/png,image/jpeg,.png,.jpg,.jpeg';
 interface PublishDialogProps {
   sourceFile: string;
   sourceDuration: number;
-  editList: EditOperation[];
+  editList: readonly EditOperation[];
   onClose: () => void;
 }
 

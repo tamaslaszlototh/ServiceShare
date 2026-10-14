@@ -39,17 +39,25 @@ type EditOperation =
   | { kind: 'normalize' }
   | { kind: 'concatenate'; file: string; duration: number }          // appended after current end
 
-interface Document {
-  sourceFile: string;          // original WAV path (pcm_s16le/s24le)
-  editList: EditOperation[];   // ordered; source-path of truth
-  historyIndex: number;        // undo cursor into editList
+interface Document extends EditListSnapshot {
+  sourceFile: string;                // original WAV path (pcm_s16le/s24le)
+}
+
+interface EditListSnapshot {
+  effectiveEditList: readonly EditOperation[]; // active operations
+  canUndo: boolean;
+  canRedo: boolean;
+  undoCount: number;
+  redoCount: number;
 }
 ```
 
-- The edit list is the single source of truth for undo/redo **and** rendering.
-- Undo/redo = move `historyIndex`; the effective list for any read/render is
-  `editList[0..historyIndex)`.
-- New edit after undo truncates redo (`editList.length = historyIndex`, then append).
+- The **Edit List** module (`src/shared/editlist.ts`) is the single home of the edit operations and
+  the undo cursor; it is the source of truth for undo/redo **and** rendering.
+- Undo/redo moves the cursor inside that module. The `Document` the renderer receives is already a
+  snapshot of the **effective** list (`operations[0..cursor)`) plus the history summary, so no
+  consumer re-derives `editList[0..historyIndex)`.
+- New edit after undo truncates redo.
 - Session-only: the `Document` is never persisted.
 
 ## 3.3 Engine (FFmpeg)
@@ -66,7 +74,7 @@ Full recipes in `04`. Responsibilities:
 
 ## 3.4 Preview cache & playback
 
-- Cache key = hash of `(sourceFile mtime, editList[0..historyIndex))`.
+- Cache key = hash of `(sourceFile mtime, effective edit list)`.
 - Preview render = engine output to `pcm_s16le` at the session format, into the user data temp dir.
 - Playback streams that cached WAV; seeking works across the edited timeline (the preview is the
   edited result, so edited-timeline coords map 1:1).

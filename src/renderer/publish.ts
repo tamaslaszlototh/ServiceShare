@@ -71,7 +71,7 @@ export function accountLabel(account: AccountInfo | null | undefined, t: Transla
   return name || email || t('publish.accountSignedIn');
 }
 
-export function editedDuration(sourceDuration: number, editList: EditOperation[]): number {
+export function editedDuration(sourceDuration: number, editList: readonly EditOperation[]): number {
   let duration = sourceDuration;
   for (const op of editList) {
     if (op.kind === 'trim') {

@@ -19,7 +19,7 @@ Cover Image).
 - Load meter: total duration, sample rate, bit depth, channels shown in the status strip.
 
 **FR-3 — Session-only document.**
-- A `Document = { sourceFile, editList, historyIndex }` exists only in memory.
+- A `Document = { sourceFile, effectiveEditList, canUndo, canRedo, undoCount, redoCount }` exists only in memory.
 - No project file is written or offered; "Save" is not a feature. Closing the window discards edits.
 
 **FR-4 — One clip per session.**
@@ -106,7 +106,7 @@ Every operation appends to the edit list and creates one undo step.
 ## 2.5 Undo / redo
 
 **FR-13 — Undo/redo over the edit list.**
-- Undo moves `historyIndex` back and re-renders semantics from the source through the truncated
+- Undo moves the Edit List cursor back and re-renders semantics from the source through the truncated
   list; redo restores. Redo is cleared on a new edit.
 - Icon/keys: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (or Ctrl+Y).
 

@@ -1,54 +1,40 @@
 import { Document, EditOperation } from '@shared/types';
+import { EditList } from '@shared/editlist';
 
 export class DocumentManager {
-  private doc: Document = {
-    sourceFile: null,
-    editList: [],
-    historyIndex: 0,
-  };
+  private sourceFile: string | null = null;
+  private edits = new EditList();
 
   getDocument(): Document {
-    return this.doc;
+    return { sourceFile: this.sourceFile, ...this.edits.snapshot() };
   }
 
   setSourceFile(path: string | null): void {
-    this.doc.sourceFile = path;
-    this.clearEdits();
-  }
-
-  clearEdits(): void {
-    this.doc.editList = [];
-    this.doc.historyIndex = 0;
+    this.sourceFile = path;
+    this.edits.clear();
   }
 
   appendEdit(op: EditOperation): void {
-    this.doc.editList = this.doc.editList.slice(0, this.doc.historyIndex);
-    this.doc.editList.push(op);
-    this.doc.historyIndex = this.doc.editList.length;
+    this.edits.append(op);
   }
 
-  removeActiveEdit(predicate: (op: EditOperation) => boolean): EditOperation | null {
-    const active = this.doc.editList.slice(0, this.doc.historyIndex);
-    for (let i = active.length - 1; i >= 0; i--) {
-      if (predicate(active[i])) {
-        const [removed] = active.splice(i, 1);
-        this.doc.editList = active;
-        this.doc.historyIndex = active.length;
-        return removed;
-      }
-    }
-    return null;
+  toggleFade(kind: 'fadeIn' | 'fadeOut', seconds: number): void {
+    this.edits.toggle({ kind, duration: seconds });
+  }
+
+  toggleNormalize(): void {
+    this.edits.toggle({ kind: 'normalize' });
   }
 
   undo(): void {
-    this.doc.historyIndex = Math.max(0, this.doc.historyIndex - 1);
+    this.edits.undo();
   }
 
   redo(): void {
-    this.doc.historyIndex = Math.min(this.doc.editList.length, this.doc.historyIndex + 1);
+    this.edits.redo();
   }
 
   getEffectiveEditList(): EditOperation[] {
-    return this.doc.editList.slice(0, this.doc.historyIndex);
+    return this.edits.effective();
   }
 }

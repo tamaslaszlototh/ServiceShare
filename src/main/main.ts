@@ -336,10 +336,7 @@ app.whenReady().then(async () => {
     'toggleFade',
     async (_e, kind: 'fadeIn' | 'fadeOut', seconds: number): Promise<EditResult> => {
       try {
-        const removed = docManager.removeActiveEdit((op) => op.kind === kind);
-        if (!removed) {
-          docManager.appendEdit({ kind, duration: seconds });
-        }
+        docManager.toggleFade(kind, seconds);
         return { status: 'ok', document: docManager.getDocument() };
       } catch (e) {
         return errorResult(e, 'EngineError');
@@ -349,10 +346,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('toggleNormalize', async (): Promise<EditResult> => {
     try {
-      const removed = docManager.removeActiveEdit((op) => op.kind === 'normalize');
-      if (!removed) {
-        docManager.appendEdit({ kind: 'normalize' });
-      }
+      docManager.toggleNormalize();
       return { status: 'ok', document: docManager.getDocument() };
     } catch (e) {
       return errorResult(e, 'EngineError');
