@@ -1,14 +1,14 @@
 import { join } from 'path';
 import { stat } from 'fs/promises';
 import { AppError, ClipInfo, EditOperation, PublishEvent, PublishRequest, PublishResult } from '@shared/types';
-import { CompileInput, compileEditList } from './engine';
-import { parseLoudnormJson } from './preview';
+import { CompileInput, compileEditList } from '../audio/engine';
+import { parseLoudnormJson } from '../audio/preview';
 import { CoverAssets } from './assets';
 import { CoverRequest, CoverService, COVER_HEIGHT, COVER_WIDTH, coverDepsIn } from './cover';
-import { ffmpegResolver } from './ffmpeg';
-import { RenderError, errorResult, toAppError } from './errors';
-import { sanitizeText } from './sanitize';
-import { RunOptions, runFfmpeg } from './runner';
+import { ffmpegResolver } from '../audio/ffmpeg';
+import { RenderError, errorResult, toAppError } from '../core/errors';
+import { sanitizeText } from '../core/sanitize';
+import { RunOptions, runFfmpeg } from '../audio/runner';
 import {
   UploadCancelled,
   UploadOptions,

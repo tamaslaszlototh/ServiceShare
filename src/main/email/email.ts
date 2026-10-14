@@ -6,10 +6,10 @@ import {
   NetworkError,
   NoRecipientsError,
   QuotaExceededError,
-} from './errors';
+} from '../core/errors';
 import { MimeMessage, base64UrlEncode, buildMime } from './mime';
-import { UploadHttp, apiErrorReason, isRetriableStatus, nodeUploadHttp } from './upload';
-import { classifyRecipients } from '../shared/recipients';
+import { UploadHttp, apiErrorReason, isRetriableStatus, nodeUploadHttp } from '../publishing/upload';
+import { classifyRecipients } from '../../shared/recipients';
 
 export const GMAIL_SEND_URL = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send';
 

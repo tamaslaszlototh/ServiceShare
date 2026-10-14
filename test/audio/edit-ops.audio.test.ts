@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClipInfo, EditOperation } from '@shared/types';
-import { interSampleDeltaRatio, rms, sliceSeconds, toDb } from '../../src/main/audio-metrics';
+import { interSampleDeltaRatio, rms, sliceSeconds, toDb } from '../../src/main/audio/audio-metrics';
 import { decodePcm, probe, renderEdit } from './support/harness';
 import { useTempDir } from './support/fixture';
 import { cyclesToSeconds, toneWithGap, writeToneWav, writeWav, WavSpec } from './support/synth';

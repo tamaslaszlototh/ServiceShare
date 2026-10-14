@@ -3,7 +3,7 @@ import { readFile, writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { app } from 'electron';
 import { AuthTokens } from '@shared/types';
-import { TokenStorageError } from './errors';
+import { TokenStorageError } from '../core/errors';
 
 const TOKENS_FILE = 'youtube-tokens.dat';
 

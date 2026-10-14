@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { probeClip, WavProbeDeps, FfprobeOutput } from './probe';
-import { FormatError, CorruptFileError, PermissionError } from './errors';
+import { FormatError, CorruptFileError, PermissionError } from '../core/errors';
 
 function ffprobeWav(opts: {
   codec?: string;

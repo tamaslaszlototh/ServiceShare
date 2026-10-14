@@ -1,4 +1,4 @@
-import { redact } from '../shared/redact';
+import { redact } from '../../shared/redact';
 
 export type LogLevel = 'info' | 'warn' | 'error';
 

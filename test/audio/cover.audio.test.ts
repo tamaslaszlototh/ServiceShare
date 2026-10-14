@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as path from 'path';
-import { CoverService } from '../../src/main/cover';
-import { CoverAssets } from '../../src/main/assets';
+import { CoverService } from '../../src/main/publishing/cover';
+import { CoverAssets } from '../../src/main/publishing/assets';
 import { FFMPEG_PATH, RgbFrame, decodeRgb, ffprobeImage, run } from './support/harness';
 import { useTempDir } from './support/fixture';
-import { COVER_HEIGHT, COVER_LOGO_SIZE, COVER_LOGO_TOP_MARGIN, COVER_WIDTH } from '../../src/main/cover';
+import { COVER_HEIGHT, COVER_LOGO_SIZE, COVER_LOGO_TOP_MARGIN, COVER_WIDTH } from '../../src/main/publishing/cover';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const ASSETS: CoverAssets = {

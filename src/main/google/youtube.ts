@@ -7,7 +7,7 @@ import {
   TokenResponse,
 } from './auth';
 import { OAuthCredentials, loadCredentials } from './credentials';
-import { AuthRevokedError, EngineError, TokenStorageError } from './errors';
+import { AuthRevokedError, EngineError, TokenStorageError } from '../core/errors';
 
 export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
 

@@ -1,6 +1,6 @@
 import { existsSync } from 'fs';
 import * as path from 'path';
-import { EngineError } from './errors';
+import { EngineError } from '../core/errors';
 
 export const DEFAULT_BASE_FILE = 'default-base.png';
 export const LOGO_FILE = 'logo.png';
@@ -19,7 +19,7 @@ export interface AssetResolverDeps {
 
 function defaultDeps(): AssetResolverDeps {
   const resourcesPath = (process as { resourcesPath?: string }).resourcesPath ?? '';
-  const devAssets = path.resolve(__dirname, '..', '..', 'assets');
+  const devAssets = path.resolve(__dirname, '..', '..', '..', 'assets');
   const roots = [resourcesPath ? path.join(resourcesPath, 'assets') : '', devAssets].filter(
     (root) => root.length > 0,
   );

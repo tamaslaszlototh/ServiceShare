@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClipInfo, ExportFormat } from '@shared/types';
-import { ExportService } from '../../src/main/export';
+import { ExportService } from '../../src/main/audio/export';
 import { FFMPEG_PATH, ffprobeAudio, measureLoudness, probe, renderEdit, run } from './support/harness';
 import { useTempDir } from './support/fixture';
 import { writeToneWav, WavSpec } from './support/synth';

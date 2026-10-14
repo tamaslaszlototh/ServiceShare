@@ -9,7 +9,7 @@ import {
   QuotaExceededError,
   UnverifiedProjectError,
   UploadExpiredError,
-} from './errors';
+} from '../core/errors';
 
 export const UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos';
 export const UPLOAD_PARTS = 'snippet,status';

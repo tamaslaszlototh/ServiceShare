@@ -1,11 +1,11 @@
 import { ClipInfo, EditOperation, ExportFormat, ExportOptions } from '@shared/types';
-import { editedDuration } from '../shared/duration';
+import { editedDuration } from '../../shared/duration';
 import { CompileInput, compileEditList } from './engine';
 import { parseLoudnormJson } from './preview';
 import { RunOptions, runFfmpeg } from './runner';
 import { ffmpegResolver } from './ffmpeg';
-import { DiskFullError, IpcError, RenderError } from './errors';
-import { sanitizeText } from './sanitize';
+import { DiskFullError, IpcError, RenderError } from '../core/errors';
+import { sanitizeText } from '../core/sanitize';
 
 export const MP3_BITRATE = '192k';
 

@@ -6,7 +6,7 @@ import {
   samplesPerBucketFor,
   PeakDeps,
 } from './peaks';
-import { EngineError } from './errors';
+import { EngineError } from '../core/errors';
 import { ClipInfo } from '@shared/types';
 
 function f32(...values: number[]): Buffer {

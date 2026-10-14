@@ -5,8 +5,8 @@ import { ClipInfo, EditOperation } from '@shared/types';
 import { CompileInput, LoudnormMeasurement, compileEditList } from './engine';
 import { ffmpegResolver } from './ffmpeg';
 import { runFfmpeg } from './runner';
-import { EngineError } from './errors';
-import { sanitizeText } from './sanitize';
+import { EngineError } from '../core/errors';
+import { sanitizeText } from '../core/sanitize';
 
 export function previewCacheKey(sourceMtimeMs: number, editList: EditOperation[]): string {
   return createHash('sha256').update(`${sourceMtimeMs}\n${JSON.stringify(editList)}`).digest('hex');

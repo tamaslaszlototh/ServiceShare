@@ -3,8 +3,8 @@ import { constants } from 'fs';
 import { access } from 'fs/promises';
 import { ClipInfo } from '@shared/types';
 import { ffmpegResolver } from './ffmpeg';
-import { CorruptFileError, FormatError, PermissionError } from './errors';
-import { sanitizeText } from './sanitize';
+import { CorruptFileError, FormatError, PermissionError } from '../core/errors';
+import { sanitizeText } from '../core/sanitize';
 
 export interface FfprobeOutput {
   stdout: string;

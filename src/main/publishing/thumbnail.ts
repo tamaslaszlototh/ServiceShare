@@ -1,5 +1,5 @@
 import { createReadStream } from 'fs';
-import { IpcError } from './errors';
+import { IpcError } from '../core/errors';
 import {
   UploadBody,
   UploadHttp,

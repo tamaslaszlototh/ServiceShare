@@ -10,7 +10,7 @@ import {
   publishAudioArgs,
 } from './publish';
 import { UploadCancelled } from './upload';
-import { QuotaExceededError } from './errors';
+import { QuotaExceededError } from '../core/errors';
 
 const clip: ClipInfo = {
   filePath: '/tmp/in.wav',

@@ -1,5 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
-import { EngineError } from './errors';
+import { EngineError } from '../core/errors';
 
 export const DEFAULT_RENDER_TIMEOUT_MS = 120000;
 

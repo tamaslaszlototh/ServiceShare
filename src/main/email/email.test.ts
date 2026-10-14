@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, Mock } from 'vitest';
-import { UploadHttpRequest } from './upload';
+import { UploadHttpRequest } from '../publishing/upload';
 import { GMAIL_SEND_URL, emailDepsIn, parseEmailSendRequest, sendEmail } from './email';
 import { base64UrlEncode } from './mime';
-import { AuthRevokedError } from './errors';
+import { AuthRevokedError } from '../core/errors';
 
 function makeHttp(status: number, text = '{"id":"m1"}') {
   return vi.fn(async () => ({ status, headers: {}, text }));

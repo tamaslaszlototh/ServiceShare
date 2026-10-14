@@ -1,4 +1,4 @@
-import { isRecipientValid, normalizeRecipients, recipientKey } from '../shared/recipients';
+import { isRecipientValid, normalizeRecipients, recipientKey } from '../../shared/recipients';
 
 export const RECIPIENTS_FILE = 'email-recipients.json';
 

@@ -1,7 +1,7 @@
 import { ClipInfo, PeakBucket, PeakData } from '@shared/types';
 import { ffmpegResolver } from './ffmpeg';
-import { EngineError } from './errors';
-import { sanitizeText } from './sanitize';
+import { EngineError } from '../core/errors';
+import { sanitizeText } from '../core/sanitize';
 import { killActiveProcesses, runFfmpeg } from './runner';
 
 export const TARGET_PEAK_BUCKETS = 4096;

@@ -4,9 +4,9 @@ import { mkdtemp, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import { ClipInfo, EditOperation } from '@shared/types';
-import { compileEditList, LOUDNESS_TARGET } from '../../../src/main/engine';
-import { parseLoudnormJson } from '../../../src/main/preview';
-import { defaultWavProbeDeps, probeClip } from '../../../src/main/probe';
+import { compileEditList, LOUDNESS_TARGET } from '../../../src/main/audio/engine';
+import { parseLoudnormJson } from '../../../src/main/audio/preview';
+import { defaultWavProbeDeps, probeClip } from '../../../src/main/audio/probe';
 
 const require = createRequire(import.meta.url);
 export const FFMPEG_PATH = require('ffmpeg-static') as string;

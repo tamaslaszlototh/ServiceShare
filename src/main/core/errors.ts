@@ -1,8 +1,8 @@
 import type { AppError, ErrorCode } from '@shared/types';
 import type { AppErrorResult } from '@shared/ipc';
-import { normalizeError } from '../shared/apperror';
-import { redactAppError } from '../shared/redact';
-import { TOO_LONG_MESSAGE } from '../shared/limits';
+import { normalizeError } from '../../shared/apperror';
+import { redactAppError } from '../../shared/redact';
+import { TOO_LONG_MESSAGE } from '../../shared/limits';
 
 export class IpcError extends Error implements AppError {
   readonly code: ErrorCode;

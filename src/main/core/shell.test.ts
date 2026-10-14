@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Locale, TranslationKey, TranslationParams, t as translate } from '../shared/i18n';
+import { Locale, TranslationKey, TranslationParams, t as translate } from '../../shared/i18n';
 import {
   applicationMenu,
   exportDialogOptions,

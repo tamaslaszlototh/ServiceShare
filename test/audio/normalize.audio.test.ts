@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClipInfo } from '@shared/types';
-import { LOUDNESS_TARGET_I } from '../../src/main/engine';
+import { LOUDNESS_TARGET_I } from '../../src/main/audio/engine';
 import { measureLoudness, probe, renderEdit } from './support/harness';
 import { useTempDir } from './support/fixture';
 import { writeToneWav, WavSpec } from './support/synth';

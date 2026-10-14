@@ -1,7 +1,7 @@
 import { execFile } from 'child_process';
 import { existsSync } from 'fs';
 import { createRequire } from 'module';
-import { EngineError } from './errors';
+import { EngineError } from '../core/errors';
 
 export const FFMPEG_NOT_FOUND = 'FFmpeg not found';
 

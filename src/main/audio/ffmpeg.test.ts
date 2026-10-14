@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FFmpegResolver, FFmpegResolverDeps } from './ffmpeg';
-import { EngineError } from './errors';
+import { EngineError } from '../core/errors';
 
 function makeDeps(overrides: Partial<FFmpegResolverDeps> = {}) {
   const existing = new Set<string>();

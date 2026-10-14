@@ -1,5 +1,5 @@
-import { TranslationKey, Translator } from '../shared/i18n';
-import { ExportFormat, MenuCommand } from '../shared/types';
+import { TranslationKey, Translator } from '../../shared/i18n';
+import { ExportFormat, MenuCommand } from '../../shared/types';
 
 export type { MenuCommand };
 

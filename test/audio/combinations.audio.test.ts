@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClipInfo } from '@shared/types';
-import { rms, sliceSeconds } from '../../src/main/audio-metrics';
+import { rms, sliceSeconds } from '../../src/main/audio/audio-metrics';
 import { decodePcm, measureLoudness, probe, renderEdit } from './support/harness';
 import { useTempDir } from './support/fixture';
 import { cyclesToSeconds, writeToneWav, WavSpec } from './support/synth';

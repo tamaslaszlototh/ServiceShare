@@ -1,8 +1,8 @@
 import { CoverAssets } from './assets';
-import { ffmpegResolver } from './ffmpeg';
-import { runFfmpeg } from './runner';
-import { RenderError } from './errors';
-import { sanitizeText } from './sanitize';
+import { ffmpegResolver } from '../audio/ffmpeg';
+import { runFfmpeg } from '../audio/runner';
+import { RenderError } from '../core/errors';
+import { sanitizeText } from '../core/sanitize';
 
 export const COVER_WIDTH = 1280;
 export const COVER_HEIGHT = 720;
