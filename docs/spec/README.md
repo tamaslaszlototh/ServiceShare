@@ -1,7 +1,7 @@
 # ServiceShare — Specification
 
-Agent-ready specification for **ServiceShare**, a cross-platform (Windows + macOS) single-track
-WAV audio editor that performs basic edits and publishes the result to YouTube.
+Agent-ready specification for **ServiceShare**, a Windows single-track
+WAV audio editor (developed on macOS too) that performs basic edits and publishes the result to YouTube.
 
 - **Stack:** Electron + TypeScript + FFmpeg
 - **Editor model:** single-track, non-destructive edit list

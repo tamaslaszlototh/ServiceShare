@@ -28,7 +28,7 @@
   (title/description/path) escaped for `drawtext`/shell contexts.
 - The loopback OAuth server binds only to `127.0.0.1` with an ephemeral port per attempt.
 - **Code-signing file-fuses** enabled where the Electron toolchain supports them; macOS is
-  signed/notarized (see `07`).
+  development-only and unsigned (see `07`, ADR 0007).
 - Auto-update integrity: GitHub-provider TLS; on electron-builder v27 → Ed25519-signed manifests
   enforced fail-closed (`07` §7.6).
 

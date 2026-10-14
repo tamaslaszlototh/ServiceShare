@@ -28,8 +28,8 @@ edits, and wants the result online — without learning a DAW or a video editor.
 - **Export** to WAV (source rate/depth) or MP3.
 - **Publish** to YouTube: cover compositing, MP4 generation, OAuth sign-in, resumable upload,
   metadata, optional thumbnail.
-- **Full distribution**: installers for Windows and macOS, macOS notarization, auto-update via
-  GitHub Releases.
+- **Full distribution**: a Windows installer with auto-update via GitHub Releases (macOS is a
+  development platform only, see ADR 0007).
 
 ## Non-goals
 

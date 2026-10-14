@@ -12,9 +12,8 @@
     "test": "vitest run",
     "test:audio": "vitest run --config vitest.audio.config.ts",
     "gen:assets": "node scripts/gen-assets.mjs",
-    "dist": "npm run build && electron-builder --publish never",
     "dist:mac": "npm run build && electron-builder --mac --publish never",
-    "dist:win": "npm run build && electron-builder --win --publish never"
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never"
   },
   "repository": {
     "type": "git",
@@ -95,24 +94,10 @@
       "category": "public.app-category.music",
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "target": "dir"
         }
       ],
-      "hardenedRuntime": true,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "forceCodeSigning": false,
+      "identity": null,
       "extraResources": [
         {
           "from": "node_modules/ffmpeg-static/ffmpeg",
@@ -129,8 +114,7 @@
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "arm64"
+            "x64"
           ]
         }
       ],
@@ -150,7 +134,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "license": "LICENSE",
-      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     }
   }
 }

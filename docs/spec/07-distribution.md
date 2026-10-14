@@ -5,33 +5,25 @@ Decision context (wayfinder #11), verified in `research/electron-packaging`
 
 ## 7.1 Tooling & targets
 
+Users are on Windows only (see `docs/adr/0007-windows-only-distribution.md`).
+
 - **electron-builder** (pin to stable v26 today; migrate to v27 when released — see §7.6).
 - Targets:
 
-| Platform | Targets | Auto-update relevance |
+| Platform | Targets | Purpose |
 | --- | --- | --- |
-| macOS | `dmg` **+ `zip`** (both required), arch `x64` + `arm64` | Squirrel.Mac needs the zip |
-| Windows | `nsis` (single installer), arch `x64` + `arm64` | NSIS is the auto-updatable installer |
+| Windows | `nsis` (single installer), arch `x64` | The only distributed artifact; NSIS is the auto-updatable installer. Windows on Arm runs it under emulation. |
+| macOS | `dir` (unsigned `.app`), host arch | Development only: lets the maintainer run a packaged build locally. Never published. |
 
-- Build each architecture on matching runners; merge (mac) or emit per-arch artifacts.
 - `extraResources`: the bundled FFmpeg/ffprobe binaries (`ffmpeg-static`, see `04`), the default
-  cover base, fonts, and the app logo (transparent PNG/vector).
+  cover base, fonts, the app logo, `LICENSE` and the FFmpeg license notes.
 
-## 7.2 macOS signing & notarization (mandatory)
+## 7.2 macOS (development only)
 
-Notarization is a hard requirement for distribution since macOS 10.15; auto-update and
-`safeStorage` both need a valid signature.
-
-1. Apple Developer Program account ($99/yr).
-2. **Developer ID Application** certificate; **Hardened Runtime** enabled (electron-builder
-   default for standard builds).
-3. Sign with `CSC_LINK` (`.p12`) + `CSC_KEY_PASSWORD`; **`forceCodeSigning: true`** so a missing
-   identity fails the build instead of shipping unsigned. The config defaults it to `false` so local
-   and pre-certificate builds stay unsigned; release builds pass `-c.mac.forceCodeSigning=true`.
-4. **Notarize** with `notarytool` + `stapler` (Xcode 14+; `altool` is retired). Authenticate with
-   an **App Store Connect API key** (`APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`)
-   — recommended over app-specific passwords.
-5. Notarization runs <1 h normally; ~75/day cap.
+macOS builds are unsigned and stay on the maintainer's machine, so there is no Developer ID
+certificate, Hardened Runtime or notarization. If macOS is ever distributed, follow the signed and
+notarized dmg + zip setup in `docs/adr/0003-distribution-model.md`. Auto-update and `safeStorage`
+need a valid signature there.
 
 ## 7.3 Windows signing (deferred / unsigned for now)
 
@@ -48,11 +40,11 @@ Notarization is a hard requirement for distribution since macOS 10.15; auto-upda
 ## 7.4 Auto-update (electron-updater + GitHub Releases)
 
 - `electron-updater` with the **GitHub** provider (repo is public → no end-user token).
-- Configure `publish` in electron-builder config; builder emits `latest.yml` (Windows) /
-  `latest-mac.yml` (macOS). **Set `owner` and `repo` explicitly** in the `publish` config to defend
+- Configure `publish` in electron-builder config; builder emits `latest.yml` (or `beta.yml` /
+  `alpha.yml` for pre-releases). **Set `owner` and `repo` explicitly** in the `publish` config to defend
   against repo-rename squatters.
 - App: `autoUpdater.checkForUpdatesAndNotify()` on launch; download shows progress (see `05` §5.5);
-  Windows installs on quit; macOS Squirrel.Mac stages and applies on relaunch.
+  Windows installs on quit.
 - Channel selection follows the build's version (pre-release suffix → matching channel, §7.5).
 
 ## 7.5 Versioning & release pipeline
@@ -61,14 +53,16 @@ Notarization is a hard requirement for distribution since macOS 10.15; auto-upda
 - **SemVer with channels**: stable `vX.Y.Z`; pre-releases `vX.Y.Z-alpha.N` / `-beta.N` route into
   alpha/beta channels (supports staged rollouts via `stagingPercentage`).
 - Tag naming: `v` + version.
-- **GitHub Actions** pipeline:
-  - `mac` job on a `macos-*` runner: install, build, sign+notarize, `electron-builder --publish
-    onTag` for the selected channel.
-  - `win` job on a `windows-*` runner: build (unsigned), `--publish onTag`.
-  - Triggered by pushing a tag `v*`.
-  - Secrets: `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY*`, `GH_TOKEN` (contents: write).
-  - Flow: maintainer creates a draft release from the tag; CI attaches artifacts and metadata; the
-    release is published when ready. A version commit/tag bumps `package.json`.
+- **GitHub Actions** pipeline (`.github/workflows/build.yml`):
+  - `test` job on every PR and push to `main`: typecheck + layer-1 unit tests (layer-2 audio
+    goldens run in `audio-goldens.yml` on mac + win).
+  - `release` job on a `windows-*` runner, triggered by pushing a tag `v*`: checks that the tag
+    matches `package.json` `version`, tests, builds (unsigned), then
+    `electron-builder --win --x64 --publish onTag`.
+  - Secrets: none beyond the built-in `GITHUB_TOKEN` (`contents: write`), passed as `GH_TOKEN`.
+  - Flow: bump `package.json` `version` in a commit, tag it `v<version>`, push the tag. CI creates
+    a **draft** release with the installer and update metadata; the maintainer runs the smoke
+    checklist (`docs/release.md`) and publishes it. Updaters only see published releases.
 - `publishConfig`: explicit `repository` + owner/repo (see above).
 
 ## 7.6 electron-builder v27 transition notes

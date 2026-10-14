@@ -150,8 +150,7 @@ Referenced from `06`; the AC below is the top-level contract.
 
 **FR-16 — Update check.**
 - On launch (and via a manual "Check for updates…" item) the app contacts GitHub Releases via
-  `electron-updater`, downloads and stages updates, installs on relaunch (macOS stages natively;
-  Windows NSIS on quit). Channel follows the current build's pre-release tag.
+  `electron-updater`, downloads updates and installs them on quit (Windows NSIS). Channel follows the current build's pre-release tag.
 
 ### AC
 - **G** an installed build older than the newest release/selected channel; **W** launch; **T** a

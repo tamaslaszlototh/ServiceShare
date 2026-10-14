@@ -1,0 +1,5 @@
+# 0007: Distribute for Windows x64 only; macOS is a development platform
+
+Amends [0003](0003-distribution-model.md). ServiceShare ships to users as a single **Windows x64 NSIS installer**. It is unsigned, so `verifyUpdateCodeSignature` stays disabled, and it auto-updates through electron-updater and GitHub Releases. The release pipeline is one Windows job triggered by a `v*` tag. **macOS is not distributed.** It stays a supported development platform, where the maintainer runs `npm run dev` or packages an unsigned local `.app`. So there is no Apple Developer account, no signing, no notarization and no dmg/zip. Windows arm64 is also dropped: Windows on Arm runs the x64 build under emulation.
+
+Chosen because every user is on Windows. Shipping macOS would cost a $99/yr Apple Developer account and a signing/notarization pipeline, plus extra work to build x64 and arm64 FFmpeg on separate runners and merge their update manifests. None of that would reach a real user. If macOS users appear, 0003's signed dmg+zip setup is the path back. If unsigned-installer friction (SmartScreen, Smart App Control) becomes a problem, an OV certificate is still the documented fix.

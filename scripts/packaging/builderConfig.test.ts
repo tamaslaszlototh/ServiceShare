@@ -9,17 +9,22 @@ const build = pkg.build;
 
 type FileSet = { from: string; to: string };
 
-function targets(platform: { target: { target: string; arch: string[] }[] }) {
+function targets(platform: { target: { target: string; arch?: string[] }[] }) {
   return Object.fromEntries(platform.target.map((t) => [t.target, t.arch]));
 }
 
 describe('electron-builder packaging config', () => {
-  it('emits dmg and zip for macOS on x64 and arm64', () => {
-    expect(targets(build.mac)).toEqual({ dmg: ['x64', 'arm64'], zip: ['x64', 'arm64'] });
+  it('distributes a single x64 NSIS installer for Windows', () => {
+    expect(targets(build.win)).toEqual({ nsis: ['x64'] });
   });
 
-  it('emits an NSIS installer for Windows on x64 and arm64', () => {
-    expect(targets(build.win)).toEqual({ nsis: ['x64', 'arm64'] });
+  it('names the installer without spaces so GitHub keeps the name latest.yml points at', () => {
+    expect(build.nsis.artifactName).toBe('${productName}-Setup-${version}.${ext}');
+  });
+
+  it('packages macOS only as an unsigned local app for development', () => {
+    expect(build.mac.target).toEqual([{ target: 'dir' }]);
+    expect(build.mac.identity).toBeNull();
   });
 
   it('ships the bundled cover assets where the asset resolver looks for them', () => {
@@ -48,22 +53,11 @@ describe('electron-builder packaging config', () => {
     expect(build.nsis.license).toBe('LICENSE');
   });
 
-  it('names one NSIS installer per arch so per-arch builds do not overwrite each other', () => {
-    expect(build.nsis.artifactName).toContain('${arch}');
-  });
-
   it('keeps the About panel identity in step with the package metadata', () => {
     const about = aboutPanelOptions((key, params) => `${key} ${params?.url}`, pkg.version);
     expect(about.applicationName).toBe(build.productName);
     expect(about.copyright).toBe(build.copyright);
     expect(pkg.repository.url).toContain(about.credits.split(' ')[1].replace('https://', ''));
-  });
-
-  it('is ready for hardened-runtime signing but does not force it by default', () => {
-    expect(build.mac.hardenedRuntime).toBe(true);
-    expect(build.mac.entitlements).toBeDefined();
-    expect(readFileSync(path.join(root, build.mac.entitlements), 'utf8')).toContain('com.apple.security.cs.allow-jit');
-    expect(build.mac.forceCodeSigning).toBe(false);
   });
 
   it('checks the FFmpeg binaries match the packaged architecture', () => {
