@@ -1,5 +1,5 @@
 import { ClipInfo, EditOperation } from '@shared/types';
-import { editedDuration, hasUnknownDuration } from '@shared/duration';
+import { editedDuration, hasUnknownDuration } from '../shared/duration';
 import { EngineError } from './errors';
 
 export const LOUDNESS_TARGET_I = -16;

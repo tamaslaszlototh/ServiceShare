@@ -1,5 +1,5 @@
 import { Document, EditOperation, FadeKind } from '@shared/types';
-import { EditList } from '@shared/editlist';
+import { EditList } from '../shared/editlist';
 
 export class DocumentManager {
   private sourceFile: string | null = null;

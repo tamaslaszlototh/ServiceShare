@@ -23,7 +23,7 @@ import { CUSTOM_LOGO_FILE, LogoStore } from './logo';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
 import { MenuEntry, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './shell';
 import { ClipInfo, ExportFormat } from '@shared/types';
-import { editedDuration } from '@shared/duration';
+import { editedDuration } from '../shared/duration';
 
 const isDev = process.env.NODE_ENV === 'development';
 

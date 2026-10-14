@@ -1,5 +1,5 @@
 import { ClipInfo, EditOperation, ExportFormat, ExportOptions } from '@shared/types';
-import { editedDuration } from '@shared/duration';
+import { editedDuration } from '../shared/duration';
 import { CompileInput, compileEditList } from './engine';
 import { parseLoudnormJson } from './preview';
 import { RunOptions, runFfmpeg } from './runner';
