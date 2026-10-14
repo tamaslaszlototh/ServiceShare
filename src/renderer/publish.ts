@@ -1,8 +1,9 @@
 import { Translator } from '@shared/i18n';
-import { AccountInfo, AppError, EditOperation, ErrorCode, PrivacyStatus, PublishEvent, PublishRequest } from '@shared/types';
+import { AccountInfo, AppError, ErrorCode, PrivacyStatus, PublishEvent, PublishRequest } from '@shared/types';
 import { LONG_VIDEO_SECONDS, TOO_LONG_MESSAGE } from '@shared/limits';
 import { ErrorAction, errorAction } from './errors';
 
+export { editedDuration } from '@shared/duration';
 export { LONG_VIDEO_SECONDS };
 
 export const PUBLISH_TITLE_MAX = 100;
@@ -69,20 +70,6 @@ export function accountLabel(account: AccountInfo | null | undefined, t: Transla
     return `${name} · ${email}`;
   }
   return name || email || t('publish.accountSignedIn');
-}
-
-export function editedDuration(sourceDuration: number, editList: readonly EditOperation[]): number {
-  let duration = sourceDuration;
-  for (const op of editList) {
-    if (op.kind === 'trim') {
-      duration = Math.max(0, op.end - op.start);
-    } else if (op.kind === 'cutRegion') {
-      duration = Math.max(0, duration - (op.end - op.start));
-    } else if (op.kind === 'concatenate') {
-      duration += op.duration;
-    }
-  }
-  return duration;
 }
 
 export function durationWarning(durationSeconds: number): AppError | null {

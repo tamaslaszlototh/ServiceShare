@@ -1,5 +1,6 @@
 import { ClipInfo, EditOperation, ExportFormat, ExportOptions } from '@shared/types';
-import { CompileInput, compileEditList, renderedDuration } from './engine';
+import { editedDuration } from '@shared/duration';
+import { CompileInput, compileEditList } from './engine';
 import { parseLoudnormJson } from './preview';
 import { RunOptions, runFfmpeg } from './runner';
 import { ffmpegResolver } from './ffmpeg';
@@ -64,7 +65,7 @@ export class ExportService {
     onProgress: ExportProgressHandler = () => {},
   ): Promise<void> {
     const ffmpegPath = await this.deps.resolveFfmpegPath();
-    const expected = renderedDuration(clip, editList);
+    const expected = editedDuration(clip.duration, editList);
     const duration = Number.isFinite(expected) && expected > 0 ? expected : clip.duration;
     const input: CompileInput = {
       source: clip,

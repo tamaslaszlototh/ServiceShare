@@ -1,4 +1,5 @@
 import { ClipInfo, EditOperation } from '@shared/types';
+import { editedDuration, hasUnknownDuration } from '@shared/duration';
 import { EngineError } from './errors';
 
 export const LOUDNESS_TARGET_I = -16;
@@ -34,26 +35,6 @@ export type CompilePlan =
 
 export function needsNormalize(editList: EditOperation[]): boolean {
   return editList.some(isNormalize);
-}
-
-export function renderedDuration(source: ClipInfo, editList: EditOperation[]): number {
-  let duration = source.duration;
-  for (const op of editList) {
-    switch (op.kind) {
-      case 'trim':
-        duration = op.end - op.start;
-        break;
-      case 'cutRegion':
-        duration -= op.end - op.start;
-        break;
-      case 'concatenate':
-        duration += op.duration;
-        break;
-      default:
-        break;
-    }
-  }
-  return duration;
 }
 
 function loudnormPrefix(): string {
@@ -101,7 +82,6 @@ function buildFilterGraph(
   const inputs: string[] = [];
   let currentPad = '0:a';
   let filters: string[] = [];
-  let duration = source.duration;
   let padCounter = 0;
   let inputCounter = 1;
 
@@ -118,11 +98,12 @@ function buildFilterGraph(
     return pad;
   };
 
-  const requireDuration = (): number => {
-    if (Number.isNaN(duration)) {
+  const requireDuration = (index: number): number => {
+    const prefix = ops.slice(0, index);
+    if (hasUnknownDuration(prefix)) {
       throw new EngineError('Cannot place a fade-out after a concatenation with unknown duration');
     }
-    return duration;
+    return editedDuration(source.duration, prefix);
   };
 
   ops.forEach((op, index) => {
@@ -130,7 +111,6 @@ function buildFilterGraph(
     switch (op.kind) {
       case 'trim':
         filters.push(`atrim=start=${formatSeconds(op.start)}:end=${formatSeconds(op.end)}`, 'asetpts=PTS-STARTPTS');
-        duration = op.end - op.start;
         break;
       case 'cutRegion': {
         const base = labelCurrent();
@@ -148,14 +128,15 @@ function buildFilterGraph(
         const out = last ? 'out' : nextPad();
         statements.push(`[${head}][${tail}]concat=n=2:v=0:a=1[${out}]`);
         currentPad = out;
-        duration -= op.end - op.start;
         break;
       }
       case 'fadeIn':
         filters.push(`afade=t=in:st=0:d=${formatSeconds(op.duration)}`);
         break;
       case 'fadeOut':
-        filters.push(`afade=t=out:st=${formatSeconds(requireDuration() - op.duration)}:d=${formatSeconds(op.duration)}`);
+        filters.push(
+          `afade=t=out:st=${formatSeconds(requireDuration(index) - op.duration)}:d=${formatSeconds(op.duration)}`,
+        );
         break;
       case 'gain':
         filters.push(`volume=${formatSeconds(op.db)}dB`);
@@ -178,7 +159,6 @@ function buildFilterGraph(
         const out = last ? 'out' : nextPad();
         statements.push(`[${base}][${second}]concat=n=2:v=0:a=1[${out}]`);
         currentPad = out;
-        duration += op.duration;
         break;
       }
     }

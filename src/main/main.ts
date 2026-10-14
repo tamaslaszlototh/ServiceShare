@@ -7,7 +7,6 @@ import { DocumentManager } from './document';
 import { ffmpegResolver } from './ffmpeg';
 import { probeClip, defaultWavProbeDeps } from './probe';
 import { generatePeaks, defaultPeakDeps, killActiveDecodes } from './peaks';
-import { renderedDuration } from './engine';
 import { PreviewService, previewDepsIn } from './preview';
 import { ExportService, exportDepsIn } from './export';
 import { PublishService, publishDepsIn } from './publish';
@@ -24,6 +23,7 @@ import { CUSTOM_LOGO_FILE, LogoStore } from './logo';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
 import { MenuEntry, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './shell';
 import { ClipInfo, ExportFormat } from '@shared/types';
+import { editedDuration } from '@shared/duration';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -266,7 +266,7 @@ app.whenReady().then(async () => {
         peakClip = {
           ...currentClip,
           filePath: render.path,
-          duration: renderedDuration(currentClip, editList),
+          duration: editedDuration(currentClip.duration, editList),
         };
       }
       const peaks = await generatePeaks(peakClip, defaultPeakDeps);
