@@ -1,0 +1,53 @@
+import { describe, it, expect, vi } from 'vitest';
+import { LogoStore, LogoStoreDeps } from './logo';
+
+function store(over: Partial<LogoStoreDeps> = {}) {
+  const files = new Set<string>();
+  const deps: LogoStoreDeps = {
+    logoPath: '/userData/cover-logo.png',
+    fileExists: (p) => files.has(p),
+    copyFile: vi.fn(async (source: string, destination: string) => {
+      if (!source) throw new Error('missing source');
+      files.add(destination);
+    }),
+    removeFile: vi.fn(async (p: string) => {
+      files.delete(p);
+    }),
+    ...over,
+  };
+  return { files, deps, store: new LogoStore(deps) };
+}
+
+describe('LogoStore', () => {
+  it('reports no custom logo when the file is absent', () => {
+    expect(store().store.customPath()).toBeNull();
+  });
+
+  it('copies a chosen file into the userData path and reports it as custom', async () => {
+    const { store: s, files } = store();
+    const path = await s.setFrom('/pictures/logo.png');
+
+    expect(path).toBe('/userData/cover-logo.png');
+    expect(files.has('/userData/cover-logo.png')).toBe(true);
+    expect(s.customPath()).toBe('/userData/cover-logo.png');
+  });
+
+  it('removes the custom logo on clear', async () => {
+    const { store: s } = store();
+    await s.setFrom('/pictures/logo.png');
+    await s.clear();
+
+    expect(s.customPath()).toBeNull();
+  });
+
+  it('bumps the version on every change so previews can be invalidated', async () => {
+    const { store: s } = store();
+    const start = s.versionKey;
+
+    await s.setFrom('/pictures/logo.png');
+    expect(s.versionKey).toBe(start + 1);
+
+    await s.clear();
+    expect(s.versionKey).toBe(start + 2);
+  });
+});

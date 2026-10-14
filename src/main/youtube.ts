@@ -12,6 +12,7 @@ import { AuthRevokedError, EngineError, TokenStorageError } from './errors';
 const YOUTUBE_SCOPES = [
   'https://www.googleapis.com/auth/youtube.upload',
   'https://www.googleapis.com/auth/youtube.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
 ];
 
 export function oauthConfig(credentials: OAuthCredentials | null): OAuthConfig | null {
@@ -45,6 +46,15 @@ export function parseChannel(body: string): AccountInfo | null {
       channelId: item?.id,
       channelTitle: item?.snippet?.title,
     };
+  } catch {
+    return null;
+  }
+}
+
+export function parseEmail(body: string): string | null {
+  try {
+    const json = JSON.parse(body) as { email?: string };
+    return json.email?.trim() || null;
   } catch {
     return null;
   }
@@ -178,16 +188,41 @@ export class YouTubeService {
   }
 
   private async fetchAccountInfo(tokens: AuthTokens): Promise<AccountInfo | null> {
-    const response = await fetch(
-      'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
-      {
-        headers: { Authorization: `Bearer ${tokens.accessToken}` },
-        signal: AbortSignal.timeout(8000),
-      },
-    );
-    if (!response.ok) {
+    const auth = { Authorization: `Bearer ${tokens.accessToken}` };
+    const [channel, email] = await Promise.all([this.fetchChannel(auth), this.fetchEmail(auth)]);
+    if (!channel && !email) {
       return null;
     }
-    return parseChannel(await response.text());
+    return { ...channel, ...(email ? { email } : {}) };
+  }
+
+  private async fetchChannel(auth: Record<string, string>): Promise<AccountInfo | null> {
+    try {
+      const response = await fetch(
+        'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
+        { headers: auth, signal: AbortSignal.timeout(8000) },
+      );
+      if (!response.ok) {
+        return null;
+      }
+      return parseChannel(await response.text());
+    } catch {
+      return null;
+    }
+  }
+
+  private async fetchEmail(auth: Record<string, string>): Promise<string | null> {
+    try {
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: auth,
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) {
+        return null;
+      }
+      return parseEmail(await response.text());
+    } catch {
+      return null;
+    }
   }
 }

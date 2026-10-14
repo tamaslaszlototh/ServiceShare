@@ -2,8 +2,8 @@ import { createHash } from 'crypto';
 import { join } from 'path';
 import { CoverRequest } from './cover';
 
-export function coverPreviewKey(title: string, coverImagePath?: string): string {
-  return createHash('sha256').update(`${title}\n${coverImagePath ?? ''}`).digest('hex');
+export function coverPreviewKey(title: string, coverImagePath?: string, logoKey = ''): string {
+  return createHash('sha256').update(`${title}\n${coverImagePath ?? ''}\n${logoKey}`).digest('hex');
 }
 
 export function coverPreviewUrl(key: string): string {
@@ -36,8 +36,8 @@ export class CoverPreviewService {
     return this.pathsByKey.get(key) ?? null;
   }
 
-  async ensure(title: string, coverImagePath?: string): Promise<CoverPreviewRender> {
-    const key = coverPreviewKey(title, coverImagePath);
+  async ensure(title: string, coverImagePath?: string, logoKey = ''): Promise<CoverPreviewRender> {
+    const key = coverPreviewKey(title, coverImagePath, logoKey);
     const cached = this.pathsByKey.get(key);
     if (cached) {
       return { key, url: coverPreviewUrl(key), path: cached, composed: false };

@@ -87,7 +87,13 @@ describe('durationWarning', () => {
 });
 
 describe('accountLabel', () => {
-  it('prefers the channel title, then email, then a generic chip', () => {
+  it('shows the channel title next to the email when both are known', () => {
+    expect(accountLabel({ channelTitle: 'Studio', email: 'a@b.co' }, tFor('en'))).toBe(
+      'Studio · a@b.co',
+    );
+  });
+
+  it('falls back to whichever identity is known, then a generic chip', () => {
     expect(accountLabel({ channelTitle: 'Studio' }, tFor('en'))).toBe('Studio');
     expect(accountLabel({ email: 'a@b.co' }, tFor('en'))).toBe('a@b.co');
     expect(accountLabel(null, tFor('en'))).toBe('Signed in');

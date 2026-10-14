@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell, clipboard } from 'electron';
-import { createReadStream } from 'fs';
-import { mkdir, mkdtemp, rm, stat } from 'fs/promises';
+import { createReadStream, existsSync } from 'fs';
+import { mkdir, mkdtemp, rm, stat, copyFile, readFile } from 'fs/promises';
 import { Readable } from 'stream';
 import * as path from 'path';
 import { DocumentManager } from './document';
@@ -18,8 +18,9 @@ import { assetResolver } from './assets';
 import { parseByteRange } from './range';
 import { IpcError, toAppError } from './errors';
 import { logError, logInfo } from './log';
+import { CUSTOM_LOGO_FILE, LogoStore } from './logo';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
-import { MenuCommand, MenuEntry, applicationMenu, exportDialogOptions, openDialogOptions } from './shell';
+import { MenuCommand, MenuEntry, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './shell';
 import {
   AccountState,
   AppError,
@@ -27,11 +28,13 @@ import {
   ClipInfo,
   CoverPreviewRequest,
   CoverPreviewResult,
+  DefaultLogo,
   EditOperation,
   EditResult,
   ErrorCode,
   ExportFormat,
   ExportResult,
+  LogoResult,
   OpenResult,
   PeaksResult,
   PreviewResult,
@@ -91,10 +94,26 @@ let activePublish: AbortController | null = null;
 let currentClip: ClipInfo | null = null;
 const exportService = new ExportService(exportDepsIn());
 const youtubeService = new YouTubeService();
+let logoStore: LogoStore | null = null;
 
 let activeLocale: Locale = DEFAULT_LOCALE;
 
 const tr: Translator = (key, params) => translate(activeLocale, key, params);
+
+function logoKey(): string {
+  return `${assetResolver.resolve().logo}@${logoStore?.versionKey ?? 0}`;
+}
+
+async function fileDataUrl(filePath: string): Promise<string | null> {
+  try {
+    const data = await readFile(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    const mime = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+    return `data:${mime};base64,${data.toString('base64')}`;
+  } catch {
+    return null;
+  }
+}
 
 function installMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(toElectronTemplate(applicationMenu(tr, process.platform))));
@@ -201,6 +220,13 @@ async function pickClipPath(): Promise<string | null> {
 
 app.whenReady().then(async () => {
   const tempRoot = path.join(app.getPath('userData'), 'temp');
+  logoStore = new LogoStore({
+    logoPath: path.join(app.getPath('userData'), CUSTOM_LOGO_FILE),
+    fileExists: existsSync,
+    copyFile,
+    removeFile: (filePath) => rm(filePath, { force: true }),
+  });
+  assetResolver.setLogoOverride(logoStore.customPath());
   previewService = new PreviewService(previewDepsIn(tempRoot));
   const coverService = new CoverService(coverDepsIn(() => assetResolver.resolve()));
   coverPreviewService = new CoverPreviewService({
@@ -425,13 +451,52 @@ app.whenReady().then(async () => {
         };
       }
       try {
-        const preview = await coverPreviewService.ensure(req.title, req.coverImagePath);
+        const preview = await coverPreviewService.ensure(req.title, req.coverImagePath, logoKey());
         return { status: 'ok', url: preview.url };
       } catch (e) {
         return errorResult(e, 'RenderError');
       }
     },
   );
+
+  ipcMain.handle('getDefaultLogo', async (): Promise<DefaultLogo> => {
+    const custom = logoStore?.customPath() ?? null;
+    const target = custom ?? assetResolver.resolve().logo;
+    return { url: await fileDataUrl(target), custom: custom !== null };
+  });
+
+  ipcMain.handle('chooseDefaultLogo', async (): Promise<LogoResult> => {
+    try {
+      const { title, filters } = logoDialogOptions(tr);
+      const result = await dialog.showOpenDialog({ title, filters, properties: ['openFile'] });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { status: 'cancelled' };
+      }
+      if (!logoStore) {
+        return errorResult(new Error('Logo storage is unavailable'), 'InternalError');
+      }
+      await logoStore.setFrom(result.filePaths[0]);
+      const logoPath = logoStore.customPath();
+      assetResolver.setLogoOverride(logoPath);
+      const url = logoPath ? await fileDataUrl(logoPath) : null;
+      if (!url) {
+        return errorResult(new Error('Could not read the chosen logo'), 'RenderError');
+      }
+      return { status: 'ok', url };
+    } catch (e) {
+      return errorResult(e, 'RenderError');
+    }
+  });
+
+  ipcMain.handle('clearDefaultLogo', async (): Promise<VoidResult> => {
+    try {
+      await logoStore?.clear();
+      assetResolver.setLogoOverride(null);
+      return { status: 'ok' };
+    } catch (e) {
+      return errorResult(e, 'InternalError');
+    }
+  });
 
   ipcMain.handle('getAccount', async (): Promise<AccountState> => {
     return youtubeService.accountState();

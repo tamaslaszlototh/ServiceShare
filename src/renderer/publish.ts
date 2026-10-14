@@ -63,7 +63,12 @@ export function clampTags(tags: string[], max = PUBLISH_TAGS_MAX_CHARS): string[
 }
 
 export function accountLabel(account: AccountInfo | null | undefined, t: Translator): string {
-  return account?.channelTitle || account?.email || t('publish.accountSignedIn');
+  const name = account?.channelTitle?.trim();
+  const email = account?.email?.trim();
+  if (name && email) {
+    return `${name} · ${email}`;
+  }
+  return name || email || t('publish.accountSignedIn');
 }
 
 export function editedDuration(sourceDuration: number, editList: EditOperation[]): number {

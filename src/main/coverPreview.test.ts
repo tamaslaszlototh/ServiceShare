@@ -26,6 +26,12 @@ describe('coverPreviewKey', () => {
     expect(coverPreviewKey('A', '/img.png')).not.toBe(coverPreviewKey('A', undefined));
     expect(coverPreviewKey('A', '/img.png')).toBe(coverPreviewKey('A', '/img.png'));
   });
+
+  it('changes with the active logo so a new logo re-renders the preview', () => {
+    expect(coverPreviewKey('A', '/img.png', 'logo@1')).not.toBe(
+      coverPreviewKey('A', '/img.png', 'logo@2'),
+    );
+  });
 });
 
 describe('CoverPreviewService', () => {

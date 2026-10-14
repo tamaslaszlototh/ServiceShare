@@ -153,6 +153,16 @@ export interface AccountState {
   account?: AccountInfo | null;
 }
 
+export interface DefaultLogo {
+  url: string | null;
+  custom: boolean;
+}
+
+export type LogoResult =
+  | { status: 'ok'; url: string }
+  | { status: 'cancelled' }
+  | { status: 'error'; error: AppError };
+
 export type AuthResult =
   | { status: 'ok'; account: AccountInfo | null }
   | { status: 'error'; error: AppError };
@@ -187,6 +197,9 @@ export type IpcApi = {
   getAccount: () => Promise<AccountState>;
   signIn: () => Promise<AuthResult>;
   signOut: () => Promise<VoidResult>;
+  getDefaultLogo: () => Promise<DefaultLogo>;
+  chooseDefaultLogo: () => Promise<LogoResult>;
+  clearDefaultLogo: () => Promise<VoidResult>;
   copyText: (text: string) => Promise<VoidResult>;
   checkForUpdates: () => Promise<void>;
   setLocale: (locale: string) => Promise<void>;

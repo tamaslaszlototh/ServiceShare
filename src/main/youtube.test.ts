@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { oauthConfig, parseChannel } from './youtube';
+import { oauthConfig, parseChannel, parseEmail } from './youtube';
 
 describe('oauthConfig', () => {
   it('carries the client id and secret into the OAuth config', () => {
@@ -32,5 +32,17 @@ describe('parseChannel', () => {
   it('returns null when the payload has no channel', () => {
     expect(parseChannel('{"items":[]}')).toBeNull();
     expect(parseChannel('not-json')).toBeNull();
+  });
+});
+
+describe('parseEmail', () => {
+  it('reads the signed-in account email', () => {
+    expect(parseEmail(JSON.stringify({ email: 'a@b.co' }))).toBe('a@b.co');
+  });
+
+  it('returns null when the payload has no usable email', () => {
+    expect(parseEmail('{}')).toBeNull();
+    expect(parseEmail(JSON.stringify({ email: '  ' }))).toBeNull();
+    expect(parseEmail('not-json')).toBeNull();
   });
 });

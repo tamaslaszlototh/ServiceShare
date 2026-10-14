@@ -28,14 +28,20 @@ function defaultDeps(): AssetResolverDeps {
 
 export class AssetResolver {
   private cache: CoverAssets | null = null;
+  private logoOverride: string | null = null;
 
   constructor(private readonly deps: AssetResolverDeps = defaultDeps()) {}
+
+  setLogoOverride(logoPath: string | null): void {
+    this.logoOverride = logoPath;
+    this.cache = null;
+  }
 
   resolve(): CoverAssets {
     if (!this.cache) {
       this.cache = {
         defaultBase: this.find('images', DEFAULT_BASE_FILE),
-        logo: this.find('images', LOGO_FILE),
+        logo: this.logoOverride ?? this.find('images', LOGO_FILE),
         font: this.find('fonts', COVER_FONT_FILE),
       };
     }

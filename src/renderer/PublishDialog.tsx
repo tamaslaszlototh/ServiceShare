@@ -68,6 +68,9 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
   const [thumbnailPath, setThumbnailPath] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverError, setCoverError] = useState<AppError | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoCustom, setLogoCustom] = useState(false);
+  const [logoVersion, setLogoVersion] = useState(0);
   const [phase, setPhase] = useState<'edit' | 'publishing' | 'done' | 'failed'>('edit');
   const [stage, setStage] = useState<PublishEvent | null>(null);
   const [result, setResult] = useState<Extract<PublishResult, { status: 'ok' }> | null>(null);
@@ -167,6 +170,21 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
 
   useEffect(() => {
     let cancelled = false;
+    void window.api
+      .getDefaultLogo()
+      .then((logo) => {
+        if (cancelled) return;
+        setLogoUrl(logo.url);
+        setLogoCustom(logo.custom);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     const timer = setTimeout(() => {
       void window.api
         .composeCoverPreview({
@@ -192,7 +210,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [title, coverImagePath]);
+  }, [title, coverImagePath, logoVersion]);
 
   const signIn = async () => {
     setSigningIn(true);
@@ -231,6 +249,40 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
     event.target.value = '';
     if (!file) return;
     setPath(window.api.getPathForFile(file));
+  };
+
+  const chooseLogo = async () => {
+    setError(null);
+    try {
+      const result = await window.api.chooseDefaultLogo();
+      if (result.status === 'cancelled') return;
+      if (result.status === 'error') {
+        setError(result.error);
+        return;
+      }
+      setLogoUrl(result.url);
+      setLogoCustom(true);
+      setLogoVersion((version) => version + 1);
+    } catch (e) {
+      setError(normalizeError(e, 'RenderError'));
+    }
+  };
+
+  const clearLogo = async () => {
+    setError(null);
+    try {
+      const result = await window.api.clearDefaultLogo();
+      if (result.status === 'error') {
+        setError(result.error);
+        return;
+      }
+      const logo = await window.api.getDefaultLogo();
+      setLogoUrl(logo.url);
+      setLogoCustom(logo.custom);
+      setLogoVersion((version) => version + 1);
+    } catch (e) {
+      setError(normalizeError(e, 'RenderError'));
+    }
   };
 
   const run = async () => {
@@ -355,28 +407,44 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
               )}
             </div>
 
-            <div className="cover-preview">
-              {coverUrl ? <img src={coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">{t('publish.updatingPreview')}</span>}
-            </div>
-            <div className="cover-actions">
-              <button className="btn ghost" type="button" disabled={publishing} onClick={() => coverInputRef.current?.click()}>
-                {t('publish.coverChoose')}
-              </button>
-              <button className="btn ghost" type="button" disabled={publishing || !coverImagePath} onClick={() => setCoverImagePath(null)}>
-                {t('publish.coverClear')}
-              </button>
-              <span className="muted">{coverImagePath ? fileName(coverImagePath) : t('publish.cover')}</span>
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept={IMAGE_ACCEPT}
-                hidden
-                onChange={(event) => pickFile(event, setCoverImagePath)}
-              />
-            </div>
-            {coverError && <p className="muted">{errorLabel(coverError)}</p>}
+            <div className="publish-grid">
+              <div className="publish-col">
+                <div className="cover-preview">
+                  {coverUrl ? <img src={coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">{t('publish.updatingPreview')}</span>}
+                </div>
+                <div className="cover-actions">
+                  <button className="btn ghost" type="button" disabled={publishing} onClick={() => coverInputRef.current?.click()}>
+                    {t('publish.coverChoose')}
+                  </button>
+                  <button className="btn ghost" type="button" disabled={publishing || !coverImagePath} onClick={() => setCoverImagePath(null)}>
+                    {t('publish.coverClear')}
+                  </button>
+                  <span className="muted">{coverImagePath ? fileName(coverImagePath) : t('publish.cover')}</span>
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept={IMAGE_ACCEPT}
+                    hidden
+                    onChange={(event) => pickFile(event, setCoverImagePath)}
+                  />
+                </div>
+                {coverError && <p className="muted">{errorLabel(coverError)}</p>}
+                <div className="logo-row">
+                  <span className="logo-label">{t('publish.defaultLogo')}</span>
+                  {logoUrl && <img className="logo-thumb" src={logoUrl} alt="" />}
+                  <button className="btn ghost" type="button" disabled={publishing} onClick={() => void chooseLogo()}>
+                    {t('publish.defaultLogoChoose')}
+                  </button>
+                  {logoCustom && (
+                    <button className="btn ghost" type="button" disabled={publishing} onClick={() => void clearLogo()}>
+                      {t('publish.defaultLogoClear')}
+                    </button>
+                  )}
+                </div>
+                <p className="muted logo-note">{t('publish.defaultLogoNote')}</p>
+              </div>
 
-            <div className="publish-fields">
+              <div className="publish-fields">
               <label>
                 {t('publish.titleLabel')}
                 <input
@@ -446,6 +514,7 @@ export function PublishDialog({ sourceFile, sourceDuration, editList, onClose }:
                   hidden
                   onChange={(event) => pickFile(event, setThumbnailPath)}
                 />
+              </div>
               </div>
             </div>
 

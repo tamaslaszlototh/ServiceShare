@@ -3,6 +3,7 @@ import { Locale, TranslationKey, TranslationParams, t as translate } from '../sh
 import {
   applicationMenu,
   exportDialogOptions,
+  logoDialogOptions,
   openDialogOptions,
   type MenuEntry,
 } from './shell';
@@ -85,5 +86,12 @@ describe('native dialog options', () => {
     expect(en.filters[0].name).toBe('MP3 audio');
     expect(en.filters[0].extensions).toEqual(['mp3']);
     expect(exportDialogOptions(tFor('hu'), 'wav').filters[0].name).toBe('WAV hang');
+  });
+
+  it('names the default-logo picker and image filter in the active language', () => {
+    const hu = logoDialogOptions(tFor('hu'));
+    expect(hu.title).toBe('Alapértelmezett logó kiválasztása');
+    expect(hu.filters[0].extensions).toContain('png');
+    expect(logoDialogOptions(tFor('en')).filters[0].extensions).toContain('jpeg');
   });
 });

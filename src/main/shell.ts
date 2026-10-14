@@ -112,6 +112,13 @@ export function openDialogOptions(t: Translator): DialogOptions {
   };
 }
 
+export function logoDialogOptions(t: Translator): DialogOptions {
+  return {
+    title: t('dialog.logo.title'),
+    filters: [{ name: t('dialog.logo.image'), extensions: ['png', 'jpg', 'jpeg'] }],
+  };
+}
+
 const EXPORT_DIALOG: Record<ExportFormat, { nameKey: TranslationKey; extension: string }> = {
   wav: { nameKey: 'dialog.export.wav.audio', extension: 'wav' },
   mp3: { nameKey: 'dialog.export.mp3.audio', extension: 'mp3' },
