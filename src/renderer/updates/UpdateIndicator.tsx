@@ -4,9 +4,8 @@ import { ErrorBanner } from '../errors/ErrorBanner';
 import { useT } from '../i18n/LocaleContext';
 import { updateView } from './updates';
 
-/** Header badge for auto-update: progress, "Restart to update", and manual-check notices. */
-export function UpdateIndicator() {
-  const t = useT();
+/** Live auto-update status, shared by the header badge and the error banner below it. */
+export function useUpdateStatus() {
   const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' });
 
   useEffect(() => {
@@ -15,19 +14,21 @@ export function UpdateIndicator() {
     return unsubscribe;
   }, []);
 
-  const view = updateView(status, t);
-  if (!view) {
-    return null;
-  }
-
   const dismiss = () => setStatus({ state: 'idle' });
+  return { status, dismiss };
+}
 
-  if (view.kind === 'error') {
-    return (
-      <div className="global-error">
-        <ErrorBanner error={view.error} onDismiss={dismiss} onRetry={() => void window.api.checkForUpdates()} />
-      </div>
-    );
+interface UpdateViewProps {
+  status: UpdateStatus;
+  onDismiss: () => void;
+}
+
+/** Header badge for auto-update: progress, "Restart to update", and manual-check notices. */
+export function UpdateIndicator({ status, onDismiss }: UpdateViewProps) {
+  const t = useT();
+  const view = updateView(status, t);
+  if (!view || view.kind === 'error') {
+    return null;
   }
 
   return (
@@ -44,10 +45,21 @@ export function UpdateIndicator() {
         </button>
       )}
       {view.kind === 'notice' && (
-        <button className="dismiss" type="button" aria-label={t('error.dismiss')} onClick={dismiss}>
+        <button className="dismiss" type="button" aria-label={t('error.dismiss')} onClick={onDismiss}>
           ×
         </button>
       )}
     </span>
   );
+}
+
+/** Full-width banner under the header for a failed manual update check. */
+export function UpdateErrorBanner({ status, onDismiss }: UpdateViewProps) {
+  const t = useT();
+  const view = updateView(status, t);
+  if (view?.kind !== 'error') {
+    return null;
+  }
+
+  return <ErrorBanner error={view.error} onDismiss={onDismiss} onRetry={() => void window.api.checkForUpdates()} />;
 }

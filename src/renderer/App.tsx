@@ -5,7 +5,7 @@ import { ExportDialog } from './export/ExportDialog';
 import { PublishDialog } from './publishing/PublishDialog';
 import { PublishedVideo } from './publishing/publishFlow';
 import { ErrorBanner } from './errors/ErrorBanner';
-import { UpdateIndicator } from './updates/UpdateIndicator';
+import { UpdateErrorBanner, UpdateIndicator, useUpdateStatus } from './updates/UpdateIndicator';
 import { normalizeError } from '@shared/apperror';
 import { resolveLocale } from '@shared/i18n';
 import { formatDecimal } from '@shared/format';
@@ -45,6 +45,7 @@ export function App() {
     redoCount: 0,
   });
   const [error, setError] = useState<AppError | null>(null);
+  const update = useUpdateStatus();
   const [playing, setPlaying] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [position, setPosition] = useState(0);
@@ -288,7 +289,7 @@ export function App() {
           {clip ? baseName(clip.filePath) : t('header.noFile')}
         </span>
         <span className="spacer" />
-        <UpdateIndicator />
+        <UpdateIndicator status={update.status} onDismiss={update.dismiss} />
         <select
           className="language"
           aria-label={t('language.label')}
@@ -323,6 +324,8 @@ export function App() {
           {t('header.publish')}
         </button>
       </header>
+
+      <UpdateErrorBanner status={update.status} onDismiss={update.dismiss} />
 
       {exportOpen && (
         <ExportDialog

@@ -259,7 +259,7 @@ a:focus-visible {
 .banner {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
   white-space: pre-wrap;
   padding: 8px 14px;
   background: rgba(255, 93, 93, 0.12);
@@ -281,14 +281,15 @@ a:focus-visible {
 }
 
 .banner .dismiss {
+  /* same box as .btn so it lines up with the action button */
   border: 1px solid var(--line);
   background: transparent;
   color: var(--text);
-  border-radius: 6px;
+  border-radius: 7px;
   cursor: pointer;
-  padding: 2px 8px;
-  font-size: 14px;
-  line-height: 1;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
 }
 
 .global-error {
@@ -297,6 +298,8 @@ a:focus-visible {
   left: 0;
   right: 0;
   z-index: 100;
+  /* the banner tint is translucent; keep the header from showing through */
+  background: var(--panel);
 }
 
 .app-fallback {
