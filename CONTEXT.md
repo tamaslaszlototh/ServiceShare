@@ -37,3 +37,13 @@ _Avoid_: thumbnail, artwork
 **Published Video**:
 The YouTube video produced by the most recent successful publish, together with who its link has already been emailed to. Forgotten when the app quits, another clip is opened, or a new publish replaces it.
 _Avoid_: publication, upload, result
+
+## Sharing
+
+**Send Email**:
+Emailing the link of the Published Video to chosen recipients as a plain-text message, sent from the signed-in Google account. Happens after, and separately from, a publish: it never uploads anything or changes the video, and carries no attachment (in particular, not the Cover Image).
+_Avoid_: share, publish, notify
+
+**Email Recipients**:
+The addresses a Send Email goes to: the saved list kept locally across restarts (pre-checked each time) plus any addresses typed for just one send. Only the saved list is persisted; the message draft never is. Unrelated to the YouTube audience of a publish.
+_Avoid_: contacts, subscribers, audience, mailing list
