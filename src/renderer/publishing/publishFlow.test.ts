@@ -41,6 +41,8 @@ function createFakeIpc(overrides: Partial<PublishIpc> = {}) {
     getDefaultBase: vi.fn(async () => ({ url: 'data:bundled-base', custom: false })),
     chooseDefaultBase: vi.fn(async () => ({ status: 'ok' as const, url: 'data:my-base' })),
     clearDefaultBase: vi.fn(async () => ({ status: 'ok' as const })),
+    getLogoPlacement: vi.fn(async () => null),
+    setLogoPlacement: vi.fn(async () => ({ status: 'ok' as const })),
     sendEmail: vi.fn(async () => ({ status: 'ok' as const })),
     getEmailRecipients: vi.fn(async () => recipientsOk([])),
     rememberEmailRecipient: vi.fn(async (address: string) => recipientsOk([address.trim()])),
@@ -638,7 +640,7 @@ describe('account and cover side effects', () => {
     flow.setForm({ title: 'New name' });
     await flush();
 
-    expect(ipc.composeCoverPreview).toHaveBeenCalledWith({ title: 'New name', coverImagePath: undefined });
+    expect(ipc.composeCoverPreview).toHaveBeenCalledWith({ title: 'New name', coverImagePath: undefined, withLogo: true });
   });
 
   it('resolves a picked cover file to a path through the ipc', async () => {
@@ -699,6 +701,87 @@ describe('account and cover side effects', () => {
     await flow.chooseBase();
     expect(flow.getState().baseUrl).toBe('data:bundled-base');
     expect(flow.getState().error?.code).toBe('RenderError');
+  });
+
+  it('loads the saved logo placement', async () => {
+    const saved = { centerX: 100, centerY: 90, size: 80 };
+    const { ipc } = createFakeIpc({ getLogoPlacement: vi.fn(async () => saved) });
+    const flow = makeFlow(ipc);
+    await flush();
+
+    expect(flow.getState().logoPlacement).toEqual(saved);
+  });
+
+  it('previews the cover without the logo while placing it, and with it again on cancel', async () => {
+    const { ipc } = createFakeIpc();
+    const flow = makeFlow(ipc);
+    await flush();
+    const compose = ipc.composeCoverPreview as ReturnType<typeof vi.fn>;
+
+    flow.startPlacingLogo();
+    await flush();
+    expect(flow.getState().placingLogo).toBe(true);
+    expect(compose.mock.lastCall?.[0]).toMatchObject({ withLogo: false });
+
+    flow.cancelPlacingLogo();
+    await flush();
+    expect(flow.getState().placingLogo).toBe(false);
+    expect(compose.mock.lastCall?.[0]).toMatchObject({ withLogo: true });
+    expect(ipc.setLogoPlacement).not.toHaveBeenCalled();
+  });
+
+  it('saves a placement, leaves the editor and recomposes the preview with the logo', async () => {
+    const { ipc } = createFakeIpc();
+    const flow = makeFlow(ipc);
+    await flush();
+    flow.startPlacingLogo();
+    await flush();
+    const placement = { centerX: 300, centerY: 200, size: 150 };
+
+    await flow.saveLogoPlacement(placement);
+    await flush();
+
+    expect(ipc.setLogoPlacement).toHaveBeenCalledWith(placement);
+    expect(flow.getState()).toMatchObject({ logoPlacement: placement, placingLogo: false });
+    expect((ipc.composeCoverPreview as ReturnType<typeof vi.fn>).mock.lastCall?.[0]).toMatchObject({ withLogo: true });
+  });
+
+  it('stays in the editor when saving the placement fails', async () => {
+    const setLogoPlacement = vi.fn(async () => ({
+      status: 'error' as const,
+      error: { code: 'InternalError' as const, message: 'disk full' },
+    }));
+    const { ipc } = createFakeIpc({ setLogoPlacement });
+    const flow = makeFlow(ipc);
+    await flush();
+    flow.startPlacingLogo();
+
+    await flow.saveLogoPlacement({ centerX: 1, centerY: 2, size: 64 });
+
+    expect(flow.getState()).toMatchObject({ placingLogo: true, logoPlacement: null });
+    expect(flow.getState().error?.code).toBe('InternalError');
+  });
+
+  it('resets the placement to the default', async () => {
+    const { ipc } = createFakeIpc({ getLogoPlacement: vi.fn(async () => ({ centerX: 1, centerY: 2, size: 64 })) });
+    const flow = makeFlow(ipc);
+    await flush();
+
+    await flow.resetLogoPlacement();
+
+    expect(ipc.setLogoPlacement).toHaveBeenCalledWith(null);
+    expect(flow.getState().logoPlacement).toBeNull();
+  });
+
+  it('does not publish while the logo is being placed', async () => {
+    const { ipc } = signedInIpc();
+    const flow = makeFlow(ipc);
+    await flush();
+    flow.startPlacingLogo();
+
+    await flow.publish();
+
+    expect(ipc.publish).not.toHaveBeenCalled();
   });
 
   it('stops handling progress events after dispose', async () => {

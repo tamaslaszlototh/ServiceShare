@@ -28,6 +28,7 @@ import {
   isRecipientChecked,
   wasSentTo,
 } from './publishFlow';
+import { LogoPlacementEditor } from './LogoPlacementEditor';
 
 const UNVERIFIED_NOTE_KEY = 'serviceshare.unverifiedNoteDismissed';
 const IMAGE_ACCEPT = 'image/png,image/jpeg,.png,.jpg,.jpeg';
@@ -69,6 +70,7 @@ export function PublishDialog({
   const thumbInputRef = useRef<HTMLInputElement>(null);
   const onCloseRef = useRef(onClose);
   const publishingRef = useRef(false);
+  const placingRef = useRef(false);
   const tRef = useRef(t);
   tRef.current = t;
   onCloseRef.current = onClose;
@@ -91,6 +93,9 @@ export function PublishDialog({
   const form = state.form;
   const publishing = state.phase === 'publishing';
   publishingRef.current = publishing;
+  placingRef.current = state.placingLogo;
+  // the logo placement editor holds the rest of the dialog until Done or Cancel
+  const locked = publishing || state.placingLogo;
 
   const [showUnverified, setShowUnverified] = useState(() => !readDismissed());
 
@@ -109,7 +114,7 @@ export function PublishDialog({
     cardRef.current?.focus();
 
     const focusable = () =>
-      [...(cardRef.current?.querySelectorAll<HTMLElement>('button, input, textarea, select, a[href]') ?? [])].filter(
+      [...(cardRef.current?.querySelectorAll<HTMLElement>('button, input, textarea, select, a[href], [tabindex="0"]') ?? [])].filter(
         (el) => !el.hidden && !el.hasAttribute('disabled'),
       );
 
@@ -117,7 +122,9 @@ export function PublishDialog({
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        if (publishingRef.current) {
+        if (placingRef.current) {
+          flow.cancelPlacingLogo();
+        } else if (publishingRef.current) {
           flow.cancel();
         } else {
           onCloseRef.current();
@@ -348,12 +355,12 @@ export function PublishDialog({
               ) : state.signedIn ? (
                 <>
                   <span className="account-chip">{accountLabel(state.account, t)}</span>
-                  <button className="btn ghost" type="button" onClick={() => void flow.signOut()} disabled={publishing}>
+                  <button className="btn ghost" type="button" onClick={() => void flow.signOut()} disabled={locked}>
                     {t('publish.signOut')}
                   </button>
                 </>
               ) : (
-                <button className="btn primary" type="button" onClick={() => void flow.signIn()} disabled={state.signingIn || publishing}>
+                <button className="btn primary" type="button" onClick={() => void flow.signIn()} disabled={state.signingIn || locked}>
                   {state.signingIn ? t('publish.waitingGoogle') : t('publish.signIn')}
                 </button>
               )}
@@ -361,17 +368,27 @@ export function PublishDialog({
 
             <div className="publish-grid">
               <div className="publish-col">
-                <div className="cover-preview">
-                  {state.coverUrl ? <img src={state.coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">{t('publish.updatingPreview')}</span>}
-                </div>
+                {state.placingLogo && state.logoUrl ? (
+                  <LogoPlacementEditor
+                    coverUrl={state.coverUrl}
+                    logoUrl={state.logoUrl}
+                    placement={state.logoPlacement}
+                    onDone={(placement) => void flow.saveLogoPlacement(placement)}
+                    onCancel={() => flow.cancelPlacingLogo()}
+                  />
+                ) : (
+                  <div className="cover-preview">
+                    {state.coverUrl ? <img src={state.coverUrl} alt={t('publish.coverAlt')} /> : <span className="muted">{t('publish.updatingPreview')}</span>}
+                  </div>
+                )}
                 <div className="cover-actions">
-                  <button className="btn ghost" type="button" disabled={publishing} onClick={() => coverInputRef.current?.click()}>
+                  <button className="btn ghost" type="button" disabled={locked} onClick={() => coverInputRef.current?.click()}>
                     {t('publish.coverChoose')}
                   </button>
                   <button
                     className="btn ghost"
                     type="button"
-                    disabled={publishing || !form.coverImagePath}
+                    disabled={locked || !form.coverImagePath}
                     onClick={() => flow.setForm({ coverImagePath: null })}
                   >
                     {t('publish.coverClear')}
@@ -389,11 +406,11 @@ export function PublishDialog({
                 <div className="default-row">
                   <span className="default-label">{t('publish.defaultBase')}</span>
                   {state.baseUrl && <img className="base-thumb" src={state.baseUrl} alt="" />}
-                  <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.chooseBase()}>
+                  <button className="btn ghost" type="button" disabled={locked} onClick={() => void flow.chooseBase()}>
                     {t('publish.defaultBaseChoose')}
                   </button>
                   {state.baseCustom && (
-                    <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.clearBase()}>
+                    <button className="btn ghost" type="button" disabled={locked} onClick={() => void flow.clearBase()}>
                       {t('publish.defaultBaseClear')}
                     </button>
                   )}
@@ -401,12 +418,27 @@ export function PublishDialog({
                 <div className="default-row">
                   <span className="default-label">{t('publish.defaultLogo')}</span>
                   {state.logoUrl && <img className="logo-thumb" src={state.logoUrl} alt="" />}
-                  <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.chooseLogo()}>
+                  <button className="btn ghost" type="button" disabled={locked} onClick={() => void flow.chooseLogo()}>
                     {t('publish.defaultLogoChoose')}
                   </button>
                   {state.logoCustom && (
-                    <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.clearLogo()}>
+                    <button className="btn ghost" type="button" disabled={locked} onClick={() => void flow.clearLogo()}>
                       {t('publish.defaultLogoClear')}
+                    </button>
+                  )}
+                </div>
+                <div className="default-row placement-row">
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    disabled={locked || !state.logoUrl}
+                    onClick={() => flow.startPlacingLogo()}
+                  >
+                    {t('publish.logoPlacement.place')}
+                  </button>
+                  {state.logoPlacement && (
+                    <button className="btn ghost" type="button" disabled={locked} onClick={() => void flow.resetLogoPlacement()}>
+                      {t('publish.logoPlacement.reset')}
                     </button>
                   )}
                 </div>
@@ -420,7 +452,7 @@ export function PublishDialog({
                   value={form.title}
                   maxLength={PUBLISH_TITLE_MAX}
                   required
-                  disabled={publishing}
+                  disabled={locked}
                   onChange={(event) => flow.setForm({ title: event.target.value })}
                 />
               </label>
@@ -431,7 +463,7 @@ export function PublishDialog({
                   aria-label={t('publish.description')}
                   value={form.description}
                   maxLength={PUBLISH_DESCRIPTION_MAX}
-                  disabled={publishing}
+                  disabled={locked}
                   onChange={(event) => flow.setForm({ description: event.target.value })}
                 />
               </label>
@@ -441,7 +473,7 @@ export function PublishDialog({
                   aria-label={t('publish.tagsHint')}
                   value={form.tags}
                   placeholder={t('publish.tagsHint')}
-                  disabled={publishing}
+                  disabled={locked}
                   onChange={(event) => flow.setForm({ tags: event.target.value })}
                 />
               </label>
@@ -451,7 +483,7 @@ export function PublishDialog({
                 <select
                   aria-label={t('publish.privacy')}
                   value={form.privacyStatus}
-                  disabled={publishing}
+                  disabled={locked}
                   onChange={(event) => flow.setForm({ privacyStatus: event.target.value as typeof form.privacyStatus })}
                 >
                   {privacyOptions(t).map((option) => (
@@ -463,13 +495,13 @@ export function PublishDialog({
               </label>
               <div className="thumb-row">
                 <span className="muted">{t('publish.thumbnail')}</span>
-                <button className="btn ghost" type="button" disabled={publishing} onClick={() => thumbInputRef.current?.click()}>
+                <button className="btn ghost" type="button" disabled={locked} onClick={() => thumbInputRef.current?.click()}>
                   {t('publish.thumbnailChoose')}
                 </button>
                 <button
                   className="btn ghost"
                   type="button"
-                  disabled={publishing || !form.thumbnailPath}
+                  disabled={locked || !form.thumbnailPath}
                   onClick={() => flow.setForm({ thumbnailPath: null })}
                 >
                   {t('publish.thumbnailClear')}
@@ -542,7 +574,7 @@ export function PublishDialog({
                   {t('publish.close')}
                 </button>
               )}
-              <button className="btn primary" type="submit" disabled={!canPublish(form.title, state.signedIn) || publishing || state.signingIn}>
+              <button className="btn primary" type="submit" disabled={!canPublish(form.title, state.signedIn) || locked || state.signingIn}>
                 {t('publish.publish')}
               </button>
             </div>

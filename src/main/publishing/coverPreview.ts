@@ -2,8 +2,15 @@ import { createHash } from 'crypto';
 import { join } from 'path';
 import { CoverRequest } from './cover';
 
-export function coverPreviewKey(title: string, coverImagePath?: string, logoKey = ''): string {
-  return createHash('sha256').update(`${title}\n${coverImagePath ?? ''}\n${logoKey}`).digest('hex');
+/** What a preview shows: the cover request minus where it is written. */
+export type CoverPreviewInput = Omit<CoverRequest, 'outputPath'>;
+
+/** `assetsKey` identifies the logo, default base and logo placement in use. */
+export function coverPreviewKey(input: CoverPreviewInput, assetsKey = ''): string {
+  const logo = input.withLogo === false ? 'no-logo' : 'logo';
+  return createHash('sha256')
+    .update(`${input.title}\n${input.coverImagePath ?? ''}\n${logo}\n${assetsKey}`)
+    .digest('hex');
 }
 
 export function coverPreviewUrl(key: string): string {
@@ -36,8 +43,8 @@ export class CoverPreviewService {
     return this.pathsByKey.get(key) ?? null;
   }
 
-  async ensure(title: string, coverImagePath?: string, logoKey = ''): Promise<CoverPreviewRender> {
-    const key = coverPreviewKey(title, coverImagePath, logoKey);
+  async ensure(input: CoverPreviewInput, assetsKey = ''): Promise<CoverPreviewRender> {
+    const key = coverPreviewKey(input, assetsKey);
     const cached = this.pathsByKey.get(key);
     if (cached) {
       return { key, url: coverPreviewUrl(key), path: cached, composed: false };
@@ -55,7 +62,7 @@ export class CoverPreviewService {
       }
     }
     const outputPath = join(dir, `cover-${key.slice(0, 16)}.png`);
-    await this.deps.compose({ title, coverImagePath, outputPath });
+    await this.deps.compose({ ...input, outputPath });
 
     this.pathsByKey.set(key, outputPath);
     return { key, url: coverPreviewUrl(key), path: outputPath, composed: true };

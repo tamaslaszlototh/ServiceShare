@@ -56,6 +56,8 @@ const api: IpcApi = {
   getDefaultBase: invoke('getDefaultBase'),
   chooseDefaultBase: invoke('chooseDefaultBase'),
   clearDefaultBase: invoke('clearDefaultBase'),
+  getLogoPlacement: invoke('getLogoPlacement'),
+  setLogoPlacement: invoke('setLogoPlacement'),
   getAccount: invoke('getAccount'),
   signIn: invoke('signIn'),
   signOut: invoke('signOut'),

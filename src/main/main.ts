@@ -21,6 +21,8 @@ import { IpcError, NoClipError, errorResult } from './core/errors';
 import { emit, handle, onSend } from './ipc';
 import { logError, logInfo } from './core/log';
 import { CUSTOM_BASE_FILE, CUSTOM_LOGO_FILE, CustomImageStore } from './publishing/customImage';
+import { LOGO_PLACEMENT_FILE, LogoPlacementStore } from './publishing/logoPlacementStore';
+import { parseLogoPlacement } from '../shared/coverLayout';
 import { RECIPIENTS_FILE, RecipientStore } from './email/recipientStore';
 import { UpdateService } from './updater/updater';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
@@ -81,16 +83,25 @@ const exportService = new ExportService(exportDepsIn());
 const youtubeService = new YouTubeService();
 let logoStore: CustomImageStore | null = null;
 let baseStore: CustomImageStore | null = null;
+let placementStore: LogoPlacementStore | null = null;
 let recipientStore: RecipientStore | null = null;
 
 let activeLocale: Locale = DEFAULT_LOCALE;
 
 const tr: Translator = (key, params) => translate(activeLocale, key, params);
 
-/** Changes whenever the logo or default base a cover is composed from changes. */
+/** Changes whenever the logo, default base or logo placement a cover is composed from changes. */
 function coverAssetsKey(): string {
   const { logo, defaultBase } = assetResolver.resolve();
-  return `${logo}@${logoStore?.versionKey ?? 0}|${defaultBase}@${baseStore?.versionKey ?? 0}`;
+  return [
+    `${logo}@${logoStore?.versionKey ?? 0}`,
+    `${defaultBase}@${baseStore?.versionKey ?? 0}`,
+    `placement@${placementStore?.versionKey ?? 0}`,
+  ].join('|');
+}
+
+function currentLogoPlacement() {
+  return placementStore?.current() ?? null;
 }
 
 async function fileDataUrl(filePath: string): Promise<string | null> {
@@ -277,13 +288,20 @@ app.whenReady().then(async () => {
   baseStore = customImageStore(CUSTOM_BASE_FILE);
   assetResolver.setLogoOverride(logoStore.customPath());
   assetResolver.setBaseOverride(baseStore.customPath());
+  placementStore = new LogoPlacementStore({
+    filePath: path.join(app.getPath('userData'), LOGO_PLACEMENT_FILE),
+    readFile: (filePath) => readFile(filePath, 'utf8'),
+    writeFile: (filePath, data) => writeFile(filePath, data, 'utf8'),
+    removeFile: (filePath) => rm(filePath, { force: true }),
+  });
+  await placementStore.load().catch((e) => logError('publishing', 'LOGO_PLACEMENT', e));
   recipientStore = new RecipientStore({
     filePath: path.join(app.getPath('userData'), RECIPIENTS_FILE),
     readFile: (filePath) => readFile(filePath, 'utf8'),
     writeFile: (filePath, data) => writeFile(filePath, data, 'utf8'),
   });
   previewService = new PreviewService(previewDepsIn(tempRoot));
-  const coverService = new CoverService(coverDepsIn(() => assetResolver.resolve()));
+  const coverService = new CoverService(coverDepsIn(() => assetResolver.resolve(), currentLogoPlacement));
   coverPreviewService = new CoverPreviewService({
     compose: (request) => coverService.compose(request),
     makeTempDir: async () => {
@@ -296,6 +314,7 @@ app.whenReady().then(async () => {
   publishService = new PublishService(
     publishDepsIn({
       resolveAssets: () => assetResolver.resolve(),
+      resolveLogoPlacement: currentLogoPlacement,
       getAccessToken: () => youtubeService.getAccessToken(),
       makeTempDir: async () => {
         await mkdir(tempRoot, { recursive: true });
@@ -497,7 +516,10 @@ app.whenReady().then(async () => {
       return errorResult(new IpcError('CoverUnavailable', 'Cover preview is not available'));
     }
     try {
-      const preview = await coverPreviewService.ensure(req.title, req.coverImagePath, coverAssetsKey());
+      const preview = await coverPreviewService.ensure(
+        { title: req.title, coverImagePath: req.coverImagePath, withLogo: req.withLogo !== false },
+        coverAssetsKey(),
+      );
       return { status: 'ok', url: preview.url };
     } catch (e) {
       return errorResult(e, 'RenderError');
@@ -518,6 +540,24 @@ app.whenReady().then(async () => {
     (basePath) => assetResolver.setBaseOverride(basePath),
     baseDialogOptions,
   );
+
+  handle('getLogoPlacement', async () => currentLogoPlacement());
+
+  handle('setLogoPlacement', async (_e, placement) => {
+    try {
+      const parsed = placement === null ? null : parseLogoPlacement(placement);
+      if (placement !== null && !parsed) {
+        return errorResult(new IpcError('InternalError', 'setLogoPlacement expects a logo placement or null'));
+      }
+      if (!placementStore) {
+        return errorResult(new IpcError('InternalError', 'Logo placement storage is unavailable'));
+      }
+      await placementStore.save(parsed);
+      return { status: 'ok' };
+    } catch (e) {
+      return errorResult(e, 'InternalError');
+    }
+  });
 
   handle('getAccount', async () => {
     return youtubeService.accountState();

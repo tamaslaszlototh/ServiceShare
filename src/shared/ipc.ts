@@ -26,6 +26,7 @@ import type {
   UpdateStatus,
   VoidResult,
 } from './types';
+import type { LogoPlacement } from './coverLayout';
 
 /**
  * The single error envelope every IPC result carries on failure. Declared here,
@@ -64,6 +65,8 @@ export const IPC_CHANNELS = {
     getDefaultBase: 'getDefaultBase',
     chooseDefaultBase: 'chooseDefaultBase',
     clearDefaultBase: 'clearDefaultBase',
+    getLogoPlacement: 'getLogoPlacement',
+    setLogoPlacement: 'setLogoPlacement',
     getAccount: 'getAccount',
     signIn: 'signIn',
     signOut: 'signOut',
@@ -110,6 +113,9 @@ export interface IpcInvokeContract {
   getDefaultBase: { args: []; result: DefaultImage };
   chooseDefaultBase: { args: []; result: ImageResult };
   clearDefaultBase: { args: []; result: VoidResult };
+  getLogoPlacement: { args: []; result: LogoPlacement | null };
+  /** null resets to the default placement */
+  setLogoPlacement: { args: [placement: LogoPlacement | null]; result: VoidResult };
   getAccount: { args: []; result: AccountState };
   signIn: { args: []; result: AuthResult };
   signOut: { args: []; result: VoidResult };

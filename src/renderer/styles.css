@@ -577,6 +577,99 @@ a:focus-visible {
   object-fit: cover;
 }
 
+.logo-editor-surface {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+.logo-editor-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.logo-guide {
+  position: absolute;
+  pointer-events: none;
+  background: var(--accent);
+}
+
+.logo-guide.vertical {
+  top: 0;
+  width: 1px;
+}
+
+.logo-guide.horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.logo-box {
+  position: absolute;
+  outline: 1px dashed var(--accent);
+  cursor: move;
+}
+
+.logo-box:focus-visible {
+  outline: 2px solid var(--accent2);
+}
+
+.logo-box img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.logo-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border: 1px solid var(--panel);
+  border-radius: 2px;
+}
+
+.logo-handle.nw {
+  left: -5px;
+  top: -5px;
+  cursor: nwse-resize;
+}
+
+.logo-handle.ne {
+  right: -5px;
+  top: -5px;
+  cursor: nesw-resize;
+}
+
+.logo-handle.sw {
+  left: -5px;
+  bottom: -5px;
+  cursor: nesw-resize;
+}
+
+.logo-handle.se {
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
+}
+
+.logo-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.logo-editor-hint {
+  font-size: 11px;
+}
+
 .publish-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
@@ -586,7 +679,100 @@ a:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .publish-grid {
+  .logo-editor-surface {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+.logo-editor-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.logo-guide {
+  position: absolute;
+  pointer-events: none;
+  background: var(--accent);
+}
+
+.logo-guide.vertical {
+  top: 0;
+  width: 1px;
+}
+
+.logo-guide.horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.logo-box {
+  position: absolute;
+  outline: 1px dashed var(--accent);
+  cursor: move;
+}
+
+.logo-box:focus-visible {
+  outline: 2px solid var(--accent2);
+}
+
+.logo-box img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.logo-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border: 1px solid var(--panel);
+  border-radius: 2px;
+}
+
+.logo-handle.nw {
+  left: -5px;
+  top: -5px;
+  cursor: nwse-resize;
+}
+
+.logo-handle.ne {
+  right: -5px;
+  top: -5px;
+  cursor: nesw-resize;
+}
+
+.logo-handle.sw {
+  left: -5px;
+  bottom: -5px;
+  cursor: nesw-resize;
+}
+
+.logo-handle.se {
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
+}
+
+.logo-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.logo-editor-hint {
+  font-size: 11px;
+}
+
+.publish-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -606,6 +792,11 @@ a:focus-visible {
 
 .default-row + .default-row {
   margin-top: 16px;
+}
+
+/* the logo placement buttons belong to the logo row above them */
+.default-row + .placement-row {
+  margin-top: 6px;
 }
 
 .default-row .btn {

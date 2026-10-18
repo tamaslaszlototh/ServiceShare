@@ -77,6 +77,23 @@ Modal opened from "Publish to YouTube…". Ordered steps (decision #10):
    default base. Recomposite preview updates on the fly.
    Below it, "Default cover" and "Default logo" each offer "Choose…" (PNG/JPEG, copied into the
    app's user data and used for every later cover) and, once replaced, a reset to the bundled image.
+   The logo row also offers "Place logo" and "Reset placement" (see **Logo placement** below).
+
+   **Logo placement** — "Place logo" turns the cover preview into an editor: it shows this video's
+   cover (base + title) without the logo, with the logo on top as a draggable box. The rest of the
+   dialog is disabled until "Done" or "Cancel".
+   - **Move** by dragging the box; **resize** by dragging any of its four corner handles. The logo
+     always keeps its own aspect ratio; its size is the length of its longer side.
+   - **Snapping**: while dragging, the box snaps to the horizontal centre line and to the 32 px
+     edge margins, with a guide line shown.
+   - **Bounds**: the box stays entirely inside the area above the title band (1280×560 in cover
+     pixels) and may touch its edges; the longer side is clamped to **48–400 px**.
+   - **Keyboard**: arrows move 1 px, Shift+arrows 10 px; Enter = Done, Esc = Cancel.
+   - **Done** saves the placement (one global setting, used for every later cover and publish) and
+     recomposes the preview; **Cancel** restores the previous placement.
+   - **Reset placement** returns to top-centre at 128 px. It is independent of the logo image:
+     choosing or resetting the logo keeps the placement. When the new logo has a different aspect
+     ratio, the centre point and longer side are kept and the box is pushed back inside the bounds.
 3. **Metadata** — Title (required; prefilled with the file name), Description (textarea, optional),
    Tags (comma list, optional), Privacy (default **Unlisted**; options Unlisted/Private/Public),
    Thumbnail (optional "Choose…"; else the composed cover is used, so no extra API call needed).

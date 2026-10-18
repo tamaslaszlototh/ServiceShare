@@ -45,8 +45,9 @@ interface PublishRequest {
 ## 6.3 Cover & MP4 (main process)
 
 1. **Compose cover** (per `04` §4.5) → `cover.png` at exactly **1280×720**: chosen image (or
-   bundled default base) scaled/cropped, video **title** (`drawtext`) and the **app logo**
-   (`overlay`) composited. Default base ships in the app bundle.
+   default base) scaled/cropped, video **title** (`drawtext`) and the **logo** (`overlay`, at the
+   saved logo placement) composited. The bundled default base and logo ship in the app bundle; the
+   user may replace either.
 2. **Render audio** to the publish track (48 kHz stereo `pcm_s16le` temp WAV) — reuses the engine,
    separate from any user export.
 3. **Mux** (`04` §4.4): `-loop 1 -framerate 30` cover + audio → `out.mp4`

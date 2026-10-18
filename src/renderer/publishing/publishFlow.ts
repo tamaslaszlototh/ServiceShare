@@ -1,4 +1,5 @@
 import { Translator } from '@shared/i18n';
+import { LogoPlacement } from '@shared/coverLayout';
 import { normalizeError } from '@shared/apperror';
 import { classifyRecipients, normalizeRecipients, parseRecipients, recipientKey } from '@shared/recipients';
 import {
@@ -74,6 +75,10 @@ export interface PublishFlowState {
   /** The default base used when no cover image is chosen for this video. */
   baseUrl: string | null;
   baseCustom: boolean;
+  /** The saved logo placement; null is the default (top-centre). */
+  logoPlacement: LogoPlacement | null;
+  /** The logo placement editor is open; the cover preview is composed without the logo meanwhile. */
+  placingLogo: boolean;
   emailOpen: boolean;
   emailSubject: string;
   emailBody: string;
@@ -102,6 +107,8 @@ export interface PublishIpc {
   getDefaultBase(): Promise<DefaultImage>;
   chooseDefaultBase(): Promise<ImageResult>;
   clearDefaultBase(): Promise<VoidResult>;
+  getLogoPlacement(): Promise<LogoPlacement | null>;
+  setLogoPlacement(placement: LogoPlacement | null): Promise<VoidResult>;
   sendEmail(req: EmailSendRequest): Promise<EmailSendResult>;
   getEmailRecipients(): Promise<EmailRecipientsResult>;
   rememberEmailRecipient(address: string): Promise<EmailRecipientsResult>;
@@ -130,6 +137,10 @@ export interface PublishFlow {
   clearLogo(): Promise<void>;
   chooseBase(): Promise<void>;
   clearBase(): Promise<void>;
+  startPlacingLogo(): void;
+  cancelPlacingLogo(): void;
+  saveLogoPlacement(placement: LogoPlacement): Promise<void>;
+  resetLogoPlacement(): Promise<void>;
   publish(): Promise<void>;
   cancel(): void;
   copyLink(url: string): Promise<void>;
@@ -193,6 +204,8 @@ export function createPublishFlow({
     logoCustom: false,
     baseUrl: null,
     baseCustom: false,
+    logoPlacement: null,
+    placingLogo: false,
     emailOpen: false,
     emailSubject: '',
     emailBody: '',
@@ -253,6 +266,29 @@ export function createPublishFlow({
     }
   }
 
+  async function loadLogoPlacement(): Promise<void> {
+    try {
+      update({ logoPlacement: await ipc.getLogoPlacement() });
+    } catch {
+      // the editor simply starts from the default placement
+    }
+  }
+
+  async function storeLogoPlacement(placement: LogoPlacement | null): Promise<void> {
+    update({ error: null });
+    try {
+      const result = await ipc.setLogoPlacement(placement);
+      if (result.status === 'error') {
+        update({ error: result.error });
+        return;
+      }
+      update({ logoPlacement: placement, placingLogo: false });
+      scheduleCoverPreview();
+    } catch (e) {
+      update({ error: normalizeError(e, 'InternalError') });
+    }
+  }
+
   async function loadBase(): Promise<void> {
     try {
       const base = await ipc.getDefaultBase();
@@ -291,6 +327,7 @@ export function createPublishFlow({
       const preview = await ipc.composeCoverPreview({
         title: form.title.trim() || ' ',
         coverImagePath: form.coverImagePath ?? undefined,
+        withLogo: !state.placingLogo,
       });
       if (request !== coverRequest) return;
       if (preview.status === 'ok') {
@@ -380,6 +417,7 @@ export function createPublishFlow({
       }
       void loadLogo();
       void loadBase();
+      void loadLogoPlacement();
       scheduleCoverPreview();
     },
 
@@ -558,9 +596,25 @@ export function createPublishFlow({
       }
     },
 
+    startPlacingLogo() {
+      if (state.placingLogo || state.phase === 'publishing') return;
+      update({ placingLogo: true, error: null });
+      scheduleCoverPreview();
+    },
+
+    cancelPlacingLogo() {
+      if (!state.placingLogo) return;
+      update({ placingLogo: false });
+      scheduleCoverPreview();
+    },
+
+    saveLogoPlacement: (placement) => storeLogoPlacement(placement),
+
+    resetLogoPlacement: () => storeLogoPlacement(null),
+
     async publish() {
       const { form, signedIn } = state;
-      if (!canPublish(form.title, signedIn)) return;
+      if (!canPublish(form.title, signedIn) || state.placingLogo) return;
       update({ phase: 'publishing', error: null, notice: null, stage: null, cancelling: false });
       try {
         const published = await ipc.publish(toPublishRequest(form));

@@ -39,6 +39,7 @@ describe('compileCover', () => {
     const args = compileCover({
       base: '/base.png',
       logo: '/logo.png',
+      logoPlacement: null,
       font: '/font.ttf',
       title: 'Hello: World',
       outputPath: '/cover.png',
@@ -53,7 +54,7 @@ describe('compileCover', () => {
       '-i',
       '/logo.png',
       '-filter_complex',
-      String.raw`[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,setsar=1,drawbox=x=0:y=ih-160:w=iw:h=160:color=black@0.45:t=fill,drawtext=fontfile='/font.ttf':text=Hello\: World:fontcolor=white:fontsize=48:x=48:y=h-160+(160-text_h)/2[bg];[1:v]scale=128:128[logo];[bg][logo]overlay=(W-w)/2:32[v]`,
+      String.raw`[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,setsar=1,drawbox=x=0:y=ih-160:w=iw:h=160:color=black@0.45:t=fill,drawtext=fontfile='/font.ttf':text=Hello\: World:fontcolor=white:fontsize=48:x=48:y=h-160+(160-text_h)/2[bg];[1:v]scale=128:128:force_original_aspect_ratio=decrease[logo];[bg][logo]overlay=(W-w)/2:32[v]`,
       '-map',
       '[v]',
       '-frames:v',
@@ -68,6 +69,7 @@ describe('compileCover', () => {
     const args = compileCover({
       base: '/b.png',
       logo: '/l.png',
+      logoPlacement: null,
       font: '/f.ttf',
       title: 'x',
       outputPath: '/o.png',
@@ -80,8 +82,39 @@ describe('compileCover', () => {
     expect(filter).toContain(`crop=${COVER_WIDTH}:${COVER_HEIGHT}`);
     expect(filter).toContain(`drawbox=x=0:y=ih-${COVER_BAND_HEIGHT}:w=iw:h=${COVER_BAND_HEIGHT}`);
     expect(filter).toContain(`fontsize=${COVER_FONT_SIZE}:x=${COVER_TITLE_MARGIN_X}`);
-    expect(filter).toContain(`scale=${COVER_LOGO_SIZE}:${COVER_LOGO_SIZE}`);
+    expect(filter).toContain(`scale=${COVER_LOGO_SIZE}:${COVER_LOGO_SIZE}:force_original_aspect_ratio=decrease`);
     expect(filter).toContain(`overlay=(W-w)/2:${COVER_LOGO_TOP_MARGIN}`);
+  });
+
+  it('scales and places the logo per the saved placement', () => {
+    const args = compileCover({
+      base: '/b.png',
+      logo: '/l.png',
+      logoPlacement: { centerX: 1100, centerY: 120.4, size: 200 },
+      font: '/f.ttf',
+      title: 'x',
+      outputPath: '/o.png',
+    });
+    const filter = args[args.indexOf('-filter_complex') + 1];
+
+    expect(filter).toContain('[1:v]scale=200:200:force_original_aspect_ratio=decrease[logo]');
+    expect(filter).toContain(String.raw`[bg][logo]overlay=x=clip(1100-w/2\,0\,W-w):y=clip(120-h/2\,0\,560-h)[v]`);
+  });
+
+  it('composes without the logo input when there is no logo', () => {
+    const args = compileCover({
+      base: '/b.png',
+      logo: null,
+      logoPlacement: null,
+      font: '/f.ttf',
+      title: 'x',
+      outputPath: '/o.png',
+    });
+    const filter = args[args.indexOf('-filter_complex') + 1];
+
+    expect(args.filter((arg) => arg === '-i')).toHaveLength(1);
+    expect(filter).not.toContain('overlay');
+    expect(filter.endsWith('[v]')).toBe(true);
   });
 });
 
@@ -92,6 +125,7 @@ function makeDeps(): CoverDeps & { runRender: ReturnType<typeof vi.fn> } {
     resolveFfmpegPath: async () => '/ffmpeg',
     runRender: vi.fn(async () => ({ exitCode: 0, stderr: '' })),
     resolveAssets: () => ASSETS,
+    resolveLogoPlacement: () => null,
   };
 }
 
@@ -119,6 +153,21 @@ describe('CoverService', () => {
 
     expect(argsOf(deps)).toContain('/chosen.jpg');
     expect(argsOf(deps)).not.toContain(ASSETS.defaultBase);
+  });
+
+  it('applies the saved logo placement', async () => {
+    const deps = makeDeps();
+    deps.resolveLogoPlacement = () => ({ centerX: 100, centerY: 100, size: 64 });
+    await new CoverService(deps).compose({ title: 'Title', outputPath: '/out/cover.png' });
+
+    expect(argsOf(deps).join(' ')).toContain('scale=64:64');
+  });
+
+  it('leaves the logo off when asked to', async () => {
+    const deps = makeDeps();
+    await new CoverService(deps).compose({ title: 'Title', outputPath: '/out/cover.png', withLogo: false });
+
+    expect(argsOf(deps)).not.toContain(ASSETS.logo);
   });
 
   it('throws a RenderError with sanitised stderr when FFmpeg fails', async () => {

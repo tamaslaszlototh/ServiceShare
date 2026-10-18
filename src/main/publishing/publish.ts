@@ -4,6 +4,7 @@ import { AppError, ClipInfo, EditOperation, PublishEvent, PublishRequest, Publis
 import { CompileInput, compileEditList } from '../audio/engine';
 import { parseLoudnormJson } from '../audio/preview';
 import { CoverAssets } from './assets';
+import { LogoPlacement } from '../../shared/coverLayout';
 import { CoverRequest, CoverService, COVER_HEIGHT, COVER_WIDTH, coverDepsIn } from './cover';
 import { ffmpegResolver } from '../audio/ffmpeg';
 import { RenderError, errorResult, toAppError } from '../core/errors';
@@ -260,13 +261,14 @@ export class PublishService {
 
 export interface PublishDepsInOptions {
   resolveAssets: () => CoverAssets;
+  resolveLogoPlacement: () => LogoPlacement | null;
   getAccessToken: () => Promise<string>;
   makeTempDir: () => Promise<string>;
   removeDir: (dir: string) => Promise<void>;
 }
 
 export function publishDepsIn(options: PublishDepsInOptions): PublishServiceDeps {
-  const coverService = new CoverService(coverDepsIn(options.resolveAssets));
+  const coverService = new CoverService(coverDepsIn(options.resolveAssets, options.resolveLogoPlacement));
   const uploadDeps = uploadDepsIn();
   const renderer = new PublishRenderer({
     resolveFfmpegPath: async () => (await ffmpegResolver.resolve()).ffmpeg,
