@@ -35,7 +35,9 @@
 ## 9.4 Reliability & error handling
 
 - Root renderer unhandled-exception hooks: show a recoverable error banner, never a black window.
-- FFmpeg timeouts: renders get a per-op max (2× expected duration) → `RenderError`.
+- FFmpeg timeouts: no limit on total run time (a long clip legitimately encodes for many
+  minutes); FFmpeg reports progress every second and a run is killed only when it produces no
+  output for 60 s → `EngineError`.
 - Upload resilience: resumable upload + backoff (see `06`); crash mid-upload leaves the session
   restorable from the same temp MP4 on restart where the session still exists.
 - All failures surface the catalogue codes from `02` §2.9 with an action, not a raw crash.

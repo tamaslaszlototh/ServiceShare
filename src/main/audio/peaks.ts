@@ -5,7 +5,6 @@ import { sanitizeText } from '../core/sanitize';
 import { killActiveProcesses, runFfmpeg } from './runner';
 
 export const TARGET_PEAK_BUCKETS = 4096;
-export const DECODE_TIMEOUT_MS = 120000;
 
 export function killActiveDecodes(): void {
   killActiveProcesses();
@@ -116,7 +115,7 @@ function runDecode(
   args: string[],
   onChunk: (chunk: Buffer) => void,
 ): Promise<{ exitCode: number; stderr: string }> {
-  return runFfmpeg(ffmpegPath, args, { onStdout: onChunk, timeoutMs: DECODE_TIMEOUT_MS });
+  return runFfmpeg(ffmpegPath, args, { onStdout: onChunk });
 }
 
 export const defaultPeakDeps: PeakDeps = {
