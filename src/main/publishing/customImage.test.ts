@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { LogoStore, LogoStoreDeps } from './logo';
+import { CustomImageStore, CustomImageStoreDeps } from './customImage';
 
-function store(over: Partial<LogoStoreDeps> = {}) {
+function store(over: Partial<CustomImageStoreDeps> = {}) {
   const files = new Set<string>();
-  const deps: LogoStoreDeps = {
-    logoPath: '/userData/cover-logo.png',
+  const deps: CustomImageStoreDeps = {
+    filePath: '/userData/cover-logo.png',
     fileExists: (p) => files.has(p),
     copyFile: vi.fn(async (source: string, destination: string) => {
       if (!source) throw new Error('missing source');
@@ -15,11 +15,11 @@ function store(over: Partial<LogoStoreDeps> = {}) {
     }),
     ...over,
   };
-  return { files, deps, store: new LogoStore(deps) };
+  return { files, deps, store: new CustomImageStore(deps) };
 }
 
-describe('LogoStore', () => {
-  it('reports no custom logo when the file is absent', () => {
+describe('CustomImageStore', () => {
+  it('reports no custom image when the file is absent', () => {
     expect(store().store.customPath()).toBeNull();
   });
 
@@ -32,7 +32,7 @@ describe('LogoStore', () => {
     expect(s.customPath()).toBe('/userData/cover-logo.png');
   });
 
-  it('removes the custom logo on clear', async () => {
+  it('removes the custom image on clear', async () => {
     const { store: s } = store();
     await s.setFrom('/pictures/logo.png');
     await s.clear();

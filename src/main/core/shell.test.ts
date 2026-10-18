@@ -4,6 +4,7 @@ import {
   aboutPanelOptions,
   applicationMenu,
   exportDialogOptions,
+  baseDialogOptions,
   logoDialogOptions,
   openDialogOptions,
   type MenuEntry,
@@ -105,6 +106,13 @@ describe('native dialog options', () => {
     expect(hu.title).toBe('Alapértelmezett logó kiválasztása');
     expect(hu.filters[0].extensions).toContain('png');
     expect(logoDialogOptions(tFor('en')).filters[0].extensions).toContain('jpeg');
+  });
+
+  it('builds the localized default cover picker for images', () => {
+    const hu = baseDialogOptions(tFor('hu'));
+    expect(hu.title).toBe('Alapértelmezett borító kiválasztása');
+    expect(hu.filters[0].extensions).toEqual(['png', 'jpg', 'jpeg']);
+    expect(baseDialogOptions(tFor('en')).title).toBe('Choose default cover image');
   });
 });
 

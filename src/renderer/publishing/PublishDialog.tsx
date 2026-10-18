@@ -386,8 +386,20 @@ export function PublishDialog({
                   />
                 </div>
                 {state.coverError && <p className="muted">{errorLabel(state.coverError)}</p>}
-                <div className="logo-row">
-                  <span className="logo-label">{t('publish.defaultLogo')}</span>
+                <div className="default-row">
+                  <span className="default-label">{t('publish.defaultBase')}</span>
+                  {state.baseUrl && <img className="base-thumb" src={state.baseUrl} alt="" />}
+                  <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.chooseBase()}>
+                    {t('publish.defaultBaseChoose')}
+                  </button>
+                  {state.baseCustom && (
+                    <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.clearBase()}>
+                      {t('publish.defaultBaseClear')}
+                    </button>
+                  )}
+                </div>
+                <div className="default-row">
+                  <span className="default-label">{t('publish.defaultLogo')}</span>
                   {state.logoUrl && <img className="logo-thumb" src={state.logoUrl} alt="" />}
                   <button className="btn ghost" type="button" disabled={publishing} onClick={() => void flow.chooseLogo()}>
                     {t('publish.defaultLogoChoose')}
@@ -398,7 +410,6 @@ export function PublishDialog({
                     </button>
                   )}
                 </div>
-                <p className="muted logo-note">{t('publish.defaultLogoNote')}</p>
               </div>
 
               <div className="publish-fields">

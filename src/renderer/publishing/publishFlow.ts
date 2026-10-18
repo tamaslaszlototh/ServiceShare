@@ -8,11 +8,11 @@ import {
   AuthResult,
   CoverPreviewRequest,
   CoverPreviewResult,
-  DefaultLogo,
+  DefaultImage,
   EmailRecipientsResult,
   EmailSendRequest,
   EmailSendResult,
-  LogoResult,
+  ImageResult,
   PrivacyStatus,
   PublishEvent,
   PublishRequest,
@@ -71,6 +71,9 @@ export interface PublishFlowState {
   coverError: AppError | null;
   logoUrl: string | null;
   logoCustom: boolean;
+  /** The default base used when no cover image is chosen for this video. */
+  baseUrl: string | null;
+  baseCustom: boolean;
   emailOpen: boolean;
   emailSubject: string;
   emailBody: string;
@@ -93,9 +96,12 @@ export interface PublishIpc {
   cancelPublish(): void;
   onPublishProgress(cb: (event: PublishEvent) => void): () => void;
   composeCoverPreview(req: CoverPreviewRequest): Promise<CoverPreviewResult>;
-  getDefaultLogo(): Promise<DefaultLogo>;
-  chooseDefaultLogo(): Promise<LogoResult>;
+  getDefaultLogo(): Promise<DefaultImage>;
+  chooseDefaultLogo(): Promise<ImageResult>;
   clearDefaultLogo(): Promise<VoidResult>;
+  getDefaultBase(): Promise<DefaultImage>;
+  chooseDefaultBase(): Promise<ImageResult>;
+  clearDefaultBase(): Promise<VoidResult>;
   sendEmail(req: EmailSendRequest): Promise<EmailSendResult>;
   getEmailRecipients(): Promise<EmailRecipientsResult>;
   rememberEmailRecipient(address: string): Promise<EmailRecipientsResult>;
@@ -122,6 +128,8 @@ export interface PublishFlow {
   signOut(): Promise<void>;
   chooseLogo(): Promise<void>;
   clearLogo(): Promise<void>;
+  chooseBase(): Promise<void>;
+  clearBase(): Promise<void>;
   publish(): Promise<void>;
   cancel(): void;
   copyLink(url: string): Promise<void>;
@@ -183,6 +191,8 @@ export function createPublishFlow({
     coverError: null,
     logoUrl: null,
     logoCustom: false,
+    baseUrl: null,
+    baseCustom: false,
     emailOpen: false,
     emailSubject: '',
     emailBody: '',
@@ -240,6 +250,15 @@ export function createPublishFlow({
       update({ logoUrl: logo.url, logoCustom: logo.custom });
     } catch {
       // the logo preview simply stays empty
+    }
+  }
+
+  async function loadBase(): Promise<void> {
+    try {
+      const base = await ipc.getDefaultBase();
+      update({ baseUrl: base.url, baseCustom: base.custom });
+    } catch {
+      // the default cover thumbnail simply stays empty
     }
   }
 
@@ -360,6 +379,7 @@ export function createPublishFlow({
         return;
       }
       void loadLogo();
+      void loadBase();
       scheduleCoverPreview();
     },
 
@@ -501,6 +521,37 @@ export function createPublishFlow({
         }
         const logo = await ipc.getDefaultLogo();
         update({ logoUrl: logo.url, logoCustom: logo.custom });
+        scheduleCoverPreview();
+      } catch (e) {
+        update({ error: normalizeError(e, 'RenderError') });
+      }
+    },
+
+    async chooseBase() {
+      update({ error: null });
+      try {
+        const result = await ipc.chooseDefaultBase();
+        if (result.status === 'cancelled') return;
+        if (result.status === 'error') {
+          update({ error: result.error });
+          return;
+        }
+        update({ baseUrl: result.url, baseCustom: true });
+        scheduleCoverPreview();
+      } catch (e) {
+        update({ error: normalizeError(e, 'RenderError') });
+      }
+    },
+
+    async clearBase() {
+      update({ error: null });
+      try {
+        const result = await ipc.clearDefaultBase();
+        if (result.status === 'error') {
+          update({ error: result.error });
+          return;
+        }
+        await loadBase();
         scheduleCoverPreview();
       } catch (e) {
         update({ error: normalizeError(e, 'RenderError') });

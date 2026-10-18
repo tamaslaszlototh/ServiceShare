@@ -29,6 +29,7 @@ function defaultDeps(): AssetResolverDeps {
 export class AssetResolver {
   private cache: CoverAssets | null = null;
   private logoOverride: string | null = null;
+  private baseOverride: string | null = null;
 
   constructor(private readonly deps: AssetResolverDeps = defaultDeps()) {}
 
@@ -37,10 +38,15 @@ export class AssetResolver {
     this.cache = null;
   }
 
+  setBaseOverride(basePath: string | null): void {
+    this.baseOverride = basePath;
+    this.cache = null;
+  }
+
   resolve(): CoverAssets {
     if (!this.cache) {
       this.cache = {
-        defaultBase: this.find('images', DEFAULT_BASE_FILE),
+        defaultBase: this.baseOverride ?? this.find('images', DEFAULT_BASE_FILE),
         logo: this.logoOverride ?? this.find('images', LOGO_FILE),
         font: this.find('fonts', COVER_FONT_FILE),
       };

@@ -75,6 +75,8 @@ Modal opened from "Publish to YouTube…". Ordered steps (decision #10):
 2. **Cover preview** — shows the composited cover live (chosen image swapped over the default base,
    title + logo always applied); "Choose image…" opens a picker (PNG/JPEG); "Remove" returns to the
    default base. Recomposite preview updates on the fly.
+   Below it, "Default cover" and "Default logo" each offer "Choose…" (PNG/JPEG, copied into the
+   app's user data and used for every later cover) and, once replaced, a reset to the bundled image.
 3. **Metadata** — Title (required; prefilled with the file name), Description (textarea, optional),
    Tags (comma list, optional), Privacy (default **Unlisted**; options Unlisted/Private/Public),
    Thumbnail (optional "Choose…"; else the composed cover is used, so no extra API call needed).

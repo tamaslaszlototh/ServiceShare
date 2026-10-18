@@ -20,11 +20,20 @@ import { parseByteRange } from './audio/range';
 import { IpcError, NoClipError, errorResult } from './core/errors';
 import { emit, handle, onSend } from './ipc';
 import { logError, logInfo } from './core/log';
-import { CUSTOM_LOGO_FILE, LogoStore } from './publishing/logo';
+import { CUSTOM_BASE_FILE, CUSTOM_LOGO_FILE, CustomImageStore } from './publishing/customImage';
 import { RECIPIENTS_FILE, RecipientStore } from './email/recipientStore';
 import { UpdateService } from './updater/updater';
 import { DEFAULT_LOCALE, Locale, Translator, resolveLocale, t as translate } from '../shared/i18n';
-import { MenuEntry, aboutPanelOptions, applicationMenu, exportDialogOptions, logoDialogOptions, openDialogOptions } from './core/shell';
+import {
+  DialogOptions,
+  MenuEntry,
+  aboutPanelOptions,
+  applicationMenu,
+  baseDialogOptions,
+  exportDialogOptions,
+  logoDialogOptions,
+  openDialogOptions,
+} from './core/shell';
 import { ClipInfo, EmailRecipientsResult, ExportFormat } from '@shared/types';
 import { editedDuration } from '../shared/duration';
 
@@ -70,15 +79,18 @@ let activePublish: AbortController | null = null;
 let currentClip: ClipInfo | null = null;
 const exportService = new ExportService(exportDepsIn());
 const youtubeService = new YouTubeService();
-let logoStore: LogoStore | null = null;
+let logoStore: CustomImageStore | null = null;
+let baseStore: CustomImageStore | null = null;
 let recipientStore: RecipientStore | null = null;
 
 let activeLocale: Locale = DEFAULT_LOCALE;
 
 const tr: Translator = (key, params) => translate(activeLocale, key, params);
 
-function logoKey(): string {
-  return `${assetResolver.resolve().logo}@${logoStore?.versionKey ?? 0}`;
+/** Changes whenever the logo or default base a cover is composed from changes. */
+function coverAssetsKey(): string {
+  const { logo, defaultBase } = assetResolver.resolve();
+  return `${logo}@${logoStore?.versionKey ?? 0}|${defaultBase}@${baseStore?.versionKey ?? 0}`;
 }
 
 async function fileDataUrl(filePath: string): Promise<string | null> {
@@ -90,6 +102,66 @@ async function fileDataUrl(filePath: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function customImageStore(fileName: string): CustomImageStore {
+  return new CustomImageStore({
+    filePath: path.join(app.getPath('userData'), fileName),
+    fileExists: existsSync,
+    copyFile,
+    removeFile: (filePath) => rm(filePath, { force: true }),
+  });
+}
+
+/**
+ * The get/choose/clear handlers for a user-replaceable cover image: `current`
+ * resolves the image in use (the custom one when set, else the bundled one) and
+ * `setOverride` points cover composition at the custom copy, or back at the bundled one.
+ */
+function handleCustomImage(
+  channels: {
+    get: 'getDefaultLogo' | 'getDefaultBase';
+    choose: 'chooseDefaultLogo' | 'chooseDefaultBase';
+    clear: 'clearDefaultLogo' | 'clearDefaultBase';
+  },
+  store: CustomImageStore,
+  current: () => string,
+  setOverride: (imagePath: string | null) => void,
+  dialogOptions: (t: Translator) => DialogOptions,
+): void {
+  handle(channels.get, async () => {
+    return { url: await fileDataUrl(current()), custom: store.customPath() !== null };
+  });
+
+  handle(channels.choose, async () => {
+    try {
+      const { title, filters } = dialogOptions(tr);
+      const result = await dialog.showOpenDialog({ title, filters, properties: ['openFile'] });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { status: 'cancelled' };
+      }
+      await store.setFrom(result.filePaths[0]);
+      const imagePath = store.customPath();
+      setOverride(imagePath);
+      const url = imagePath ? await fileDataUrl(imagePath) : null;
+      if (!url) {
+        return errorResult(new Error('Could not read the chosen image'), 'RenderError');
+      }
+      return { status: 'ok', url };
+    } catch (e) {
+      return errorResult(e, 'RenderError');
+    }
+  });
+
+  handle(channels.clear, async () => {
+    try {
+      await store.clear();
+      setOverride(null);
+      return { status: 'ok' };
+    } catch (e) {
+      return errorResult(e, 'InternalError');
+    }
+  });
 }
 
 function installMenu(): void {
@@ -201,13 +273,10 @@ async function pickClipPath(): Promise<string | null> {
 
 app.whenReady().then(async () => {
   const tempRoot = path.join(app.getPath('userData'), 'temp');
-  logoStore = new LogoStore({
-    logoPath: path.join(app.getPath('userData'), CUSTOM_LOGO_FILE),
-    fileExists: existsSync,
-    copyFile,
-    removeFile: (filePath) => rm(filePath, { force: true }),
-  });
+  logoStore = customImageStore(CUSTOM_LOGO_FILE);
+  baseStore = customImageStore(CUSTOM_BASE_FILE);
   assetResolver.setLogoOverride(logoStore.customPath());
+  assetResolver.setBaseOverride(baseStore.customPath());
   recipientStore = new RecipientStore({
     filePath: path.join(app.getPath('userData'), RECIPIENTS_FILE),
     readFile: (filePath) => readFile(filePath, 'utf8'),
@@ -428,51 +497,27 @@ app.whenReady().then(async () => {
       return errorResult(new IpcError('CoverUnavailable', 'Cover preview is not available'));
     }
     try {
-      const preview = await coverPreviewService.ensure(req.title, req.coverImagePath, logoKey());
+      const preview = await coverPreviewService.ensure(req.title, req.coverImagePath, coverAssetsKey());
       return { status: 'ok', url: preview.url };
     } catch (e) {
       return errorResult(e, 'RenderError');
     }
   });
 
-  handle('getDefaultLogo', async () => {
-    const custom = logoStore?.customPath() ?? null;
-    const target = custom ?? assetResolver.resolve().logo;
-    return { url: await fileDataUrl(target), custom: custom !== null };
-  });
-
-  handle('chooseDefaultLogo', async () => {
-    try {
-      const { title, filters } = logoDialogOptions(tr);
-      const result = await dialog.showOpenDialog({ title, filters, properties: ['openFile'] });
-      if (result.canceled || result.filePaths.length === 0) {
-        return { status: 'cancelled' };
-      }
-      if (!logoStore) {
-        return errorResult(new Error('Logo storage is unavailable'), 'InternalError');
-      }
-      await logoStore.setFrom(result.filePaths[0]);
-      const logoPath = logoStore.customPath();
-      assetResolver.setLogoOverride(logoPath);
-      const url = logoPath ? await fileDataUrl(logoPath) : null;
-      if (!url) {
-        return errorResult(new Error('Could not read the chosen logo'), 'RenderError');
-      }
-      return { status: 'ok', url };
-    } catch (e) {
-      return errorResult(e, 'RenderError');
-    }
-  });
-
-  handle('clearDefaultLogo', async () => {
-    try {
-      await logoStore?.clear();
-      assetResolver.setLogoOverride(null);
-      return { status: 'ok' };
-    } catch (e) {
-      return errorResult(e, 'InternalError');
-    }
-  });
+  handleCustomImage(
+    { get: 'getDefaultLogo', choose: 'chooseDefaultLogo', clear: 'clearDefaultLogo' },
+    logoStore,
+    () => assetResolver.resolve().logo,
+    (logoPath) => assetResolver.setLogoOverride(logoPath),
+    logoDialogOptions,
+  );
+  handleCustomImage(
+    { get: 'getDefaultBase', choose: 'chooseDefaultBase', clear: 'clearDefaultBase' },
+    baseStore,
+    () => assetResolver.resolve().defaultBase,
+    (basePath) => assetResolver.setBaseOverride(basePath),
+    baseDialogOptions,
+  );
 
   handle('getAccount', async () => {
     return youtubeService.accountState();

@@ -139,7 +139,14 @@ export function openDialogOptions(t: Translator): DialogOptions {
 export function logoDialogOptions(t: Translator): DialogOptions {
   return {
     title: t('dialog.logo.title'),
-    filters: [{ name: t('dialog.logo.image'), extensions: ['png', 'jpg', 'jpeg'] }],
+    filters: [{ name: t('dialog.image.files'), extensions: ['png', 'jpg', 'jpeg'] }],
+  };
+}
+
+export function baseDialogOptions(t: Translator): DialogOptions {
+  return {
+    title: t('dialog.base.title'),
+    filters: [{ name: t('dialog.image.files'), extensions: ['png', 'jpg', 'jpeg'] }],
   };
 }
 

@@ -31,7 +31,7 @@ Turning the edited audio into a video (cover image + audio track) and uploading 
 _Avoid_: upload, share, export-to-YouTube
 
 **Cover Image**:
-The static image combined with the audio to form the video that gets published. Composed by scaling/cropping a chosen image (or a bundled default base) to 1280×720 and compositing the video title and the app logo onto it.
+The static image combined with the audio to form the video that gets published. Composed by scaling/cropping a chosen image (or the default base) to 1280×720 and compositing the video title and the logo onto it. The default base and the logo are bundled with the app; the user can replace either with their own image, which then applies to every later cover.
 _Avoid_: thumbnail, artwork
 
 **Published Video**:

@@ -597,30 +597,44 @@ a:focus-visible {
   min-width: 0;
 }
 
-.logo-row {
+.default-row {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.logo-label {
+.default-row + .default-row {
+  margin-top: 16px;
+}
+
+.default-row .btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
+.default-label {
   font-size: 12px;
   color: var(--muted);
 }
 
-.logo-thumb {
-  width: 36px;
+.logo-thumb,
+.base-thumb {
   height: 36px;
-  object-fit: contain;
   background: var(--panel2);
   border: 1px solid var(--line);
   border-radius: 6px;
 }
 
-.logo-note {
-  margin: 6px 0 0;
-  font-size: 11px;
+.logo-thumb {
+  width: 36px;
+  object-fit: contain;
+}
+
+.base-thumb {
+  width: 64px;
+  object-fit: cover;
 }
 
 .publish-fields {

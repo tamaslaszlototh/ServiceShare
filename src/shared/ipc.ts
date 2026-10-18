@@ -4,7 +4,7 @@ import type {
   AuthResult,
   CoverPreviewRequest,
   CoverPreviewResult,
-  DefaultLogo,
+  DefaultImage,
   Document,
   EditOperation,
   EditResult,
@@ -15,7 +15,7 @@ import type {
   ExportProgress,
   ExportResult,
   FadeKind,
-  LogoResult,
+  ImageResult,
   MenuCommand,
   OpenResult,
   PeaksResult,
@@ -61,6 +61,9 @@ export const IPC_CHANNELS = {
     getDefaultLogo: 'getDefaultLogo',
     chooseDefaultLogo: 'chooseDefaultLogo',
     clearDefaultLogo: 'clearDefaultLogo',
+    getDefaultBase: 'getDefaultBase',
+    chooseDefaultBase: 'chooseDefaultBase',
+    clearDefaultBase: 'clearDefaultBase',
     getAccount: 'getAccount',
     signIn: 'signIn',
     signOut: 'signOut',
@@ -101,9 +104,12 @@ export interface IpcInvokeContract {
   exportAudio: { args: [format: ExportFormat]; result: ExportResult };
   publish: { args: [req: PublishRequest]; result: PublishResult };
   composeCoverPreview: { args: [req: CoverPreviewRequest]; result: CoverPreviewResult };
-  getDefaultLogo: { args: []; result: DefaultLogo };
-  chooseDefaultLogo: { args: []; result: LogoResult };
+  getDefaultLogo: { args: []; result: DefaultImage };
+  chooseDefaultLogo: { args: []; result: ImageResult };
   clearDefaultLogo: { args: []; result: VoidResult };
+  getDefaultBase: { args: []; result: DefaultImage };
+  chooseDefaultBase: { args: []; result: ImageResult };
+  clearDefaultBase: { args: []; result: VoidResult };
   getAccount: { args: []; result: AccountState };
   signIn: { args: []; result: AuthResult };
   signOut: { args: []; result: VoidResult };

@@ -154,12 +154,12 @@ export interface AccountState {
   canSendEmail: boolean;
 }
 
-export interface DefaultLogo {
+export interface DefaultImage {
   url: string | null;
   custom: boolean;
 }
 
-export type LogoResult =
+export type ImageResult =
   | { status: 'ok'; url: string }
   | { status: 'cancelled' }
   | AppErrorResult;

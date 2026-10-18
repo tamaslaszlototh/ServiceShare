@@ -32,4 +32,15 @@ describe('AssetResolver', () => {
     r.setLogoOverride(null);
     expect(r.resolve().logo).toBe('/assets/images/logo.png');
   });
+
+  it('prefers a custom default base override and re-resolves after it changes', () => {
+    const r = resolver();
+
+    r.setBaseOverride('/userData/cover-base.png');
+    expect(r.resolve().defaultBase).toBe('/userData/cover-base.png');
+    expect(r.resolve().logo).toBe('/assets/images/logo.png');
+
+    r.setBaseOverride(null);
+    expect(r.resolve().defaultBase).toBe('/assets/images/default-base.png');
+  });
 });

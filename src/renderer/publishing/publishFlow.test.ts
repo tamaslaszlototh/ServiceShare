@@ -38,6 +38,9 @@ function createFakeIpc(overrides: Partial<PublishIpc> = {}) {
     getDefaultLogo: vi.fn(async () => ({ url: null, custom: false })),
     chooseDefaultLogo: vi.fn(async () => ({ status: 'ok' as const, url: 'blob:logo' })),
     clearDefaultLogo: vi.fn(async () => ({ status: 'ok' as const })),
+    getDefaultBase: vi.fn(async () => ({ url: 'data:bundled-base', custom: false })),
+    chooseDefaultBase: vi.fn(async () => ({ status: 'ok' as const, url: 'data:my-base' })),
+    clearDefaultBase: vi.fn(async () => ({ status: 'ok' as const })),
     sendEmail: vi.fn(async () => ({ status: 'ok' as const })),
     getEmailRecipients: vi.fn(async () => recipientsOk([])),
     rememberEmailRecipient: vi.fn(async (address: string) => recipientsOk([address.trim()])),
@@ -647,6 +650,55 @@ describe('account and cover side effects', () => {
 
     expect(ipc.getPathForFile).toHaveBeenCalled();
     expect(flow.getState().form.coverImagePath).toBe('/tmp/pic.png');
+  });
+
+  it('loads the default cover and recomposes the preview when a new one is chosen', async () => {
+    const { ipc } = createFakeIpc();
+    const flow = makeFlow(ipc);
+    await flush();
+    expect(flow.getState()).toMatchObject({ baseUrl: 'data:bundled-base', baseCustom: false });
+    (ipc.composeCoverPreview as ReturnType<typeof vi.fn>).mockClear();
+
+    await flow.chooseBase();
+    await flush();
+
+    expect(flow.getState()).toMatchObject({ baseUrl: 'data:my-base', baseCustom: true });
+    expect(ipc.composeCoverPreview).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads the bundled default cover after a reset', async () => {
+    const getDefaultBase = vi
+      .fn()
+      .mockResolvedValueOnce({ url: 'data:my-base', custom: true })
+      .mockResolvedValueOnce({ url: 'data:bundled-base', custom: false });
+    const { ipc } = createFakeIpc({ getDefaultBase });
+    const flow = makeFlow(ipc);
+    await flush();
+    (ipc.composeCoverPreview as ReturnType<typeof vi.fn>).mockClear();
+
+    await flow.clearBase();
+    await flush();
+
+    expect(ipc.clearDefaultBase).toHaveBeenCalledTimes(1);
+    expect(flow.getState()).toMatchObject({ baseUrl: 'data:bundled-base', baseCustom: false });
+    expect(ipc.composeCoverPreview).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the current default cover when choosing is cancelled or fails', async () => {
+    const chooseDefaultBase = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'cancelled' })
+      .mockResolvedValueOnce({ status: 'error', error: { code: 'RenderError', message: 'bad image' } });
+    const { ipc } = createFakeIpc({ chooseDefaultBase });
+    const flow = makeFlow(ipc);
+    await flush();
+
+    await flow.chooseBase();
+    expect(flow.getState()).toMatchObject({ baseUrl: 'data:bundled-base', error: null });
+
+    await flow.chooseBase();
+    expect(flow.getState().baseUrl).toBe('data:bundled-base');
+    expect(flow.getState().error?.code).toBe('RenderError');
   });
 
   it('stops handling progress events after dispose', async () => {
