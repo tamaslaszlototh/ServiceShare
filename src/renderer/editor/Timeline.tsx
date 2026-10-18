@@ -47,6 +47,7 @@ interface TimelineProps {
 const WHEEL_LINE_PX = 40;
 // when the playhead leaves the view, re-scroll so it sits this far into it
 const FOLLOW_LEAD = 0.1;
+const PLAYHEAD_WIDTH_PX = 2;
 
 export function Timeline({
   duration,
@@ -132,12 +133,12 @@ export function Timeline({
     setScroll(anchoredScroll(scrollLeftRef.current, anchor ?? width / 2, previous, zoom, width));
   }, [zoom]);
 
-  // keep the playhead in view while playing through a zoomed-in clip (not on zoom
-  // changes: those keep their own anchor)
+  // keep the playhead in view while playing through (or jumping around) a zoomed-in
+  // clip (not on zoom changes: those keep their own anchor)
   useEffect(() => {
     const scroller = scrollerRef.current;
     const zoom = zoomRef.current;
-    if (!scroller || zoom <= 1 || position <= 0 || duration <= 0) {
+    if (!scroller || zoom <= 1 || duration <= 0) {
       return;
     }
     const width = scroller.clientWidth;
@@ -215,7 +216,7 @@ export function Timeline({
 
   const startFraction = selection ? timeToFraction(selection.start, duration) : 0;
   const endFraction = selection ? timeToFraction(selection.end, duration) : 0;
-  const playheadFraction = position > 0 ? timeToFraction(position, duration) : null;
+  const playheadFraction = timeToFraction(position, duration);
   const fadeInFraction = fadeIn && duration > 0 ? Math.min(1, fadeIn / duration) : null;
   const fadeOutFraction = fadeOut && duration > 0 ? Math.min(1, fadeOut / duration) : null;
   const overlayBase = { position: 'absolute', top: 0, bottom: 0 } as const;
@@ -328,18 +329,18 @@ export function Timeline({
                 />
               ))}
           </div>
-          {playheadFraction !== null && (
-            <div
-              aria-hidden="true"
-              style={{
-                ...overlayBase,
-                left: `${playheadFraction * 100}%`,
-                width: '2px',
-                background: 'var(--warn)',
-                pointerEvents: 'none',
-              }}
-            />
-          )}
+          <div
+            aria-hidden="true"
+            data-testid="playhead"
+            style={{
+              ...overlayBase,
+              // shifted left by up to its own width so it stays visible at the clip's end
+              left: `calc(${playheadFraction * 100}% - ${playheadFraction * PLAYHEAD_WIDTH_PX}px)`,
+              width: `${PLAYHEAD_WIDTH_PX}px`,
+              background: 'var(--warn)',
+              pointerEvents: 'none',
+            }}
+          />
         </div>
       </div>
     </div>

@@ -491,6 +491,15 @@ export function App() {
         <div className="group">
           <button
             className="btn ghost icon"
+            aria-label={t('toolbar.toStart')}
+            title={t('toolbar.toStart')}
+            onClick={() => handleSeek(0)}
+            disabled={!clip}
+          >
+            ⏮
+          </button>
+          <button
+            className="btn ghost icon"
             aria-label={t('toolbar.play')}
             title={t('toolbar.play')}
             onClick={handlePlay}
