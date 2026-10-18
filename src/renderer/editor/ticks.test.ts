@@ -38,3 +38,19 @@ describe('rulerTicks', () => {
     expect(rulerTicks(Number.NaN)).toEqual([]);
   });
 });
+
+describe('rulerTicks when zoomed', () => {
+  it('spaces ticks for the visible window', () => {
+    const ticks = rulerTicks(600, 10);
+
+    expect(ticks[1].label).toBe('0:10');
+    expect(ticks.length).toBeGreaterThan(50);
+  });
+
+  it('labels sub-second steps with tenths', () => {
+    const ticks = rulerTicks(10, 16);
+
+    expect(ticks[1].label).toBe('0:00.1');
+    expect(ticks[ticks.length - 1].label).toBe('0:10.0');
+  });
+});

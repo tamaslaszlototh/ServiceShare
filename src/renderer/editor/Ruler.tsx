@@ -1,7 +1,7 @@
 import { rulerTicks } from './ticks';
 
-export function Ruler({ duration }: { duration: number }) {
-  const ticks = rulerTicks(duration);
+export function Ruler({ duration, zoom = 1 }: { duration: number; zoom?: number }) {
+  const ticks = rulerTicks(duration, zoom);
 
   return (
     <div role="presentation" className="ruler">

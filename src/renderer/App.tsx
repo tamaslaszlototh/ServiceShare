@@ -13,6 +13,7 @@ import { useLocale } from './i18n/LocaleContext';
 import { editedDuration, removedSourceRanges } from './editor/timelineRanges';
 import { formatSelectionRange, formatTime, selectionLength } from './editor/selection';
 import { channelLabel } from './editor/labels';
+import { ZOOM_MAX, ZOOM_MIN, zoomIn, zoomOut } from './editor/zoom';
 import { HistoryAction, resolveHistoryShortcut } from './editor/shortcuts';
 import {
   FADE_DEFAULT_SECONDS,
@@ -53,6 +54,7 @@ export function App() {
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const [fadeSeconds, setFadeSeconds] = useState(FADE_DEFAULT_SECONDS);
   const [gainDb, setGainDb] = useState(0);
+  const [zoom, setZoom] = useState(ZOOM_MIN);
   const [exportOpen, setExportOpen] = useState(false);
   // 'publish' starts a new publish; 'email' reopens the last one to email its link
   const [publishMode, setPublishMode] = useState<'publish' | 'email' | null>(null);
@@ -232,6 +234,7 @@ export function App() {
       setPublishedVideo(null);
       setPeaks(null);
       setSelection(null);
+      setZoom(ZOOM_MIN);
       resetPlayback(result.clip.duration);
       setDocument(await window.api.getDocument());
       setError(null);
@@ -510,10 +513,22 @@ export function App() {
         </div>
         <span className="spacer" />
         <div className="group">
-          <button className="btn ghost icon" aria-label={t('toolbar.zoomOut')} disabled>
+          <button
+            className="btn ghost icon"
+            aria-label={t('toolbar.zoomOut')}
+            title={t('toolbar.zoomOut')}
+            disabled={!clip || zoom <= ZOOM_MIN}
+            onClick={() => setZoom(zoomOut)}
+          >
             −
           </button>
-          <button className="btn ghost icon" aria-label={t('toolbar.zoomIn')} disabled>
+          <button
+            className="btn ghost icon"
+            aria-label={t('toolbar.zoomIn')}
+            title={t('toolbar.zoomIn')}
+            disabled={!clip || zoom >= ZOOM_MAX}
+            onClick={() => setZoom(zoomIn)}
+          >
             +
           </button>
         </div>
@@ -537,8 +552,10 @@ export function App() {
               position={position}
               fadeIn={fadeInSeconds}
               fadeOut={fadeOutSeconds}
+              zoom={zoom}
               onSelectionChange={setSelection}
               onSeek={handleSeek}
+              onZoomChange={setZoom}
             />
             <div className="meta">
               <span>{t('meta.format', { rate: clip.sampleRate, bits: clip.bitDepth })}</span>

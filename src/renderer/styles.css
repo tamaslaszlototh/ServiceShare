@@ -349,6 +349,15 @@ a:focus-visible {
   min-height: 0;
 }
 
+.timeline-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 0;
+}
+
 .wave-lane {
   flex: 1;
   position: relative;

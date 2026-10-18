@@ -1,13 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { PeakData } from '@shared/types';
 import { useT } from '../i18n/LocaleContext';
 import { channelLabel } from './labels';
+import { ZoomView, bucketRange } from './zoom';
 
 function drawPeaks(
   ctx: CanvasRenderingContext2D,
   peaks: PeakData,
   width: number,
   height: number,
+  view: ZoomView,
 ): void {
   ctx.clearRect(0, 0, width, height);
   const lanes = Math.max(1, peaks.channels);
@@ -23,23 +25,35 @@ function drawPeaks(
     const middle = lane * laneHeight + laneHeight / 2;
     const amplitude = (laneHeight / 2) * 0.92;
     const count = channel.length;
+    if (count === 0) {
+      return;
+    }
 
     ctx.beginPath();
-    for (let i = 0; i < count; i++) {
-      const x = count <= 1 ? 0 : (i / (count - 1)) * (width - 1);
-      const bucket = channel[i];
-      ctx.moveTo(x, middle - bucket.max * amplitude);
-      ctx.lineTo(x, middle - bucket.min * amplitude);
+    for (let x = 0; x < width; x++) {
+      const [from, to] = bucketRange(x, width, view, count);
+      let min = channel[from].min;
+      let max = channel[from].max;
+      for (let i = from + 1; i < to; i++) {
+        min = Math.min(min, channel[i].min);
+        max = Math.max(max, channel[i].max);
+      }
+      ctx.moveTo(x + 0.5, middle - max * amplitude);
+      ctx.lineTo(x + 0.5, middle - min * amplitude);
     }
     ctx.stroke();
   });
 }
 
-export function Waveform({ peaks }: { peaks: PeakData }) {
+/**
+ * Draws the `view` window of the clip. The canvas spans only that window of the
+ * lane, so it stays viewport-sized however far the timeline is zoomed in.
+ */
+export function Waveform({ peaks, view }: { peaks: PeakData; view: ZoomView }) {
   const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
@@ -56,7 +70,7 @@ export function Waveform({ peaks }: { peaks: PeakData }) {
         return;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawPeaks(ctx, peaks, width, height);
+      drawPeaks(ctx, peaks, width, height, view);
     };
 
     render();
@@ -70,14 +84,21 @@ export function Waveform({ peaks }: { peaks: PeakData }) {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [peaks]);
+  }, [peaks, view.start, view.end]);
 
   return (
     <canvas
       ref={canvasRef}
       role="img"
       aria-label={t('waveform.label', { channels: channelLabel(peaks.channels, t) })}
-      style={{ width: '100%', height: '100%', display: 'block' }}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: `${view.start * 100}%`,
+        width: `${(view.end - view.start) * 100}%`,
+        height: '100%',
+        display: 'block',
+      }}
     />
   );
 }
