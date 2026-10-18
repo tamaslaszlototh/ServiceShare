@@ -14,7 +14,7 @@ import { editedDuration, removedSourceRanges } from './editor/timelineRanges';
 import { formatSelectionRange, formatTime, selectionLength } from './editor/selection';
 import { channelLabel } from './editor/labels';
 import { ZOOM_MAX, ZOOM_MIN, zoomIn, zoomOut } from './editor/zoom';
-import { HistoryAction, resolveHistoryShortcut } from './editor/shortcuts';
+import { HistoryAction, isPlaybackToggle, resolveHistoryShortcut } from './editor/shortcuts';
 import {
   FADE_DEFAULT_SECONDS,
   FADE_MAX_SECONDS,
@@ -129,6 +129,10 @@ export function App() {
     }
   };
 
+  // the keydown listener outlives renders; read the latest play toggle through a ref
+  const playToggleRef = useRef<(() => void) | null>(null);
+  playToggleRef.current = clip && !rendering ? () => void handlePlay() : null;
+
   const handlePause = () => {
     audioRef.current?.pause();
     setPlaying(false);
@@ -208,6 +212,12 @@ export function App() {
       }
       const target = event.target as HTMLElement | null;
       if (target && (target.isContentEditable || /^(input|textarea|select)$/i.test(target.tagName))) {
+        return;
+      }
+      if (isPlaybackToggle(event)) {
+        // also stops Space from clicking a focused button a second time
+        event.preventDefault();
+        playToggleRef.current?.();
         return;
       }
       const action = resolveHistoryShortcut(event);

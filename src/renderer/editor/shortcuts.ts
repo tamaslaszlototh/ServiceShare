@@ -13,3 +13,9 @@ export function resolveHistoryShortcut(event: KeyboardEvent): HistoryAction | nu
   }
   return null;
 }
+
+export function isPlaybackToggle(event: KeyboardEvent): boolean {
+  return (
+    event.code === 'Space' && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey
+  );
+}
