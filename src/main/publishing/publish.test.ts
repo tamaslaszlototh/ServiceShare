@@ -3,6 +3,8 @@ import { ClipInfo, PublishEvent, PublishRequest } from '@shared/types';
 import {
   PUBLISH_SAMPLE_RATE,
   PublishRenderDeps,
+  PublishRenderInput,
+  RENDER_AUDIO_SHARE,
   PublishRenderer,
   PublishService,
   PublishServiceDeps,
@@ -10,6 +12,7 @@ import {
   publishAudioArgs,
 } from './publish';
 import { UploadCancelled } from './upload';
+import { RunOptions } from '../audio/runner';
 import { QuotaExceededError } from '../core/errors';
 
 const clip: ClipInfo = {
@@ -110,6 +113,29 @@ describe('PublishRenderer', () => {
     expect(muxArgs).toEqual(compileMp4({ coverPath: '/tmp/pub/cover.png', audioPath: '/tmp/pub/audio.wav', outputPath: '/tmp/pub/out.mp4' }));
   });
 
+  it('reports render progress across the audio track and the MP4 encode', async () => {
+    // each FFmpeg run reports reaching half of the 30 s clip, then all of it
+    const runRender = vi.fn(async (_ffmpeg: string, _args: string[], options?: RunOptions) => {
+      options?.onStderr?.('size=N/A time=00:00:15.00 bitrate=N/A speed=10x    \r');
+      options?.onStderr?.('[mp4 @ 0x1] some log line\n');
+      options?.onStderr?.('size=N/A time=00:00:30.00 bitrate=N/A speed=10x    \r');
+      return { exitCode: 0, stderr: '' };
+    });
+    const progress: number[] = [];
+
+    await new PublishRenderer(renderDeps({ runRender })).render({
+      outputDir: '/tmp/pub',
+      clip,
+      editList: [],
+      title: 'x',
+      onProgress: (p) => progress.push(p),
+    });
+
+    const audioHalf = RENDER_AUDIO_SHARE / 2;
+    const encodeHalf = RENDER_AUDIO_SHARE + (100 - RENDER_AUDIO_SHARE) / 2;
+    expect(progress).toEqual([audioHalf, RENDER_AUDIO_SHARE, encodeHalf, 100]);
+  });
+
   it('raises RenderError with sanitised stderr when muxing fails', async () => {
     const deps = renderDeps({
       runRender: vi
@@ -138,6 +164,27 @@ function serviceDeps(over: Partial<PublishServiceDeps> = {}): PublishServiceDeps
 }
 
 describe('PublishService', () => {
+  it('turns the render stage and its progress into publish events', async () => {
+    const deps = serviceDeps({
+      renderVideo: vi.fn(async (input: PublishRenderInput) => {
+        input.onStage?.('cover');
+        input.onStage?.('render');
+        input.onProgress?.(40);
+        return { mp4Path: '/tmp/publish-xyz/out.mp4', coverPath: '/tmp/publish-xyz/cover.png' };
+      }),
+    });
+    const events: PublishEvent[] = [];
+
+    await new PublishService(deps).publish(request, { clip, editList: [] }, { onEvent: (e) => events.push(e) });
+
+    expect(events.slice(0, 4)).toEqual([
+      { stage: 'cover' },
+      { stage: 'render', percent: 0 },
+      { stage: 'render', percent: 40 },
+      { stage: 'upload', percent: 0 },
+    ]);
+  });
+
   it('renders, uploads and reports stage progress, then cleans the temp dir', async () => {
     const deps = serviceDeps();
     const events: PublishEvent[] = [];

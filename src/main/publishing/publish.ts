@@ -3,6 +3,8 @@ import { stat } from 'fs/promises';
 import { AppError, ClipInfo, EditOperation, PublishEvent, PublishRequest, PublishResult } from '@shared/types';
 import { CompileInput, compileEditList } from '../audio/engine';
 import { parseLoudnormJson } from '../audio/preview';
+import { parseProgressSeconds } from '../audio/export';
+import { editedDuration } from '../../shared/duration';
 import { CoverAssets } from './assets';
 import { LogoPlacement } from '../../shared/coverLayout';
 import { CoverRequest, CoverService, COVER_HEIGHT, COVER_WIDTH, coverDepsIn } from './cover';
@@ -72,6 +74,34 @@ export function compileMp4(input: Mp4Input): string[] {
   ];
 }
 
+/** Share of the render progress spent on the audio track; the MP4 encode takes the rest. */
+export const RENDER_AUDIO_SHARE = 15;
+
+/**
+ * Maps FFmpeg's `time=` progress over `duration` seconds onto from..to percent
+ * of the render. Never reports going backwards.
+ */
+function progressOptions(
+  duration: number,
+  from: number,
+  to: number,
+  report: ((percent: number) => void) | undefined,
+): RunOptions {
+  if (!report || !(duration > 0)) return {};
+  let last = from;
+  return {
+    onStderr: (chunk) => {
+      const seconds = parseProgressSeconds(chunk);
+      if (seconds === null) return;
+      const percent = from + (to - from) * Math.min(1, seconds / duration);
+      if (percent > last) {
+        last = percent;
+        report(percent);
+      }
+    },
+  };
+}
+
 export interface PublishRenderInput {
   outputDir: string;
   clip: ClipInfo;
@@ -79,6 +109,8 @@ export interface PublishRenderInput {
   title: string;
   coverImagePath?: string;
   onStage?: (stage: 'cover' | 'render') => void;
+  /** Render progress, 0–100, across the audio track and the MP4 encode. */
+  onProgress?: (percent: number) => void;
 }
 
 export interface PublishRenderResult {
@@ -112,10 +144,16 @@ export class PublishRenderer {
     });
 
     input.onStage?.('render');
-    await this.renderAudio(input.clip, input.editList, audioPath);
+    const expected = editedDuration(input.clip.duration, input.editList);
+    const duration = Number.isFinite(expected) && expected > 0 ? expected : input.clip.duration;
+    await this.renderAudio(input.clip, input.editList, audioPath, duration, input.onProgress);
 
     const ffmpegPath = await this.deps.resolveFfmpegPath();
-    const result = await this.deps.runRender(ffmpegPath, compileMp4({ coverPath, audioPath, outputPath: mp4Path }));
+    const result = await this.deps.runRender(
+      ffmpegPath,
+      compileMp4({ coverPath, audioPath, outputPath: mp4Path }),
+      progressOptions(duration, RENDER_AUDIO_SHARE, 100, input.onProgress),
+    );
     if (result.exitCode !== 0) {
       throw new RenderError('Could not mux the publish video', sanitizeText(result.stderr));
     }
@@ -127,6 +165,8 @@ export class PublishRenderer {
     clip: ClipInfo,
     editList: EditOperation[],
     outputPath: string,
+    duration: number,
+    onProgress?: (percent: number) => void,
   ): Promise<void> {
     const ffmpegPath = await this.deps.resolveFfmpegPath();
     const compileInput: CompileInput = {
@@ -136,8 +176,8 @@ export class PublishRenderer {
     };
     const plan = compileEditList(compileInput);
 
-    const run = async (args: string[]): Promise<{ exitCode: number; stderr: string }> => {
-      const result = await this.deps.runRender(ffmpegPath, args);
+    const run = async (args: string[], from: number, to: number): Promise<{ exitCode: number; stderr: string }> => {
+      const result = await this.deps.runRender(ffmpegPath, args, progressOptions(duration, from, to, onProgress));
       if (result.exitCode !== 0) {
         throw new RenderError('Could not render the publish track', sanitizeText(result.stderr));
       }
@@ -145,12 +185,14 @@ export class PublishRenderer {
     };
 
     if (plan.kind === 'render') {
-      await run(plan.args);
+      await run(plan.args, 0, RENDER_AUDIO_SHARE);
       return;
     }
 
-    const measured = await run(plan.measureArgs);
-    await run(plan.applyArgs(parseLoudnormJson(measured.stderr)));
+    // normalize: a measuring pass, then the pass that applies it
+    const half = RENDER_AUDIO_SHARE / 2;
+    const measured = await run(plan.measureArgs, 0, half);
+    await run(plan.applyArgs(parseLoudnormJson(measured.stderr)), half, RENDER_AUDIO_SHARE);
   }
 }
 
@@ -201,7 +243,8 @@ export class PublishService {
         editList: context.editList,
         title,
         coverImagePath: request.coverImagePath,
-        onStage: (stage) => emit({ stage }),
+        onStage: (stage) => emit(stage === 'render' ? { stage, percent: 0 } : { stage }),
+        onProgress: (percent) => emit({ stage: 'render', percent }),
       });
 
       const size = await this.deps.statSize(mp4Path);

@@ -87,7 +87,7 @@ export function stageLabel(event: PublishEvent, t: Translator): string {
     case 'cover':
       return t('publish.stage.cover');
     case 'render':
-      return t('publish.stage.render');
+      return t('publish.stage.render', { percent: Math.round(event.percent) });
     case 'upload':
       return t('publish.stage.upload', { percent: Math.round(event.percent) });
     case 'done':
@@ -97,8 +97,9 @@ export function stageLabel(event: PublishEvent, t: Translator): string {
   }
 }
 
-export function uploadPercent(event: PublishEvent): number | null {
-  return 'stage' in event && event.stage === 'upload' ? event.percent : null;
+/** Progress of the stage under way: the render, then (restarting from 0) the upload. */
+export function stagePercent(event: PublishEvent): number | null {
+  return 'stage' in event && (event.stage === 'render' || event.stage === 'upload') ? event.percent : null;
 }
 
 export function publishErrorAction(code: ErrorCode, t: Translator): ErrorAction {

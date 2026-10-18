@@ -111,7 +111,7 @@ export type CoverPreviewResult = { status: 'ok'; url: string } | AppErrorResult;
 
 export type PublishEvent =
   | { stage: 'cover' }
-  | { stage: 'render' }
+  | { stage: 'render'; percent: number }
   | { stage: 'upload'; percent: number }
   | { stage: 'done'; videoId: string; url: string; warning?: AppError }
   | { stage: 'cancelled' }

@@ -17,7 +17,7 @@ import {
   stageLabel,
   tagsCharCount,
   titleMissing,
-  uploadPercent,
+  stagePercent,
 } from './publish';
 import { canSendEmail, emailErrorAction } from './email';
 import {
@@ -101,7 +101,7 @@ export function PublishDialog({
 
   const warning = durationWarning(editedDuration(sourceDuration, editList));
   const tagsOverLimit = tagsCharCount(parseTags(form.tags)) > PUBLISH_TAGS_MAX_CHARS;
-  const percent = state.stage ? uploadPercent(state.stage) : null;
+  const percent = state.stage ? stagePercent(state.stage) : null;
   const action = state.phase === 'failed' && state.error ? publishErrorAction(state.error.code, t) : null;
 
   useEffect(() => {

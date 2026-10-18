@@ -18,7 +18,7 @@ import {
   tagsCharCount,
   titleMissing,
   toPublishRequest,
-  uploadPercent,
+  stagePercent,
 } from './publish';
 
 const tFor = (locale: Locale) => (key: TranslationKey, params?: TranslationParams) =>
@@ -134,11 +134,12 @@ describe('toPublishRequest', () => {
   });
 });
 
-describe('stageLabel / uploadPercent', () => {
+describe('stageLabel / stagePercent', () => {
   it('renders a human label per stage in the active language', () => {
     expect(stageLabel({ stage: 'cover' }, tFor('en'))).toBe('Composing cover…');
     expect(stageLabel({ stage: 'cover' }, tFor('hu'))).toBe('Borító összeállítása…');
-    expect(stageLabel({ stage: 'render' }, tFor('hu'))).toBe('Videó renderelése…');
+    expect(stageLabel({ stage: 'render', percent: 7.6 }, tFor('hu'))).toBe('Videó renderelése… 8%');
+    expect(stageLabel({ stage: 'render', percent: 0 }, tFor('en'))).toBe('Rendering video… 0%');
     expect(stageLabel({ stage: 'upload', percent: 42.4 }, tFor('en'))).toBe('Uploading… 42%');
     expect(stageLabel({ stage: 'upload', percent: 42.4 }, tFor('hu'))).toBe('Feltöltés… 42%');
     expect(stageLabel({ stage: 'done', videoId: 'v', url: 'u' }, tFor('en'))).toBe('Published to YouTube');
@@ -148,10 +149,11 @@ describe('stageLabel / uploadPercent', () => {
     );
   });
 
-  it('exposes the upload percent for the progress bar', () => {
-    expect(uploadPercent({ stage: 'upload', percent: 42 })).toBe(42);
-    expect(uploadPercent({ stage: 'cover' })).toBeNull();
-    expect(uploadPercent({ kind: 'error', error: { code: 'EngineError', message: 'x' } })).toBeNull();
+  it('exposes the render and upload percent for the progress bar', () => {
+    expect(stagePercent({ stage: 'render', percent: 63 })).toBe(63);
+    expect(stagePercent({ stage: 'upload', percent: 42 })).toBe(42);
+    expect(stagePercent({ stage: 'cover' })).toBeNull();
+    expect(stagePercent({ kind: 'error', error: { code: 'EngineError', message: 'x' } })).toBeNull();
   });
 });
 
