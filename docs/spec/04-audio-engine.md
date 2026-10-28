@@ -61,12 +61,14 @@ LRA = **11 LU**.
 Inputs: the published audio render (48 kHz WAV from §4.3) + a **Cover Image** (§4.5).
 
 ```
-ffmpeg -loop 1 -framerate 30 -i cover.png -i audio.wav \
-  -c:v libx264 -tune stillimage -pix_fmt yuv420p -r 30 \
+ffmpeg -loop 1 -framerate 1 -i cover.png -i audio.wav \
+  -c:v libx264 -tune stillimage -pix_fmt yuv420p -r 1 \
   -vf scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black \
   -c:a aac -b:a 192k -ar 48000 -shortest -movflags +faststart -y out.mp4
 ```
 
+- **1 fps**: the cover is a still image, so extra frames only cost encode time (30 fps made a
+  2-hour service take ~4× longer to encode for no visible difference).
 - Final frame size is exactly **1280×720**, `yuv420p` (even dims), `-shortest` ties video to audio,
   `+faststart` for streaming.
 - Even-dimension guarantee lives in the cover step (compositing to 1280×720), so the pad/scale

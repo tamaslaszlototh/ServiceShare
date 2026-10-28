@@ -50,7 +50,7 @@ interface PublishRequest {
    user may replace either.
 2. **Render audio** to the publish track (48 kHz stereo `pcm_s16le` temp WAV) — reuses the engine,
    separate from any user export.
-3. **Mux** (`04` §4.4): `-loop 1 -framerate 30` cover + audio → `out.mp4`
+3. **Mux** (`04` §4.4): `-loop 1 -framerate 1` cover + audio → `out.mp4`
    (`libx264 -tune stillimage -pix_fmt yuv420p`, `aac -b:a 192k -ar 48000`,
    `-shortest -movflags +faststart`).
 4. The MP4 lives in the session temp dir; cleaned on cancel/exit.

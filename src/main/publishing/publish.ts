@@ -25,6 +25,8 @@ export const PUBLISH_SAMPLE_RATE = 48000;
 export const PUBLISH_CHANNELS = 2;
 export const PUBLISH_AUDIO_BITRATE = '192k';
 export const PUBLISH_CONTENT_TYPE = 'video/mp4';
+/** The cover is a still image, so one frame per second is enough; 30 fps made the encode ~4× slower. */
+export const PUBLISH_FRAME_RATE = 1;
 
 export function publishAudioArgs(): string[] {
   return ['-c:a', 'pcm_s16le', '-ar', String(PUBLISH_SAMPLE_RATE), '-ac', String(PUBLISH_CHANNELS)];
@@ -45,7 +47,7 @@ export function compileMp4(input: Mp4Input): string[] {
     '-loop',
     '1',
     '-framerate',
-    '30',
+    String(PUBLISH_FRAME_RATE),
     '-i',
     input.coverPath,
     '-i',
@@ -57,7 +59,7 @@ export function compileMp4(input: Mp4Input): string[] {
     '-pix_fmt',
     'yuv420p',
     '-r',
-    '30',
+    String(PUBLISH_FRAME_RATE),
     '-vf',
     filter,
     '-c:a',
