@@ -234,7 +234,8 @@ export class PublishService {
     let dir: string | null = null;
     let warning: AppError | undefined;
     try {
-      const accessToken = await this.deps.getAccessToken();
+      // Fail fast when signed out, before spending minutes on the render.
+      await this.deps.getAccessToken();
       dir = await this.deps.makeTempDir();
 
       const { mp4Path } = await this.deps.renderVideo({
@@ -250,6 +251,8 @@ export class PublishService {
       const size = await this.deps.statSize(mp4Path);
       emit({ stage: 'upload', percent: 0 });
 
+      // A long render outlives the ~1 h access token, so fetch (and refresh) it only now.
+      const accessToken = await this.deps.getAccessToken();
       const uploaded = await this.deps.upload({
         accessToken,
         metadata: {

@@ -13,7 +13,7 @@ import {
 } from './publish';
 import { UploadCancelled } from './upload';
 import { RunOptions } from '../audio/runner';
-import { QuotaExceededError } from '../core/errors';
+import { AuthRevokedError, QuotaExceededError } from '../core/errors';
 
 const clip: ClipInfo = {
   filePath: '/tmp/in.wav',
@@ -204,6 +204,38 @@ describe('PublishService', () => {
       metadata: { title: 'My Clip', description: 'desc', tags: ['a'], privacyStatus: 'unlisted' },
       source: { path: '/tmp/publish-xyz/out.mp4', size: 2048, contentType: 'video/mp4' },
     });
+  });
+
+  it('uploads with a token fetched after the render, not one that expired during it', async () => {
+    let token = 'token-before-render';
+    const deps = serviceDeps({
+      getAccessToken: vi.fn(async () => token),
+      renderVideo: vi.fn(async () => {
+        token = 'token-after-render';
+        return { mp4Path: '/tmp/publish-xyz/out.mp4', coverPath: '/tmp/publish-xyz/cover.png' };
+      }),
+    });
+
+    await new PublishService(deps).publish(
+      { ...request, thumbnailPath: '/tmp/thumb.jpg' },
+      { clip, editList: [] },
+    );
+
+    expect((deps.upload as ReturnType<typeof vi.fn>).mock.calls[0][0].accessToken).toBe('token-after-render');
+    expect((deps.setThumbnail as ReturnType<typeof vi.fn>).mock.calls[0][0].accessToken).toBe('token-after-render');
+  });
+
+  it('fails before rendering when no account is signed in', async () => {
+    const deps = serviceDeps({
+      getAccessToken: vi.fn(async () => {
+        throw new AuthRevokedError('No tokens stored');
+      }),
+    });
+
+    const result = await new PublishService(deps).publish(request, { clip, editList: [] });
+
+    expect(result).toMatchObject({ status: 'error', error: { code: 'AuthRevoked' } });
+    expect(deps.renderVideo).not.toHaveBeenCalled();
   });
 
   it('maps an aborted upload to a cancelled result and still cleans up', async () => {
