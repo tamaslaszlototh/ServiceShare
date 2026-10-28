@@ -1,6 +1,6 @@
 {
   "name": "serviceshare",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Desktop WAV editor with YouTube publishing",
   "main": "dist/main/main.js",
   "private": true,
