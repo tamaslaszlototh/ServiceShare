@@ -4,12 +4,10 @@ import { EngineError } from '../core/errors';
 
 export const DEFAULT_BASE_FILE = 'default-base.png';
 export const LOGO_FILE = 'logo.png';
-export const COVER_FONT_FILE = 'JetBrainsMono-Regular.ttf';
 
 export interface CoverAssets {
   defaultBase: string;
   logo: string;
-  font: string;
 }
 
 export interface AssetResolverDeps {
@@ -48,13 +46,12 @@ export class AssetResolver {
       this.cache = {
         defaultBase: this.baseOverride ?? this.find('images', DEFAULT_BASE_FILE),
         logo: this.logoOverride ?? this.find('images', LOGO_FILE),
-        font: this.find('fonts', COVER_FONT_FILE),
       };
     }
     return this.cache;
   }
 
-  private find(kind: 'images' | 'fonts', file: string): string {
+  private find(kind: 'images', file: string): string {
     const candidates = this.deps.roots.map((root) => path.join(root, kind, file));
     const found = candidates.find((candidate) => this.deps.fileExists(candidate));
     if (!found) {

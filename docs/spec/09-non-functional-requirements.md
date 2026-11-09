@@ -24,8 +24,8 @@
 - **No secrets in the repo** — OAuth client/refresh tokens, `safeStorage` data, CSV in
   `userData`/keychain only; CI credentials are GitHub secrets (see `07`).
 - Tokens are never logged; IPC payloads and logs redact anything matching `token|refresh|secret`.
-- FFmpeg invoked with an **args array** (no shell interpolation); all user text
-  (title/description/path) escaped for `drawtext`/shell contexts.
+- FFmpeg invoked with an **args array** (no shell interpolation); user text
+  (title/description) never reaches an FFmpeg filter.
 - The loopback OAuth server binds only to `127.0.0.1` with an ephemeral port per attempt.
 - **Code-signing file-fuses** enabled where the Electron toolchain supports them; macOS is
   development-only and unsigned (see `07`, ADR 0007).

@@ -76,16 +76,14 @@ ffmpeg -loop 1 -framerate 1 -i cover.png -i audio.wav \
 
 ## 4.5 Cover compositing (normative)
 
-Every publish composites the cover from a **base** + **title** + **logo** in one step (decision #10):
+Every publish composites the cover from a **base** + **logo** in one step (no title text: YouTube shows the title itself) (decision #10):
 
 1. **Base** = the user-chosen image, or the **default base** when none chosen (the bundled one,
    or the user's replacement for it).
 2. Scale/crop any inputs to **1280×720** (`scale` + `crop`) — center-crop on aspect mismatch.
-3. `drawtext` the video **title** (escaped, font bundled; positioned per the default template:
-   bottom-left band).
-4. `overlay` the **logo** (the bundled one, or the user's replacement for it) at the saved
+3. `overlay` the **logo** (the bundled one, or the user's replacement for it) at the saved
    **logo placement**: scaled so its longer side matches the placement size with the aspect ratio
-   kept, at the placement position inside the area above the title band (default: top-centre,
+   kept, at the placement position inside the cover (default: top-centre,
    128 px; see `05` cover preview).
 
 One FFmpeg invocation produces `cover.png`; that is what §4.4 `-loop 1` consumes. The composed

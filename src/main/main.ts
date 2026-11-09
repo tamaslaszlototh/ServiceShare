@@ -517,7 +517,7 @@ app.whenReady().then(async () => {
     }
     try {
       const preview = await coverPreviewService.ensure(
-        { title: req.title, coverImagePath: req.coverImagePath, withLogo: req.withLogo !== false },
+        { coverImagePath: req.coverImagePath, withLogo: req.withLogo !== false },
         coverAssetsKey(),
       );
       return { status: 'ok', url: preview.url };

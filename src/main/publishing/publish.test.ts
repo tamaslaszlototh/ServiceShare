@@ -93,14 +93,12 @@ describe('PublishRenderer', () => {
       outputDir: '/tmp/pub',
       clip,
       editList: [{ kind: 'gain', db: 2 }],
-      title: 'My Clip',
       onStage: (s) => stages.push(s),
     });
 
     expect(stages).toEqual(['cover', 'render']);
     expect(result).toEqual({ mp4Path: '/tmp/pub/out.mp4', coverPath: '/tmp/pub/cover.png' });
     expect(deps.composeCover).toHaveBeenCalledWith({
-      title: 'My Clip',
       coverImagePath: undefined,
       outputPath: '/tmp/pub/cover.png',
     });
@@ -127,7 +125,6 @@ describe('PublishRenderer', () => {
       outputDir: '/tmp/pub',
       clip,
       editList: [],
-      title: 'x',
       onProgress: (p) => progress.push(p),
     });
 
@@ -145,7 +142,7 @@ describe('PublishRenderer', () => {
     });
 
     await expect(
-      new PublishRenderer(deps).render({ outputDir: '/tmp/pub', clip, editList: [], title: 'x' }),
+      new PublishRenderer(deps).render({ outputDir: '/tmp/pub', clip, editList: [] }),
     ).rejects.toMatchObject({ code: 'RenderError', details: 'boom\nline2' });
   });
 });

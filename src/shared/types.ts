@@ -101,7 +101,6 @@ export interface PublishRequest {
 }
 
 export interface CoverPreviewRequest {
-  title: string;
   coverImagePath?: string;
   /** false composes the preview without the logo (while the logo is being placed) */
   withLogo?: boolean;

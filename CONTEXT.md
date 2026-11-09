@@ -31,11 +31,11 @@ Turning the edited audio into a video (cover image + audio track) and uploading 
 _Avoid_: upload, share, export-to-YouTube
 
 **Cover Image**:
-The static image combined with the audio to form the video that gets published. Composed by scaling/cropping a chosen image (or the default base) to 1280×720 and compositing the video title and the logo onto it (at the Logo Placement). The default base and the logo are bundled with the app; the user can replace either with their own image, which then applies to every later cover.
+The static image combined with the audio to form the video that gets published. Composed by scaling/cropping a chosen image (or the default base) to 1280×720 and compositing the logo onto it (at the Logo Placement). The video title is not drawn on it. The default base and the logo are bundled with the app; the user can replace either with their own image, which then applies to every later cover.
 _Avoid_: thumbnail, artwork
 
 **Logo Placement**:
-Where the logo sits on the Cover Image and how big it is: a position plus the length of the logo's longer side, with its aspect ratio always kept. One setting for every later cover, independent of which logo image is in use; always inside the area above the title band. Defaults to top-centre at 128 px.
+Where the logo sits on the Cover Image and how big it is: a position plus the length of the logo's longer side, with its aspect ratio always kept. One setting for every later cover, independent of which logo image is in use; always inside the cover. Defaults to top-centre at 128 px.
 _Avoid_: logo position, logo layout, logo settings
 
 **Published Video**:

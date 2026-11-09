@@ -46,7 +46,7 @@ describe('default placement', () => {
 });
 
 describe('clampLogoPlacement', () => {
-  it('keeps the box inside the area above the title band', () => {
+  it('keeps the box inside the cover', () => {
     const p = clampLogoPlacement({ centerX: 5000, centerY: 5000, size: 100 }, SQUARE);
     expect(logoBox(p, SQUARE)).toEqual({ x: LOGO_AREA_WIDTH - 100, y: LOGO_AREA_HEIGHT - 100, width: 100, height: 100 });
   });
@@ -132,8 +132,9 @@ describe('resizeLogo', () => {
     expect(resizeLogo(p, 'se', 251, 251, SQUARE).size).toBe(LOGO_MIN_SIZE);
     const roomy = { centerX: 200, centerY: 100, size: 100 }; // fixed nw corner at (150, 50)
     expect(resizeLogo(roomy, 'se', 2000, 2000, SQUARE).size).toBe(LOGO_MAX_SIZE);
-    // fixed corner at (250, 250) with the se handle: only 560 - 250 = 310 px of room below
-    expect(resizeLogo(p, 'se', 2000, 2000, SQUARE).size).toBe(310);
+    // fixed corner at (250, 500) with the se handle: only 720 - 500 = 220 px of room below
+    const low = { centerX: 300, centerY: 550, size: 100 };
+    expect(resizeLogo(low, 'se', 2000, 2000, SQUARE).size).toBe(220);
     // fixed corner at (350, 350) with the nw handle: only 350 px of room up and left
     const cornered = { centerX: 300, centerY: 300, size: 100 };
     expect(resizeLogo(cornered, 'nw', -500, -500, SQUARE).size).toBe(350);
@@ -161,7 +162,7 @@ describe('logoOverlayPosition', () => {
 
   it('places by centre and lets FFmpeg push the real logo back inside the area', () => {
     expect(logoOverlayPosition({ centerX: 1230.4, centerY: 49.6, size: 100 })).toBe(
-      String.raw`x=clip(1230-w/2\,0\,W-w):y=clip(50-h/2\,0\,560-h)`,
+      String.raw`x=clip(1230-w/2\,0\,W-w):y=clip(50-h/2\,0\,720-h)`,
     );
   });
 });

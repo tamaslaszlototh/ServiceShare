@@ -631,7 +631,7 @@ describe('account and cover side effects', () => {
     expect(ipc.signIn).toHaveBeenCalledTimes(1);
   });
 
-  it('recomposes the cover preview when the title changes', async () => {
+  it('does not recompose the cover preview when the title changes', async () => {
     const { ipc } = createFakeIpc();
     const flow = makeFlow(ipc);
     await flush();
@@ -640,7 +640,7 @@ describe('account and cover side effects', () => {
     flow.setForm({ title: 'New name' });
     await flush();
 
-    expect(ipc.composeCoverPreview).toHaveBeenCalledWith({ title: 'New name', coverImagePath: undefined, withLogo: true });
+    expect(ipc.composeCoverPreview).not.toHaveBeenCalled();
   });
 
   it('resolves a picked cover file to a path through the ipc', async () => {

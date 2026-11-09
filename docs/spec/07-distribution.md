@@ -16,7 +16,7 @@ Users are on Windows only (see `docs/adr/0007-windows-only-distribution.md`).
 | macOS | `dir` (unsigned `.app`), host arch | Development only: lets the maintainer run a packaged build locally. Never published. |
 
 - `extraResources`: the bundled FFmpeg/ffprobe binaries (`ffmpeg-static`, see `04`), the default
-  cover base, fonts, the app logo, `LICENSE` and the FFmpeg license notes.
+  cover base, the app logo, `LICENSE` and the FFmpeg license notes.
 
 ## 7.2 macOS (development only)
 

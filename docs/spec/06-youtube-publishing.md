@@ -45,8 +45,8 @@ interface PublishRequest {
 ## 6.3 Cover & MP4 (main process)
 
 1. **Compose cover** (per `04` §4.5) → `cover.png` at exactly **1280×720**: chosen image (or
-   default base) scaled/cropped, video **title** (`drawtext`) and the **logo** (`overlay`, at the
-   saved logo placement) composited. The bundled default base and logo ship in the app bundle; the
+   default base) scaled/cropped, with the **logo** (`overlay`, at the saved logo placement)
+   composited; the title is not drawn on the cover. The bundled default base and logo ship in the app bundle; the
    user may replace either.
 2. **Render audio** to the publish track (48 kHz stereo `pcm_s16le` temp WAV) — reuses the engine,
    separate from any user export.
@@ -101,6 +101,6 @@ interface PublishRequest {
 ## 6.8 Security notes
 
 - No token, refresh token, or client secret is ever printed, logged, or sent to third parties.
-- User-supplied text (title, description, tags) is escaped before `drawtext`/URL use.
+- User-supplied text (title, description, tags) is escaped before URL use and never reaches an FFmpeg filter.
 - The loopback callback port is bound randomly per auth attempt and never exposed beyond
   `127.0.0.1`.

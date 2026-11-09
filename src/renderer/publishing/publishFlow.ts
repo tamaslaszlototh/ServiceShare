@@ -325,7 +325,6 @@ export function createPublishFlow({
     const { form } = state;
     try {
       const preview = await ipc.composeCoverPreview({
-        title: form.title.trim() || ' ',
         coverImagePath: form.coverImagePath ?? undefined,
         withLogo: !state.placingLogo,
       });
@@ -399,7 +398,7 @@ export function createPublishFlow({
 
   function setForm(patch: Partial<PublishForm>): void {
     update({ form: { ...state.form, ...patch } });
-    if ('title' in patch || 'coverImagePath' in patch) scheduleCoverPreview();
+    if ('coverImagePath' in patch) scheduleCoverPreview();
   }
 
   return {

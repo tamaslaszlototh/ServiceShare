@@ -108,7 +108,6 @@ export interface PublishRenderInput {
   outputDir: string;
   clip: ClipInfo;
   editList: EditOperation[];
-  title: string;
   coverImagePath?: string;
   onStage?: (stage: 'cover' | 'render') => void;
   /** Render progress, 0–100, across the audio track and the MP4 encode. */
@@ -140,7 +139,6 @@ export class PublishRenderer {
 
     input.onStage?.('cover');
     await this.deps.composeCover({
-      title: input.title,
       coverImagePath: input.coverImagePath,
       outputPath: coverPath,
     });
@@ -244,7 +242,6 @@ export class PublishService {
         outputDir: dir,
         clip: context.clip,
         editList: context.editList,
-        title,
         coverImagePath: request.coverImagePath,
         onStage: (stage) => emit(stage === 'render' ? { stage, percent: 0 } : { stage }),
         onProgress: (percent) => emit({ stage: 'render', percent }),

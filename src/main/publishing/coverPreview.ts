@@ -9,7 +9,7 @@ export type CoverPreviewInput = Omit<CoverRequest, 'outputPath'>;
 export function coverPreviewKey(input: CoverPreviewInput, assetsKey = ''): string {
   const logo = input.withLogo === false ? 'no-logo' : 'logo';
   return createHash('sha256')
-    .update(`${input.title}\n${input.coverImagePath ?? ''}\n${logo}\n${assetsKey}`)
+    .update(`${input.coverImagePath ?? ''}\n${logo}\n${assetsKey}`)
     .digest('hex');
 }
 

@@ -4,11 +4,10 @@
  */
 export const COVER_WIDTH = 1280;
 export const COVER_HEIGHT = 720;
-export const COVER_BAND_HEIGHT = 160;
 
-/** The logo stays inside the area above the title band. */
+/** The logo stays inside the cover. */
 export const LOGO_AREA_WIDTH = COVER_WIDTH;
-export const LOGO_AREA_HEIGHT = COVER_HEIGHT - COVER_BAND_HEIGHT;
+export const LOGO_AREA_HEIGHT = COVER_HEIGHT;
 export const LOGO_MARGIN = 32;
 export const LOGO_DEFAULT_SIZE = 128;
 export const LOGO_MIN_SIZE = 48;

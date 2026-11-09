@@ -583,14 +583,6 @@ a:focus-visible {
   user-select: none;
 }
 
-.logo-editor-band {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1px dashed rgba(255, 255, 255, 0.35);
-  pointer-events: none;
-}
-
 .logo-guide {
   position: absolute;
   pointer-events: none;
@@ -683,14 +675,6 @@ a:focus-visible {
   position: relative;
   touch-action: none;
   user-select: none;
-}
-
-.logo-editor-band {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1px dashed rgba(255, 255, 255, 0.35);
-  pointer-events: none;
 }
 
 .logo-guide {

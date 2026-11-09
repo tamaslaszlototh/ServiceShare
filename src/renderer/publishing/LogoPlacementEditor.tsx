@@ -152,11 +152,6 @@ export function LogoPlacementEditor({ coverUrl, logoUrl, placement, onDone, onCa
         ) : (
           <span className="muted">{t('publish.updatingPreview')}</span>
         )}
-        <div
-          className="logo-editor-band"
-          aria-hidden="true"
-          style={{ top: pctY(LOGO_AREA_HEIGHT) }}
-        />
         {guides.vertical.map((x) => (
           <div
             key={`v${x}`}

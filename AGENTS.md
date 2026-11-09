@@ -9,7 +9,7 @@
 - Electrofoundation: Electron + React + TS with typed IPC (main/preload/renderer/shared).
 - Runtime FFmpeg resolution in the main process (`src/main/audio/ffmpeg.ts`): extraResources → ffmpeg-static/ffprobe-static dev fallback → PATH, with `-version` probing and caching.
 - WAV open/probe (`src/main/audio/probe.ts`): `ffprobe` JSON → validate `pcm_s16le`/`pcm_s24le`; typed errors live in `src/main/core/errors.ts`; `openFile` returns a typed `OpenResult` (ok/cancelled/error).
-- Cover compositing (`src/main/publishing/cover.ts`): pure `compileCover`/`escapeDrawtext` seam → `CoverService`; bundled assets (default base, logo, OFL font) under `assets/`, resolved by `src/main/publishing/assets.ts` (resources → dev fallback).
+- Cover compositing (`src/main/publishing/cover.ts`): pure `compileCover` seam → `CoverService` (base + logo, no title text); bundled assets (default base, logo) under `assets/`, resolved by `src/main/publishing/assets.ts` (resources → dev fallback).
 - Packaging (`package.json` `build`): Windows x64 NSIS is the only distributed artifact; macOS packages an unsigned dev-only `dir` app (ADR 0007). Ships `LICENSE`, FFmpeg licenses, `assets/` and the FFmpeg binaries via `extraResources`. `scripts/packaging/after-pack.cjs` rejects FFmpeg binaries that can't run on the packaged arch. About panel (`aboutPanelOptions` in `src/main/core/shell.ts`) states GPL-3.0.
 - Auto-update (`src/main/updater/updater.ts`): `UpdateService` drives electron-updater's `autoUpdater` through a narrow `UpdaterPort`; status reaches the renderer via the `updateStatus` event. Unpackaged builds report `unsupported` (electron-updater skips the check). Publish config lives in `package.json` `build`.
 

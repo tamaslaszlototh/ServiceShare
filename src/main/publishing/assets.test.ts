@@ -4,7 +4,6 @@ import { AssetResolver } from './assets';
 const BUNDLED = [
   '/assets/images/default-base.png',
   '/assets/images/logo.png',
-  '/assets/fonts/JetBrainsMono-Regular.ttf',
 ];
 
 function resolver(files: string[] = BUNDLED) {
@@ -17,7 +16,6 @@ describe('AssetResolver', () => {
     expect(resolver().resolve()).toEqual({
       defaultBase: '/assets/images/default-base.png',
       logo: '/assets/images/logo.png',
-      font: '/assets/fonts/JetBrainsMono-Regular.ttf',
     });
   });
 

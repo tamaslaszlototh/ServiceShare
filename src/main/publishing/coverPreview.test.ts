@@ -21,11 +21,11 @@ function deps(over: Partial<CoverPreviewDeps> = {}): CoverPreviewDeps & {
 }
 
 describe('coverPreviewKey', () => {
-  const a = { title: 'A', coverImagePath: '/img.png' };
+  const a = { coverImagePath: '/img.png' };
 
-  it('changes with the title and the chosen image', () => {
-    expect(coverPreviewKey(a)).not.toBe(coverPreviewKey({ ...a, title: 'B' }));
-    expect(coverPreviewKey(a)).not.toBe(coverPreviewKey({ title: 'A' }));
+  it('changes with the chosen image', () => {
+    expect(coverPreviewKey(a)).not.toBe(coverPreviewKey({ coverImagePath: '/other.png' }));
+    expect(coverPreviewKey(a)).not.toBe(coverPreviewKey({}));
     expect(coverPreviewKey(a)).toBe(coverPreviewKey({ ...a }));
   });
 
@@ -42,13 +42,12 @@ describe('coverPreviewKey', () => {
 describe('CoverPreviewService', () => {
   it('composes a preview and returns a cover:// url', async () => {
     const d = deps();
-    const result = await new CoverPreviewService(d).ensure({ title: 'My Clip' });
+    const result = await new CoverPreviewService(d).ensure({});
 
     expect(result.composed).toBe(true);
     expect(result.url).toBe(`cover://preview/${result.key}`);
     expect(result.path).toMatch(/cover-preview/);
     expect(d.compose).toHaveBeenCalledWith({
-      title: 'My Clip',
       coverImagePath: undefined,
       outputPath: result.path,
     });
@@ -58,8 +57,8 @@ describe('CoverPreviewService', () => {
     const d = deps();
     const service = new CoverPreviewService(d);
 
-    const first = await service.ensure({ title: 'My Clip', coverImagePath: '/img.png' });
-    const second = await service.ensure({ title: 'My Clip', coverImagePath: '/img.png' });
+    const first = await service.ensure({ coverImagePath: '/img.png' });
+    const second = await service.ensure({ coverImagePath: '/img.png' });
 
     expect(second.composed).toBe(false);
     expect(second.url).toBe(first.url);
@@ -67,20 +66,19 @@ describe('CoverPreviewService', () => {
     expect(d.makeTempDir).toHaveBeenCalledTimes(1);
   });
 
-  it('composes a new image when the title or base image changes', async () => {
+  it('composes a new image when the base image changes', async () => {
     const d = deps();
     const service = new CoverPreviewService(d);
 
-    await service.ensure({ title: 'My Clip', coverImagePath: '/img.png' });
-    await service.ensure({ title: 'Renamed', coverImagePath: '/img.png' });
-    await service.ensure({ title: 'Renamed', coverImagePath: '/other.png' });
+    await service.ensure({ coverImagePath: '/img.png' });
+    await service.ensure({ coverImagePath: '/other.png' });
 
-    expect(d.compose).toHaveBeenCalledTimes(3);
+    expect(d.compose).toHaveBeenCalledTimes(2);
   });
 
   it('resolves a path by key for the protocol handler', async () => {
     const service = new CoverPreviewService(deps());
-    const { key, path } = await service.ensure({ title: 'My Clip' });
+    const { key, path } = await service.ensure({});
 
     expect(service.pathFor(key)).toBe(path);
     expect(service.pathFor('missing')).toBe(null);
@@ -90,9 +88,9 @@ describe('CoverPreviewService', () => {
     const d = deps();
     const service = new CoverPreviewService(d);
 
-    const first = await service.ensure({ title: '0' });
+    const first = await service.ensure({ coverImagePath: '/0.png' });
     for (let i = 1; i <= MAX_COVER_PREVIEWS; i++) {
-      await service.ensure({ title: String(i) });
+      await service.ensure({ coverImagePath: `/${i}.png` });
     }
 
     expect(service.pathFor(first.key)).toBeNull();
@@ -102,7 +100,7 @@ describe('CoverPreviewService', () => {
   it('disposes the temp dir and forgets cached previews', async () => {
     const d = deps();
     const service = new CoverPreviewService(d);
-    const { key } = await service.ensure({ title: 'My Clip' });
+    const { key } = await service.ensure({});
 
     await service.dispose();
 
